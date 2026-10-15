@@ -1,40 +1,71 @@
+// Server-side account resolution for pages. The account type comes from the API's
+// database binding (GET /me/account), never from Clerk metadata.
 import "server-only";
+
 import { auth } from "@clerk/nextjs/server";
 import { redirect } from "next/navigation";
-import { authConfigured } from "./auth-config";
+
+import type { components } from "./api/schema";
+import { serverApi } from "./api/server";
 import { isAccountType, workspacePath, type AccountType } from "./account";
+import { authConfigured } from "./auth-config";
 
-export interface ProductAccount {
-  id: string; accountType: AccountType; fullName: string;
-  organization: string; onboardingComplete: boolean;
-}
-export type AccountState =
-  | { state: "unconfigured" | "signed_out" | "unavailable" | "setup_required" }
-  | { state: "ready"; account: ProductAccount };
+export type Account = components["schemas"]["Account"] & { type: AccountType };
 
-export async function accountState(): Promise<AccountState> {
-  if (!authConfigured()) return { state: "unconfigured" };
-  const session = await auth();
-  if (!session.userId) return { state: "signed_out" };
-  const token = await session.getToken();
-  if (!token) return { state: "signed_out" };
+export type SessionState =
+  | { kind: "unconfigured" } // Clerk keys not set
+  | { kind: "signed-out" }
+  | { kind: "unbound" } // signed in, no Trybe account type chosen yet
+  | { kind: "unavailable" } // the API couldn't be reached
+  | { kind: "bound"; account: Account };
+
+const MOCK_ACCOUNT: Account = {
+  id: "00000000-0000-4000-8000-000000000001",
+  type: "attendee",
+  full_name: "Mock Attendee",
+  organization: null,
+  created_at: new Date(0).toISOString(),
+};
+
+export async function getSession(): Promise<SessionState> {
+  if (!authConfigured()) return { kind: "unconfigured" };
+  const { userId } = await auth();
+  if (!userId) return { kind: "signed-out" };
+  if (
+    process.env.NEXT_PUBLIC_API_MOCKS === "1" &&
+    process.env.NODE_ENV !== "production"
+  ) {
+    // Server components can't reach browser mocks; act as an attendee in mock mode.
+    return { kind: "bound", account: MOCK_ACCOUNT };
+  }
   try {
-    const response = await fetch(new URL("/v1/me", process.env.API_BASE_URL ?? "http://127.0.0.1:8080"), {
-      headers: { Authorization: `Bearer ${token}` }, cache: "no-store", signal: AbortSignal.timeout(8000), redirect: "error",
+    const api = await serverApi();
+    const { data, response } = await api.GET("/me/account", {
+      signal: AbortSignal.timeout(8000),
     });
-    if (response.status === 401) return { state: "signed_out" };
-    if (!response.ok) return { state: "unavailable" };
-    const data = await response.json();
-    if (data.state === "setup_required") return { state: "setup_required" };
-    if (data.state !== "ready" || !data.account || !isAccountType(data.account.accountType) || typeof data.account.id !== "string" || typeof data.account.fullName !== "string" || typeof data.account.onboardingComplete !== "boolean") return { state: "unavailable" };
-    return { state: "ready", account: data.account as ProductAccount };
-  } catch { return { state: "unavailable" }; }
+    if (data && isAccountType(data.type))
+      return { kind: "bound", account: data as Account };
+    if (response.status === 404) return { kind: "unbound" };
+    if (response.status === 401) return { kind: "signed-out" };
+    return { kind: "unavailable" };
+  } catch {
+    return { kind: "unavailable" };
+  }
 }
 
-export async function workspaceAccount(type: AccountType) {
-  const state = await accountState();
-  if (state.state === "signed_out" || state.state === "unconfigured") redirect(`${workspacePath(type)}/sign-in`);
-  if (state.state === "setup_required") redirect("/account/setup");
-  if (state.state === "ready" && state.account.accountType !== type) redirect(workspacePath(state.account.accountType));
-  return state;
+/**
+ * requireAccount lets a page render only for the given account type. Signed-out
+ * visitors go to that type's sign-in, sessions without an account type go to setup,
+ * and the other account type goes back to its own workspace.
+ */
+export async function requireAccount(
+  type: AccountType,
+): Promise<{ account: Account } | { unavailable: true }> {
+  const s = await getSession();
+  if (s.kind === "unconfigured" || s.kind === "signed-out")
+    redirect(`${workspacePath(type)}/sign-in`);
+  if (s.kind === "unbound") redirect("/account/setup");
+  if (s.kind === "unavailable") return { unavailable: true };
+  if (s.account.type !== type) redirect(workspacePath(s.account.type));
+  return { account: s.account };
 }

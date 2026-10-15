@@ -1,8 +1,15 @@
 import { defineConfig, globalIgnores } from "eslint/config";
 import nextVitals from "eslint-config-next/core-web-vitals";
-import nextTypescript from "eslint-config-next/typescript";
+import nextTs from "eslint-config-next/typescript";
+
 export default defineConfig([
   ...nextVitals,
-  ...nextTypescript,
-  globalIgnores([".next/**", ".npm-cache/**", "next-env.d.ts"]),
+  ...nextTs,
+  globalIgnores([
+    ".next/**",
+    "out/**",
+    "next-env.d.ts",
+    "public/mockServiceWorker.js",
+    "lib/api/schema.d.ts",
+  ]),
 ]);

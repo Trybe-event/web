@@ -1,2 +1,9 @@
-import { AuthPage } from "@/components/auth-page";
-export default function Page() { return <AuthPage type="organizer" mode="sign-up"/>; }
+import type { Metadata } from "next";
+
+import { AuthPage } from "@/components/auth/auth-page";
+
+export const metadata: Metadata = { title: "Organizer sign up" };
+
+export default function Page() {
+  return <AuthPage type="organizer" mode="sign-up" />;
+}

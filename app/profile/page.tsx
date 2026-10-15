@@ -1,2 +1,6 @@
 import { redirect } from "next/navigation";
-export default function Page() { redirect("/attendee"); }
+
+// Legacy entry from the marketing site and PRD route list.
+export default function Page() {
+  redirect("/attendee");
+}

@@ -1,2 +1,5 @@
 import { redirect } from "next/navigation";
-export default function Page() { redirect("/attendee/sign-in"); }
+
+export default function Page() {
+  redirect("/attendee/sign-in");
+}
