@@ -29,6 +29,10 @@ Two rules override everything else:
 
 Breaking either rule is a release-blocking defect, even if every test passes.
 
+## Read first
+
+`docs/m1-consolidation.md` explains which codebase is current (`milestone/m1`), what was carried over from the second M1 implementation on `main`, and where to pick up. Read it before your first task.
+
 ## Sources of truth, in this order
 
 1. **The GitHub issue you are working on.** Its Scope, Implementation plan and Acceptance criteria define the work. Read the whole issue, including "Depends on", "Your sequence" and "Workflow".
