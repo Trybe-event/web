@@ -1,9 +1,3 @@
-<<<<<<< Updated upstream
-import { redirect } from "next/navigation";
-
-export default function Page() {
-  redirect("/attendee/profile/edit");
-=======
 import type { Metadata } from "next";
 
 import { UnavailableNotice } from "@/components/auth/workspace";
@@ -38,5 +32,4 @@ export default async function EditProfile({
       <ProfileForm onboarding={onboarding} fallbackName={g.account.full_name} />
     </div>
   );
->>>>>>> Stashed changes
 }
