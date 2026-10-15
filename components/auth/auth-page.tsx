@@ -14,25 +14,26 @@ export async function AuthPage({
   type: AccountType;
   mode: "sign-in" | "sign-up";
 }) {
-  const s = await getSession();
-  if (s.kind === "bound") redirect(workspacePath(s.account.type));
-  if (s.kind === "unbound") redirect("/account/setup");
-  const signup = mode === "sign-up";
-  const base = workspacePath(type);
+  const sessionState = await getSession();
+  if (sessionState.kind === "bound")
+    redirect(workspacePath(sessionState.account.type));
+  if (sessionState.kind === "unbound") redirect("/account/setup");
+  const isSignUp = mode === "sign-up";
+  const workspaceRoute = workspacePath(type);
   return (
     <AuthShell type={type}>
       <span className="eyebrow">
         {type === "organizer" ? "ORGANIZER" : "ATTENDEE"} ACCOUNT
       </span>
       <h2>
-        {signup ? "Make room for possibility." : "Good to see you again."}
+        {isSignUp ? "Make room for possibility." : "Good to see you again."}
       </h2>
       <p className="auth-intro">
-        {signup
+        {isSignUp
           ? `Create your ${type} account and get started.`
           : `Sign in to your ${type} workspace.`}
       </p>
-      {s.kind === "unconfigured" ? (
+      {sessionState.kind === "unconfigured" ? (
         <div className="auth-unavailable">
           <label htmlFor="preview-email">Email address</label>
           <input
@@ -49,7 +50,7 @@ export async function AuthPage({
             placeholder="Enter your password"
           />
           <button type="button" className="primary-button" disabled>
-            {signup ? "Create account" : "Sign in"}
+            {isSignUp ? "Create account" : "Sign in"}
           </button>
           <p role="status">
             Account access is being prepared. Please check back shortly.
@@ -61,19 +62,19 @@ export async function AuthPage({
             </p>
           )}
         </div>
-      ) : s.kind === "unavailable" ? (
+      ) : sessionState.kind === "unavailable" ? (
         <div className="notice" role="alert">
           <h3>We couldn&apos;t reach your workspace.</h3>
           <p>Your account has not been changed. Please try again shortly.</p>
-          <Link href={`${base}/${mode}`}>Try again</Link>
+          <Link href={`${workspaceRoute}/${mode}`}>Try again</Link>
         </div>
       ) : (
         <AuthForm type={type} mode={mode} />
       )}
       <p className="auth-alternative">
-        {signup ? "Already have an account?" : "New to Trybe?"}{" "}
-        <Link href={`${base}/${signup ? "sign-in" : "sign-up"}`}>
-          {signup ? "Sign in" : "Create an account"}
+        {isSignUp ? "Already have an account?" : "New to Trybe?"}{" "}
+        <Link href={`${workspaceRoute}/${isSignUp ? "sign-in" : "sign-up"}`}>
+          {isSignUp ? "Sign in" : "Create an account"}
         </Link>
       </p>
     </AuthShell>
