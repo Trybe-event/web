@@ -272,6 +272,7 @@ em {
   gap: 11px;
 }
 .auth-unavailable label,
+.trybe-auth-form label,
 .complete-form label {
   font-size: 12px;
   font-weight: 600;
@@ -290,6 +291,11 @@ em {
 }
 .auth-unavailable input:disabled {
   opacity: 0.6;
+}
+.trybe-auth-form input {
+  min-height: 48px;
+  border-radius: 10px;
+  font-size: 13px;
 }
 .auth-unavailable p,
 .setup-note {
