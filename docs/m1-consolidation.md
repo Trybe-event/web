@@ -15,12 +15,12 @@ The two don't share files, routes or API paths, so they couldn't both stay. The 
 
 ## The codebase now
 
-| Repo         | Branch                                  | Status                                                                                                                                                    |
-| ------------ | --------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `api`        | `milestone/m1`                          | The codebase. CI green.                                                                                                                                   |
-| `web`        | `milestone/m1`                          | The codebase, including the ported entry flows. CI green.                                                                                                 |
-| `marketing`  | PR #2 `chore/marketing-standard-nextjs` | Standard Next.js, with the account-entry handoff merged in. Waiting for review.                                                                           |
-| `api`, `web` | `main`                                  | **Still holds the second implementation.** It is replaced when `milestone/m1` merges after the M1 audit (see below). Don't branch from `main` until then. |
+| Repo | Branch | Status |
+| --- | --- | --- |
+| `api`, `web` | `main` | **The M1 codebase** (merged from `milestone/m1` on 15 October 2026 in api#44 and web#30). The second implementation is kept in history only. |
+| `api`, `web` | `milestone/m2`, `milestone/m3`, `milestone/m4` | Cut from that `main`. Branch your issues from these. |
+| `api`, `web` | `milestone/m1` | Done; kept for reference. Don't branch from it. |
+| `marketing` | PR #2 `chore/marketing-standard-nextjs` | Standard Next.js, with the account-entry handoff merged in. Waiting for review. |
 
 Sources of truth, in order: the GitHub issue → `api/openapi/openapi.yaml` → `CONVENTIONS.md` → `AGENTS.md` → this document.
 
@@ -83,19 +83,19 @@ These were in the second implementation's API and aren't in `milestone/m1` yet. 
 
 ### Finishing M1 (owner: samjay8)
 
-1. Provision Neon, Clerk, Cloudflare R2, Fly.io and Vercel (`api/docs/deploy.md`, `api/docs/neon.md`, `api/docs/storage.md`).
-2. On the deployed site, run the pending audit checks in `api/docs/audits/M1.md`:
-   - attendee and organizer sign-up with separate emails,
-   - password reset,
-   - each account type redirected away from the other's area,
-   - hidden contacts absent from the profile preview,
-   - a 360px and keyboard-only pass on `/attendee/profile/*`.
-3. Record the results, then reconcile `main`. Open a PR from `milestone/m1` into `main` in api and web. Where files conflict, keep `milestone/m1`, and delete files that exist only on `main`. Merge with a merge commit (no force-push), so `main` equals `milestone/m1` and history keeps both.
-4. Create `milestone/m2`, `milestone/m3` and `milestone/m4` from the new `main`.
+Done: all M1 code is on `main`, and `milestone/m2`–`m4` exist. Still open (api#36, the M1 audit): provision Neon, Clerk, Cloudflare R2, Fly.io and Vercel (`api/docs/deploy.md`). Then run the live checks in `api/docs/audits/M1.md`:
+
+- attendee and organizer sign-up with separate emails,
+- password reset,
+- each account type redirected away from the other's area,
+- hidden contacts absent from the preview,
+- a 360px and keyboard-only pass.
+
+None of this blocks starting M2.
 
 ### Starting M2–M4 (everyone)
 
-Each person's issues are on GitHub with an implementation plan, dependencies and their sequence. Branch from your milestone branch only after step 4 above. Route notes that changed with this consolidation:
+Each person's issues are on GitHub with an implementation plan, dependencies and their sequence. Branch from your issue's milestone branch (`milestone/m2`, `m3` or `m4`). Route notes that changed with this consolidation:
 
 | Issue                           | Where it plugs in                                                                                                                                                       |
 | ------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
