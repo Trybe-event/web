@@ -1,9 +1,12 @@
 import { z } from "zod";
 
+// Product minimum; configure the same minimum in the Clerk dashboard.
+export const minimumPasswordLength = 8;
+
 export const passwordRequirements = [
   {
-    label: "At least 8 characters",
-    test: (password: string) => password.length >= 8,
+    label: `At least ${minimumPasswordLength} characters`,
+    test: (password: string) => password.length >= minimumPasswordLength,
   },
   {
     label: "A lowercase letter",

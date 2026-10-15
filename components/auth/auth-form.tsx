@@ -10,6 +10,11 @@ import { workspacePath, type AccountType } from "@/lib/account";
 import { Alert, Button, Field, Input } from "@/components/ui";
 import { authenticationDestination, signInStep } from "@/lib/auth-flow";
 import { newPasswordSchema } from "@/lib/password-policy";
+import {
+  assertAuthenticationSucceeded,
+  AuthenticationActionError,
+  authenticationErrorDetail,
+} from "@/lib/authentication-errors";
 import { PasswordChecklist } from "./password-checklist";
 
 const signInCredentialsSchema = z.object({
@@ -28,16 +33,6 @@ type Step =
   | "email"
   | "phone"
   | "totp";
-function assertAuthenticationSucceeded(result: {
-  error: { longMessage?: string } | null;
-}) {
-  if (result.error)
-    throw new Error(
-      result.error.longMessage ||
-        "We couldn't complete that step. Please try again.",
-    );
-}
-
 // Clerk authenticates; the existing completion route binds the account type.
 export function AuthForm({
   type,
@@ -53,8 +48,8 @@ export function AuthForm({
       : signInCredentialsSchema;
   const passwordChecklistId = useId();
   const newPasswordChecklistId = useId();
-  const { signIn } = useSignIn();
-  const { signUp } = useSignUp();
+  const { signIn, errors: signInErrors } = useSignIn();
+  const { signUp, errors: signUpErrors } = useSignUp();
   const { isLoaded } = useAuth();
   const [authenticationStep, setAuthenticationStep] =
     useState<Step>("credentials");
@@ -93,11 +88,17 @@ export function AuthForm({
     try {
       await action();
     } catch (caught) {
+      const detail =
+        caught instanceof AuthenticationActionError
+          ? caught.detail
+          : authenticationErrorDetail(caught);
       setAuthenticationError(
-        caught instanceof Error
+        caught instanceof Error && !("clerkError" in caught)
           ? caught.message
-          : "We couldn't connect. Please try again.",
+          : detail.message,
       );
+      if (process.env.NODE_ENV === "development" && detail.code)
+        console.warn("Authentication rejected:", detail.code);
     } finally {
       setAuthenticationPending(false);
     }
@@ -191,7 +192,17 @@ export function AuthForm({
         >
           <Field
             label="Email address"
-            error={credentialsForm.formState.errors.email?.message}
+            error={
+              credentialsForm.formState.errors.email?.message ||
+              (mode === "sign-up"
+                ? signUpErrors.fields.emailAddress
+                : signInErrors.fields.identifier
+              )?.longMessage ||
+              (mode === "sign-up"
+                ? signUpErrors.fields.emailAddress
+                : signInErrors.fields.identifier
+              )?.message
+            }
           >
             {(props) => (
               <Input
@@ -206,7 +217,17 @@ export function AuthForm({
           </Field>
           <Field
             label="Password"
-            error={credentialsForm.formState.errors.password?.message}
+            error={
+              credentialsForm.formState.errors.password?.message ||
+              (mode === "sign-up"
+                ? signUpErrors.fields.password
+                : signInErrors.fields.password
+              )?.longMessage ||
+              (mode === "sign-up"
+                ? signUpErrors.fields.password
+                : signInErrors.fields.password
+              )?.message
+            }
           >
             {(props) => (
               <div className="relative">
@@ -303,7 +324,11 @@ export function AuthForm({
           </p>
           <Field
             label="Email address"
-            error={passwordRecoveryForm.formState.errors.email?.message}
+            error={
+              passwordRecoveryForm.formState.errors.email?.message ||
+              signInErrors.fields.identifier?.longMessage ||
+              signInErrors.fields.identifier?.message
+            }
           >
             {(props) => (
               <Input
@@ -373,7 +398,17 @@ export function AuthForm({
           </p>
           <Field
             label="Verification code"
-            error={verificationForm.formState.errors.code?.message}
+            error={
+              verificationForm.formState.errors.code?.message ||
+              (mode === "sign-up"
+                ? signUpErrors.fields.code
+                : signInErrors.fields.code
+              )?.longMessage ||
+              (mode === "sign-up"
+                ? signUpErrors.fields.code
+                : signInErrors.fields.code
+              )?.message
+            }
           >
             {(props) => (
               <Input
@@ -425,7 +460,11 @@ export function AuthForm({
         >
           <Field
             label="New password"
-            error={newPasswordForm.formState.errors.password?.message}
+            error={
+              newPasswordForm.formState.errors.password?.message ||
+              signInErrors.fields.password?.longMessage ||
+              signInErrors.fields.password?.message
+            }
           >
             {(props) => (
               <Input
