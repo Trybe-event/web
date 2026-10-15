@@ -31,3 +31,11 @@ yarn-error.log*
 # typescript
 next-env.d.ts
 *.tsbuildinfo
+
+# Local assistant/tooling state
+/.openai/
+/.agents/
+/.codex/
+/AGENTS.md
+/CLAUDE.md
+/.claude/
