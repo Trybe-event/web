@@ -15,12 +15,12 @@ The two don't share files, routes or API paths, so they couldn't both stay. The 
 
 ## The codebase now
 
-| Repo | Branch | Status |
-| --- | --- | --- |
-| `api`, `web` | `main` | **The M1 codebase** (merged from `milestone/m1` on 15 October 2026 in api#44 and web#30). The second implementation is kept in history only. |
-| `api`, `web` | `milestone/m2`, `milestone/m3`, `milestone/m4` | Cut from that `main`. Branch your issues from these. |
-| `api`, `web` | `milestone/m1` | Done; kept for reference. Don't branch from it. |
-| `marketing` | PR #2 `chore/marketing-standard-nextjs` | Standard Next.js, with the account-entry handoff merged in. Waiting for review. |
+| Repo         | Branch                                         | Status                                                                                                                                       |
+| ------------ | ---------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------- |
+| `api`, `web` | `main`                                         | **The M1 codebase** (merged from `milestone/m1` on 15 October 2026 in api#44 and web#30). The second implementation is kept in history only. |
+| `api`, `web` | `milestone/m2`, `milestone/m3`, `milestone/m4` | Cut from that `main`. Branch your issues from these.                                                                                         |
+| `api`, `web` | `milestone/m1`                                 | Done; kept for reference. Don't branch from it.                                                                                              |
+| `marketing`  | PR #2 `chore/marketing-standard-nextjs`        | Standard Next.js, with the account-entry handoff merged in. Waiting for review.                                                              |
 
 Sources of truth, in order: the GitHub issue → `api/openapi/openapi.yaml` → `CONVENTIONS.md` → `AGENTS.md` → this document.
 
