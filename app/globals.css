@@ -1,0 +1,102 @@
+@import "tailwindcss";
+
+/* Trybe brand tokens, from the marketing site. Light by default; dark follows the
+   system unless the user picks a theme (data-theme on <html>). */
+:root {
+  --paper: #faf9f5;
+  --surface: #ffffff;
+  --ink: #20261d;
+  --muted: #5f6558; /* darker than marketing's #74796f so small text passes WCAG AA */
+  --line: #e2e4da;
+  --lime: #c3ef66;
+  --lime-ink: #20261d;
+  --accent-ink: #4f6e1c; /* lime family, readable as text on paper */
+  --danger: #b42318;
+  --danger-surface: #fef3f2;
+  --success: #1f6b3a;
+  --focus: #20261d;
+  color-scheme: light;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --paper: #161c17;
+    --surface: #1d241e;
+    --ink: #edf2e7;
+    --muted: #a5b09e;
+    --line: #394336;
+    --lime: #c3ef66;
+    --lime-ink: #161c17;
+    --accent-ink: #c3ef66;
+    --danger: #f97066;
+    --danger-surface: #3b1714;
+    --success: #75d39a;
+    --focus: #c3ef66;
+    color-scheme: dark;
+  }
+}
+
+:root[data-theme="dark"] {
+  --paper: #161c17;
+  --surface: #1d241e;
+  --ink: #edf2e7;
+  --muted: #a5b09e;
+  --line: #394336;
+  --lime: #c3ef66;
+  --lime-ink: #161c17;
+  --accent-ink: #c3ef66;
+  --danger: #f97066;
+  --danger-surface: #3b1714;
+  --success: #75d39a;
+  --focus: #c3ef66;
+  color-scheme: dark;
+}
+
+@theme inline {
+  --color-paper: var(--paper);
+  --color-surface: var(--surface);
+  --color-ink: var(--ink);
+  --color-muted: var(--muted);
+  --color-line: var(--line);
+  --color-lime: var(--lime);
+  --color-lime-ink: var(--lime-ink);
+  --color-accent-ink: var(--accent-ink);
+  --color-danger: var(--danger);
+  --color-danger-surface: var(--danger-surface);
+  --color-success: var(--success);
+  --font-sans: var(--font-dm-sans), ui-sans-serif, system-ui, sans-serif;
+  --font-display: var(--font-manrope), ui-sans-serif, system-ui, sans-serif;
+}
+
+html {
+  background: var(--paper);
+}
+
+body {
+  margin: 0;
+  background: var(--paper);
+  color: var(--ink);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+}
+
+h1,
+h2,
+h3 {
+  font-family: var(--font-display);
+  text-wrap: balance;
+}
+
+:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}

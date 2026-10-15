@@ -1,0 +1,31 @@
+name: ci
+
+on:
+  pull_request:
+  push:
+    branches: [main, "milestone/**"]
+
+jobs:
+  web:
+    runs-on: ubuntu-latest
+    env:
+      # A well-formed public test key so the build can render; not a real instance.
+      NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: pk_test_Y2xlcmsuZXhhbXBsZS5jb20k
+      NEXT_PUBLIC_APP_URL: http://localhost:3000
+      NEXT_TELEMETRY_DISABLED: "1"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Generated API types match the contract
+        run: |
+          npm run gen:api
+          git diff --exit-code lib/api/schema.d.ts
+      - run: npm run typecheck
+      - run: npm run lint
+      - run: npm run format:check
+      - run: npm run build
+      - run: npm run check:bundle

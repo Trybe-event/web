@@ -1,0 +1,50 @@
+{
+  "name": "trybe-web",
+  "version": "0.1.0",
+  "private": true,
+  "engines": {
+    "node": ">=20.9.0"
+  },
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "eslint .",
+    "typecheck": "tsc --noEmit",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "contract:sync": "node scripts/sync-contract.mjs",
+    "gen:api": "openapi-typescript contract/openapi.yaml -o lib/api/schema.d.ts && node scripts/gen-routes.mjs",
+    "check:bundle": "node scripts/check-bundle.mjs"
+  },
+  "dependencies": {
+    "@clerk/nextjs": "7.9.15",
+    "@hookform/resolvers": "5.9.1",
+    "lucide-react": "1.57.0",
+    "next": "16.4.1",
+    "openapi-fetch": "0.17.0",
+    "react": "19.3.1",
+    "react-dom": "19.3.1",
+    "react-hook-form": "7.90.0",
+    "server-only": "0.0.1",
+    "zod": "4.6.7"
+  },
+  "devDependencies": {
+    "@tailwindcss/postcss": "4.3.3",
+    "@types/node": "22.19.19",
+    "@types/react": "19.3.0",
+    "@types/react-dom": "19.3.0",
+    "eslint": "9.39.5",
+    "eslint-config-next": "16.4.1",
+    "msw": "2.15.0",
+    "openapi-typescript": "7.13.0",
+    "prettier": "3.9.10",
+    "tailwindcss": "4.3.3",
+    "typescript": "5.9.3"
+  },
+  "msw": {
+    "workerDirectory": [
+      "public"
+    ]
+  }
+}

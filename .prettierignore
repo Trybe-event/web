@@ -1,0 +1,6 @@
+.next
+node_modules
+package-lock.json
+public/mockServiceWorker.js
+lib/api/schema.d.ts
+contract/openapi.yaml
