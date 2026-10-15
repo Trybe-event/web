@@ -20,16 +20,17 @@ async function hasProfile(): Promise<boolean | null> {
 }
 
 export default async function AttendeeHome() {
-  const g = await requireAccount("attendee");
-  if ("unavailable" in g) return <WorkspaceUnavailable type="attendee" />;
-  const profile = await hasProfile();
-  const firstName = g.account.full_name.split(" ")[0] ?? "there";
+  const accountAccess = await requireAccount("attendee");
+  if ("unavailable" in accountAccess)
+    return <WorkspaceUnavailable type="attendee" />;
+  const profileExists = await hasProfile();
+  const firstName = accountAccess.account.full_name.split(" ")[0] ?? "there";
   return (
     <WorkspaceHome
       type="attendee"
       firstName={firstName}
       card={
-        profile === false
+        profileExists === false
           ? {
               title: "Introduce yourself.",
               body: "Create the profile you'll bring to every event. Your contact details stay private until you choose to share them.",
@@ -46,7 +47,7 @@ export default async function AttendeeHome() {
       privacy={{
         body: "Your contact details stay private by default. You choose what to share with event members and with connections.",
         status:
-          profile === false
+          profileExists === false
             ? "Profile setup comes next"
             : "Privacy settings available",
       }}

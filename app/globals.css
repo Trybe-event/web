@@ -355,14 +355,6 @@ em {
   margin: 28px auto 0;
   max-width: 350px;
 }
-.trybe-clerk-root,
-.trybe-clerk-box {
-  width: 100% !important;
-}
-.trybe-clerk-card {
-  box-shadow: none !important;
-  border: 1px solid var(--line) !important;
-}
 .notice {
   padding: 24px;
   border: 1px solid var(--line);

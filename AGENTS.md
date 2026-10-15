@@ -141,6 +141,8 @@ Rules:
 
 ## How to write code here
 
+- Use descriptive names that explain each value's purpose. Avoid single-letter names and unexplained abbreviations in application code. Keep third-party package names and contract field names unchanged; explain library acronyms at their first use.
+- Remove unused imports, variables, unreachable code and obsolete styling in changed areas. TypeScript checks unused locals and parameters; do not disable those checks to make a build pass.
 - Match the code around you: naming, error handling, comment density, file layout. When in doubt, copy the pattern from the nearest existing file.
 - Small, focused commits with conventional messages: `feat(events): idempotent draft create`, `fix(profiles): omit hidden links`.
 - Comments explain _why_, only where it isn't obvious. No narration (`// now we loop over users`) and no restating the code.

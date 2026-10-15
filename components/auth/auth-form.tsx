@@ -2,16 +2,17 @@
 
 import { useAuth, useSignIn, useSignUp } from "@clerk/nextjs";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useRouter } from "next/navigation";
-import { useState } from "react";
-import { useForm } from "react-hook-form";
+import { useId, useState } from "react";
+import { useForm, useWatch } from "react-hook-form";
 import { z } from "zod";
 
 import { workspacePath, type AccountType } from "@/lib/account";
 import { Alert, Button, Field, Input } from "@/components/ui";
 import { authenticationDestination, signInStep } from "@/lib/auth-flow";
+import { newPasswordSchema } from "@/lib/password-policy";
+import { PasswordChecklist } from "./password-checklist";
 
-const schema = z.object({
+const signInCredentialsSchema = z.object({
   email: z.email("Enter a valid email address."),
   password: z.string().min(1, "Enter your password."),
 });
@@ -27,7 +28,9 @@ type Step =
   | "email"
   | "phone"
   | "totp";
-function check(result: { error: { longMessage?: string } | null }) {
+function assertAuthenticationSucceeded(result: {
+  error: { longMessage?: string } | null;
+}) {
   if (result.error)
     throw new Error(
       result.error.longMessage ||
@@ -43,129 +46,144 @@ export function AuthForm({
   type: AccountType;
   mode: "sign-in" | "sign-up";
 }) {
-  const base = workspacePath(type);
+  const workspaceRoute = workspacePath(type);
+  const credentialsSchema =
+    mode === "sign-up"
+      ? signInCredentialsSchema.extend({ password: newPasswordSchema })
+      : signInCredentialsSchema;
+  const passwordChecklistId = useId();
+  const newPasswordChecklistId = useId();
   const { signIn } = useSignIn();
   const { signUp } = useSignUp();
   const { isLoaded } = useAuth();
-  const router = useRouter();
-  const [step, setStep] = useState<Step>("credentials");
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState("");
-  const [notice, setNotice] = useState("");
-  const [visible, setVisible] = useState(false);
-  const form = useForm<z.infer<typeof schema>>({
-    resolver: zodResolver(schema),
+  const [authenticationStep, setAuthenticationStep] =
+    useState<Step>("credentials");
+  const [isAuthenticationPending, setAuthenticationPending] = useState(false);
+  const [authenticationError, setAuthenticationError] = useState("");
+  const [verificationNotice, setVerificationNotice] = useState("");
+  const [isPasswordVisible, setPasswordVisible] = useState(false);
+  const credentialsForm = useForm<z.infer<typeof credentialsSchema>>({
+    resolver: zodResolver(credentialsSchema),
     defaultValues: { email: "", password: "" },
   });
-  const code = useForm<z.infer<typeof codeSchema>>({
+  const verificationForm = useForm<z.infer<typeof codeSchema>>({
     resolver: zodResolver(codeSchema),
     defaultValues: { code: "" },
   });
-  const recovery = useForm<{ email: string }>({
-    resolver: zodResolver(schema.pick({ email: true })),
+  const passwordRecoveryForm = useForm<{ email: string }>({
+    resolver: zodResolver(credentialsSchema.pick({ email: true })),
     defaultValues: { email: "" },
   });
-  const newPassword = useForm<{ password: string }>({
-    resolver: zodResolver(
-      z.object({ password: z.string().min(8, "Use at least 8 characters.") }),
-    ),
+  const newPasswordForm = useForm<{ password: string }>({
+    resolver: zodResolver(z.object({ password: newPasswordSchema })),
     defaultValues: { password: "" },
   });
-  async function run(action: () => Promise<void>) {
-    setBusy(true);
-    setError("");
-    setNotice("");
+  const signupPassword = useWatch({
+    control: credentialsForm.control,
+    name: "password",
+  });
+  const resetPassword = useWatch({
+    control: newPasswordForm.control,
+    name: "password",
+  });
+  async function performAuthenticationAction(action: () => Promise<void>) {
+    setAuthenticationPending(true);
+    setAuthenticationError("");
+    setVerificationNotice("");
     try {
       await action();
     } catch (caught) {
-      setError(
+      setAuthenticationError(
         caught instanceof Error
           ? caught.message
           : "We couldn't connect. Please try again.",
       );
     } finally {
-      setBusy(false);
+      setAuthenticationPending(false);
     }
   }
-  async function finish(signingUp = false) {
-    check(
+  async function activateAuthenticatedSession(signingUp = false) {
+    assertAuthenticationSucceeded(
       await (signingUp ? signUp : signIn).finalize({
         navigate: ({ session, decorateUrl }) => {
-          router.push(
+          window.location.assign(
             decorateUrl(
               authenticationDestination(
-                base,
+                workspaceRoute,
                 signingUp,
                 Boolean(session?.currentTask),
               ),
             ),
           );
-          router.refresh();
         },
       }),
     );
   }
   async function continueSignIn() {
-    const next = signInStep(
+    const nextAuthenticationStep = signInStep(
       signIn.status,
       (signIn.supportedSecondFactors || []).map((factor) => factor.strategy),
     );
-    if (next === "complete") {
-      await finish();
+    if (nextAuthenticationStep === "complete") {
+      await activateAuthenticatedSession();
       return;
     }
-    setStep(next);
-    if (next === "email") check(await signIn.mfa.sendEmailCode());
-    if (next === "phone") check(await signIn.mfa.sendPhoneCode());
+    setAuthenticationStep(nextAuthenticationStep);
+    if (nextAuthenticationStep === "email")
+      assertAuthenticationSucceeded(await signIn.mfa.sendEmailCode());
+    if (nextAuthenticationStep === "phone")
+      assertAuthenticationSucceeded(await signIn.mfa.sendPhoneCode());
   }
-  async function resend() {
-    check(
-      await (step === "verify-email"
+  async function resendVerificationCode() {
+    assertAuthenticationSucceeded(
+      await (authenticationStep === "verify-email"
         ? signUp.verifications.sendEmailCode()
-        : step === "reset-code"
+        : authenticationStep === "reset-code"
           ? signIn.resetPasswordEmailCode.sendCode()
-          : step === "phone"
+          : authenticationStep === "phone"
             ? signIn.mfa.sendPhoneCode()
             : signIn.mfa.sendEmailCode()),
     );
-    setNotice("A new code has been sent. Check your messages.");
+    setVerificationNotice("A new code has been sent. Check your messages.");
   }
   return (
     <div className="trybe-auth-form space-y-5">
-      {error && <Alert>{error}</Alert>}
-      {notice && <Alert tone="success">{notice}</Alert>}
-      {step === "credentials" && (
+      {authenticationError && <Alert>{authenticationError}</Alert>}
+      {verificationNotice && <Alert tone="success">{verificationNotice}</Alert>}
+      {authenticationStep === "credentials" && (
         <form
           className="space-y-5"
           noValidate
-          onSubmit={form.handleSubmit((values) =>
-            run(async () => {
+          onSubmit={credentialsForm.handleSubmit((values) =>
+            performAuthenticationAction(async () => {
               if (mode === "sign-up") {
-                check(
+                assertAuthenticationSucceeded(
                   await signUp.password({
                     emailAddress: values.email,
                     password: values.password,
                   }),
                 );
-                form.resetField("password");
+                credentialsForm.resetField("password");
                 if (signUp.status === "complete") {
-                  await finish(true);
+                  await activateAuthenticatedSession(true);
                   return;
                 }
                 if (!signUp.unverifiedFields.includes("email_address"))
                   throw new Error(
                     "Additional account information is required. Please contact support.",
                   );
-                setStep("verify-email");
-                check(await signUp.verifications.sendEmailCode());
+                setAuthenticationStep("verify-email");
+                assertAuthenticationSucceeded(
+                  await signUp.verifications.sendEmailCode(),
+                );
               } else {
-                check(
+                assertAuthenticationSucceeded(
                   await signIn.password({
                     emailAddress: values.email,
                     password: values.password,
                   }),
                 );
-                form.resetField("password");
+                credentialsForm.resetField("password");
                 await continueSignIn();
               }
             }),
@@ -173,57 +191,76 @@ export function AuthForm({
         >
           <Field
             label="Email address"
-            error={form.formState.errors.email?.message}
+            error={credentialsForm.formState.errors.email?.message}
           >
             {(props) => (
               <Input
                 {...props}
-                {...form.register("email")}
+                {...credentialsForm.register("email")}
                 type="email"
                 autoComplete="email"
                 placeholder="you@example.com"
-                disabled={busy}
+                disabled={isAuthenticationPending}
               />
             )}
           </Field>
           <Field
             label="Password"
-            error={form.formState.errors.password?.message}
+            error={credentialsForm.formState.errors.password?.message}
           >
             {(props) => (
               <div className="relative">
                 <Input
                   {...props}
-                  {...form.register("password")}
-                  type={visible ? "text" : "password"}
+                  {...credentialsForm.register("password")}
+                  aria-describedby={
+                    [
+                      props["aria-describedby"],
+                      mode === "sign-up" ? passwordChecklistId : undefined,
+                    ]
+                      .filter(Boolean)
+                      .join(" ") || undefined
+                  }
+                  type={isPasswordVisible ? "text" : "password"}
                   autoComplete={
                     mode === "sign-up" ? "new-password" : "current-password"
                   }
                   className="pr-20"
-                  disabled={busy}
+                  disabled={isAuthenticationPending}
                 />
                 <Button
                   variant="ghost"
                   size="sm"
                   className="absolute right-1 top-1"
-                  aria-label={visible ? "Hide password" : "Show password"}
-                  aria-pressed={visible}
-                  onClick={() => setVisible(!visible)}
+                  aria-label={
+                    isPasswordVisible ? "Hide password" : "Show password"
+                  }
+                  aria-pressed={isPasswordVisible}
+                  onClick={() => setPasswordVisible(!isPasswordVisible)}
                 >
-                  {visible ? "Hide" : "Show"}
+                  {isPasswordVisible ? "Hide" : "Show"}
                 </Button>
               </div>
             )}
           </Field>
+          {mode === "sign-up" && (
+            <PasswordChecklist
+              id={passwordChecklistId}
+              password={signupPassword}
+            />
+          )}
           {mode === "sign-in" && (
             <Button
               variant="ghost"
               size="sm"
               className="!px-0"
               onClick={() => {
-                recovery.setValue("email", form.getValues("email"));
-                setError("");
-                setStep("recovery");
+                passwordRecoveryForm.setValue(
+                  "email",
+                  credentialsForm.getValues("email"),
+                );
+                setAuthenticationError("");
+                setAuthenticationStep("recovery");
               }}
             >
               Forgot password?
@@ -233,7 +270,7 @@ export function AuthForm({
           <Button
             type="submit"
             className="primary-button w-full"
-            loading={busy}
+            loading={isAuthenticationPending}
             disabled={!isLoaded}
           >
             {mode === "sign-up" ? "Create account" : "Sign in"}
@@ -245,15 +282,19 @@ export function AuthForm({
           )}
         </form>
       )}
-      {step === "recovery" && (
+      {authenticationStep === "recovery" && (
         <form
           className="space-y-5"
           noValidate
-          onSubmit={recovery.handleSubmit((values) =>
-            run(async () => {
-              check(await signIn.create({ identifier: values.email }));
-              setStep("reset-code");
-              check(await signIn.resetPasswordEmailCode.sendCode());
+          onSubmit={passwordRecoveryForm.handleSubmit((values) =>
+            performAuthenticationAction(async () => {
+              assertAuthenticationSucceeded(
+                await signIn.create({ identifier: values.email }),
+              );
+              setAuthenticationStep("reset-code");
+              assertAuthenticationSucceeded(
+                await signIn.resetPasswordEmailCode.sendCode(),
+              );
             }),
           )}
         >
@@ -262,160 +303,173 @@ export function AuthForm({
           </p>
           <Field
             label="Email address"
-            error={recovery.formState.errors.email?.message}
+            error={passwordRecoveryForm.formState.errors.email?.message}
           >
             {(props) => (
               <Input
                 {...props}
-                {...recovery.register("email")}
+                {...passwordRecoveryForm.register("email")}
                 type="email"
                 autoComplete="email"
-                disabled={busy}
+                disabled={isAuthenticationPending}
               />
             )}
           </Field>
           <Button
             type="submit"
             className="primary-button w-full"
-            loading={busy}
+            loading={isAuthenticationPending}
             disabled={!isLoaded}
           >
             Send reset code
           </Button>
         </form>
       )}
-      {!["credentials", "recovery", "new-password"].includes(step) && (
+      {!["credentials", "recovery", "new-password"].includes(
+        authenticationStep,
+      ) && (
         <form
           className="space-y-5"
           noValidate
-          onSubmit={code.handleSubmit(({ code: value }) =>
-            run(async () => {
-              if (step === "verify-email") {
-                check(
+          onSubmit={verificationForm.handleSubmit(({ code: value }) =>
+            performAuthenticationAction(async () => {
+              if (authenticationStep === "verify-email") {
+                assertAuthenticationSucceeded(
                   await signUp.verifications.verifyEmailCode({ code: value }),
                 );
                 if (signUp.status !== "complete")
                   throw new Error(
                     "Additional account information is required. Please contact support.",
                   );
-                await finish(true);
-              } else if (step === "reset-code") {
-                check(
+                await activateAuthenticatedSession(true);
+              } else if (authenticationStep === "reset-code") {
+                assertAuthenticationSucceeded(
                   await signIn.resetPasswordEmailCode.verifyCode({
                     code: value,
                   }),
                 );
-                code.reset();
-                setStep("new-password");
+                verificationForm.reset();
+                setAuthenticationStep("new-password");
               } else {
-                check(
-                  await (step === "totp"
+                assertAuthenticationSucceeded(
+                  await (authenticationStep === "totp"
                     ? signIn.mfa.verifyTOTP({ code: value })
-                    : step === "phone"
+                    : authenticationStep === "phone"
                       ? signIn.mfa.verifyPhoneCode({ code: value })
                       : signIn.mfa.verifyEmailCode({ code: value })),
                 );
-                code.reset();
+                verificationForm.reset();
                 await continueSignIn();
               }
             }),
           )}
         >
           <p className="text-sm text-muted">
-            {step === "totp"
+            {authenticationStep === "totp"
               ? "Enter the code from your authenticator app."
-              : step === "phone"
+              : authenticationStep === "phone"
                 ? "Enter the verification code sent to your phone."
                 : "Check your email and enter your verification code to continue."}
           </p>
           <Field
             label="Verification code"
-            error={code.formState.errors.code?.message}
+            error={verificationForm.formState.errors.code?.message}
           >
             {(props) => (
               <Input
                 {...props}
-                {...code.register("code")}
+                {...verificationForm.register("code")}
                 autoComplete="one-time-code"
                 inputMode="numeric"
-                disabled={busy}
+                disabled={isAuthenticationPending}
               />
             )}
           </Field>
           <Button
             type="submit"
             className="primary-button w-full"
-            loading={busy}
+            loading={isAuthenticationPending}
             disabled={!isLoaded}
           >
             Verify and continue
           </Button>
-          {step !== "totp" && (
+          {authenticationStep !== "totp" && (
             <Button
               variant="ghost"
-              disabled={busy || !isLoaded}
-              onClick={() => run(resend)}
+              disabled={isAuthenticationPending || !isLoaded}
+              onClick={() =>
+                performAuthenticationAction(resendVerificationCode)
+              }
             >
               Resend code
             </Button>
           )}
         </form>
       )}
-      {step === "new-password" && (
+      {authenticationStep === "new-password" && (
         <form
           className="space-y-5"
           noValidate
-          onSubmit={newPassword.handleSubmit((values) =>
-            run(async () => {
-              check(
+          onSubmit={newPasswordForm.handleSubmit((values) =>
+            performAuthenticationAction(async () => {
+              assertAuthenticationSucceeded(
                 await signIn.resetPasswordEmailCode.submitPassword({
                   password: values.password,
                   signOutOfOtherSessions: true,
                 }),
               );
-              newPassword.reset();
+              newPasswordForm.reset();
               await continueSignIn();
             }),
           )}
         >
           <Field
             label="New password"
-            hint="Use at least 8 characters."
-            error={newPassword.formState.errors.password?.message}
+            error={newPasswordForm.formState.errors.password?.message}
           >
             {(props) => (
               <Input
                 {...props}
-                {...newPassword.register("password")}
+                {...newPasswordForm.register("password")}
+                aria-describedby={[
+                  props["aria-describedby"],
+                  newPasswordChecklistId,
+                ]
+                  .filter(Boolean)
+                  .join(" ")}
                 type="password"
                 autoComplete="new-password"
-                disabled={busy}
+                disabled={isAuthenticationPending}
               />
             )}
           </Field>
+          <PasswordChecklist
+            id={newPasswordChecklistId}
+            password={resetPassword}
+          />
           <Button
             type="submit"
             className="primary-button w-full"
-            loading={busy}
+            loading={isAuthenticationPending}
             disabled={!isLoaded}
           >
             Save password and continue
           </Button>
         </form>
       )}
-      {step !== "credentials" && (
+      {authenticationStep !== "credentials" && (
         <Button
           variant="ghost"
-          disabled={busy}
+          disabled={isAuthenticationPending}
           onClick={() =>
-            run(async () => {
-              check(
+            performAuthenticationAction(async () => {
+              assertAuthenticationSucceeded(
                 await (mode === "sign-up" ? signUp.reset() : signIn.reset()),
               );
-              form.resetField("password");
-              code.reset();
-              newPassword.reset();
-              setStep("credentials");
+              credentialsForm.resetField("password");
+              verificationForm.reset();
+              newPasswordForm.reset();
+              setAuthenticationStep("credentials");
             })
           }
         >
