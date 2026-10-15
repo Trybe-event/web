@@ -4,6 +4,7 @@ import { auth } from "@clerk/nextjs/server";
 import { NextResponse, type NextRequest } from "next/server";
 
 import { apiBaseUrl, PROXY_SECRET_HEADER } from "@/lib/api/server";
+import { authConfigured } from "@/lib/auth-config";
 import {
   clientIp,
   forwardHeaders,
@@ -53,7 +54,7 @@ async function handle(
   }
 
   const headers = forwardHeaders(req.headers, path);
-  if (!WEBHOOK_PATHS.has(path)) {
+  if (!WEBHOOK_PATHS.has(path) && authConfigured()) {
     const token = await (await auth()).getToken();
     if (token) headers.set("authorization", `Bearer ${token}`);
   }

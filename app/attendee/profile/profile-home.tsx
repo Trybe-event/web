@@ -1,6 +1,5 @@
 "use client";
 
-import { UserButton } from "@clerk/nextjs";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 
@@ -25,16 +24,15 @@ export function ProfileHome() {
     api.GET("/me/profile").then(({ data, error, response }) => {
       if (data) setProfile(data);
       else if (response.status === 404)
-        router.replace("/profile/edit?onboarding=1");
+        router.replace("/attendee/profile/edit?onboarding=1");
       else setFailure(errorMessage(error));
     });
   }, [router]);
 
   return (
-    <main className="mx-auto flex max-w-3xl flex-col gap-6 px-4 py-8">
+    <div className="mx-auto flex max-w-3xl flex-col gap-6 px-4 py-8">
       <div className="flex items-center justify-between gap-4">
         <h1 className="text-3xl font-bold">Your profile</h1>
-        <UserButton />
       </div>
       {failure && <Alert>{failure}</Alert>}
       {!profile && !failure && <Skeleton className="h-48" />}
@@ -91,17 +89,17 @@ export function ProfileHome() {
             )}
           </Card>
           <div className="flex flex-wrap gap-3">
-            <ButtonLink href="/profile/edit">Edit profile</ButtonLink>
-            <ButtonLink href="/profile/preview" variant="secondary">
+            <ButtonLink href="/attendee/profile/edit">Edit profile</ButtonLink>
+            <ButtonLink href="/attendee/profile/preview" variant="secondary">
               Preview how others see me
             </ButtonLink>
-            <ButtonLink href="/profile/settings" variant="secondary">
+            <ButtonLink href="/attendee/profile/settings" variant="secondary">
               Privacy settings
             </ButtonLink>
           </div>
         </>
       )}
-    </main>
+    </div>
   );
 }
 

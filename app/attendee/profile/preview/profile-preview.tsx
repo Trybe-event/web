@@ -51,7 +51,7 @@ export function ProfilePreview({ onboarding }: { onboarding: boolean }) {
   const active = VIEWERS.find((v) => v.id === viewer)!;
 
   return (
-    <main className="mx-auto flex max-w-2xl flex-col gap-6 px-4 py-8">
+    <div className="mx-auto flex max-w-2xl flex-col gap-6 px-4 py-8">
       <div>
         <h1 className="text-3xl font-bold">
           {onboarding
@@ -85,17 +85,17 @@ export function ProfilePreview({ onboarding }: { onboarding: boolean }) {
         {current && <PreviewCard profile={current} />}
       </section>
       <div className="flex flex-wrap gap-3">
-        <ButtonLink href="/profile/edit" variant="secondary">
+        <ButtonLink href="/attendee/profile/edit" variant="secondary">
           Edit profile
         </ButtonLink>
         <ButtonLink
-          href={onboarding ? "/profile" : "/profile/settings"}
+          href={onboarding ? "/attendee/profile" : "/attendee/profile/settings"}
           variant={onboarding ? "primary" : "secondary"}
         >
           {onboarding ? "Looks good" : "Privacy settings"}
         </ButtonLink>
       </div>
-    </main>
+    </div>
   );
 }
 

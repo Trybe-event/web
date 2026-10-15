@@ -29,3 +29,8 @@ jobs:
       - run: npm run format:check
       - run: npm run build
       - run: npm run check:bundle
+      - name: Smoke tests (no Clerk secret, so auth screens show the unconfigured state)
+        run: |
+          npm start -- -p 3000 > /tmp/web.log 2>&1 &
+          for i in $(seq 1 60); do curl -fs -o /dev/null http://127.0.0.1:3000/ && break; sleep 1; done
+          TRYBE_TEST_WEB_URL=http://127.0.0.1:3000 npm run test:smoke

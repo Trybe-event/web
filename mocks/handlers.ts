@@ -52,6 +52,29 @@ export const handlers = [
     return HttpResponse.json(account, { status: created ? 201 : 200 });
   }),
 
+  http.post("/api/accounts/organizer", async ({ request }) => {
+    const body = (await request.json()) as S["OrganizerSignup"];
+    if (account && account.type !== "organizer") {
+      return HttpResponse.json<S["Error"]>(
+        {
+          code: "account_type_conflict",
+          message:
+            "This sign-in already belongs to a different kind of Trybe account.",
+        },
+        { status: 409 },
+      );
+    }
+    const created = !account;
+    account ??= {
+      id: crypto.randomUUID(),
+      type: "organizer",
+      full_name: body.full_name,
+      organization: body.organization,
+      created_at: now(),
+    };
+    return HttpResponse.json(account, { status: created ? 201 : 200 });
+  }),
+
   http.get("/api/me/profile", () =>
     profile
       ? HttpResponse.json(profile)

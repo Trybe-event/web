@@ -11,17 +11,31 @@ How we build the Trybe web app. Read this, `AGENTS.md`, and `contract/openapi.ya
 ## Layout
 
 ```text
-app/                      Routes (App Router)
+app/
+  page.tsx                Home: choose attendee or organizer
+  account/setup/          Signed in but no account type yet: choose one
+  attendee/               Attendee workspace
+    sign-in/ sign-up/     Clerk screens for attendees
+    complete/             Create the attendee account (permanent choice)
+    profile/              Profile, edit (onboarding), preview, settings
+  organizer/              Organizer workspace
+    sign-in/ sign-up/     Clerk screens for organizers
+    complete/             Create the organizer account (permanent choice)
+  profile/                Legacy links; redirect into /attendee
   [slug]/                 Event landing page (public)
   events/[slug]/          Attendee event workspace
-  organizer/              Organizer workspace
-  profile/                Attendee sign-in, sign-up, profile and settings
-  api/[...path]/          Same-origin proxy to the Go API (web#24)
-components/               Shared components; base UI in components/ui (web#27)
-lib/api/                  Generated types, browser client, server client
-lib/routes.ts             Route helpers and reserved slugs
+  api/[...path]/          Same-origin proxy to the Go API
+components/
+  ui/                     Base components (Button, Field, Card, Dialog, ...)
+  auth/                   Auth shell, Clerk forms, account completion, workspace frame
+lib/
+  api/                    Generated types, browser client, server client
+  session.ts              getSession() and requireAccount(type) for server pages
+  account.ts              Account types and workspace paths
+  routes.ts               Route helpers and reserved slugs
 mocks/                    MSW handlers built from the contract
 contract/openapi.yaml     Copy of the API contract
+tests/                    Smoke tests (node --test) against a running server
 ```
 
 ## Talking to the API
@@ -39,7 +53,7 @@ Set `NEXT_PUBLIC_API_MOCKS=1` to answer browser `/api` calls from `mocks/handler
 ## Access
 
 - Clerk handles sign-in. The account type (organizer or attendee) comes from `GET /me/account`, which the API reads from its database. Never from Clerk metadata.
-- Guard pages on the server. A wrong account type gets an explanation screen, not the page.
+- Guard every protected page on the server with `requireAccount("attendee" | "organizer")` from `lib/session.ts`. Signed-out visitors go to that type's sign-in, sessions with no account type go to `/account/setup`, and the other account type is sent to its own workspace. Guard in a `layout.tsx` when the layout renders account-only UI.
 
 ## UI
 
@@ -51,4 +65,5 @@ Set `NEXT_PUBLIC_API_MOCKS=1` to answer browser `/api` calls from `mocks/handler
 
 ```bash
 npm run typecheck && npm run lint && npm run format:check && npm run build && npm run check:bundle
+npm start & TRYBE_TEST_WEB_URL=http://127.0.0.1:3000 npm run test:smoke
 ```

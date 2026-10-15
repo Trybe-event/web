@@ -181,7 +181,11 @@ export function ProfileForm({
     });
     if (!error) {
       toast("Profile saved");
-      router.push(onboarding ? "/profile/preview?onboarding=1" : "/profile");
+      router.push(
+        onboarding
+          ? "/attendee/profile/preview?onboarding=1"
+          : "/attendee/profile",
+      );
       router.refresh();
       return;
     }
@@ -387,7 +391,10 @@ export function ProfileForm({
           {onboarding ? "Save and preview" : "Save profile"}
         </Button>
         {!onboarding && (
-          <Button variant="secondary" onClick={() => router.push("/profile")}>
+          <Button
+            variant="secondary"
+            onClick={() => router.push("/attendee/profile")}
+          >
             Cancel
           </Button>
         )}

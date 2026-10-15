@@ -15,7 +15,8 @@
     "format:check": "prettier --check .",
     "contract:sync": "node scripts/sync-contract.mjs",
     "gen:api": "openapi-typescript contract/openapi.yaml -o lib/api/schema.d.ts && node scripts/gen-routes.mjs",
-    "check:bundle": "node scripts/check-bundle.mjs"
+    "check:bundle": "node scripts/check-bundle.mjs",
+    "test:smoke": "node --test \"tests/**/*.test.mjs\""
   },
   "dependencies": {
     "@clerk/nextjs": "7.9.15",

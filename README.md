@@ -4,6 +4,7 @@ The Trybe organizer and attendee application, built with Next.js (App Router), C
 
 - How we work: [`CONVENTIONS.md`](CONVENTIONS.md) and [`AGENTS.md`](AGENTS.md)
 - API contract: [`contract/openapi.yaml`](contract/openapi.yaml), synced from `Trybe-event/api`
+- How M1 was consolidated and where to pick up: [`docs/m1-consolidation.md`](docs/m1-consolidation.md)
 
 ## Run locally
 
@@ -28,4 +29,5 @@ To use the real API, run `Trybe-event/api` locally and set `API_INTERNAL_URL` (a
 | `npm run typecheck` / `npm run lint` / `npm run format` | Checks                                            |
 | `npm run contract:sync`                                 | Copy the contract from `../api`                   |
 | `npm run gen:api`                                       | Regenerate API types from the contract            |
+| `npm run test:smoke`                                    | Smoke tests against a running server              |
 | `npm run check:bundle`                                  | Fail if server secrets reached the browser bundle |

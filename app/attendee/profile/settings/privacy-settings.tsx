@@ -45,7 +45,7 @@ export function PrivacySettings() {
   }
 
   return (
-    <main className="mx-auto flex max-w-2xl flex-col gap-6 px-4 py-8">
+    <div className="mx-auto flex max-w-2xl flex-col gap-6 px-4 py-8">
       <h1 className="text-3xl font-bold">Privacy settings</h1>
       {failure && <Alert>{failure}</Alert>}
       {!settings && !failure && <Skeleton className="h-40" />}
@@ -76,13 +76,13 @@ export function PrivacySettings() {
           someone has already seen or copied can&apos;t be recalled.
         </p>
         <ButtonLink
-          href="/profile/edit"
+          href="/attendee/profile/edit"
           variant="secondary"
           className="mt-2 self-start"
         >
           Choose what each link shows
         </ButtonLink>
       </Card>
-    </main>
+    </div>
   );
 }

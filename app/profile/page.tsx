@@ -1,12 +1,6 @@
-import type { Metadata } from "next";
+import { redirect } from "next/navigation";
 
-import { requireAttendee } from "./guard";
-import { ProfileHome } from "./profile-home";
-
-export const metadata: Metadata = { title: "Your profile" };
-
-export default async function ProfilePage() {
-  const g = await requireAttendee();
-  if ("blocked" in g) return g.blocked;
-  return <ProfileHome />;
+// Legacy entry from the marketing site and PRD route list.
+export default function Page() {
+  redirect("/attendee");
 }
