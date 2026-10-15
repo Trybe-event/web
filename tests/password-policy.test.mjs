@@ -25,9 +25,9 @@ test("new passwords must meet every displayed requirement", () => {
   for (const password of [
     "",
     "Short1",
-    "lowercase123",
-    "UPPERCASE123",
-    "NoDigitsHere",
+    "lowercaseonly123456",
+    "UPPERCASEONLY123456",
+    "NoDigitsInThisPassword",
   ]) {
     assert.equal(newPasswordSchema.safeParse(password).success, false);
     assert.equal(
@@ -38,7 +38,7 @@ test("new passwords must meet every displayed requirement", () => {
 });
 test("long passwords, symbols and spaces remain supported", () => {
   for (const password of [
-    "SampleTest7!",
+    "ExamplePassword7!",
     "Long example Passphrase 2",
     "A9" + "x".repeat(80),
   ]) {
@@ -48,4 +48,15 @@ test("long passwords, symbols and spaces remain supported", () => {
       true,
     );
   }
+});
+
+test("password length uses the requested 8-character boundary", () => {
+  assert.equal(
+    newPasswordSchema.safeParse("Aa1" + "x".repeat(4)).success,
+    false,
+  );
+  assert.equal(
+    newPasswordSchema.safeParse("Aa1" + "x".repeat(5)).success,
+    true,
+  );
 });
