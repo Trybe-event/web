@@ -1,8 +1,21 @@
+import type { Metadata } from "next";
+import Link from "next/link";
 import { notFound } from "next/navigation";
+import { CalendarDays, Users } from "lucide-react";
 
-import { isEventSlug } from "@/lib/routes";
+import {
+  WorkspaceShell,
+  WorkspaceUnavailable,
+} from "@/components/auth/workspace";
+import { LeaveEvent } from "@/components/events/leave-event";
+import { listMyEvents } from "@/lib/events";
+import { isEventSlug, routes } from "@/lib/routes";
+import { requireAccount } from "@/lib/session";
 
-// Attendee event workspace placeholder. Built in web#11 (M3).
+export const metadata: Metadata = { title: "Event workspace" };
+
+// Attendee event workspace (web#11). The slug must be one of the caller's active
+// memberships from GET /me/events, so a non-member never sees the workspace.
 export default async function EventWorkspace({
   params,
 }: {
@@ -10,10 +23,52 @@ export default async function EventWorkspace({
 }) {
   const { slug } = await params;
   if (!isEventSlug(slug)) notFound();
+
+  const g = await requireAccount("attendee");
+  if ("unavailable" in g) return <WorkspaceUnavailable type="attendee" />;
+
+  const events = await listMyEvents();
+  const current = events.find((event) => event.slug === slug);
+  if (!current) notFound();
+
   return (
-    <main className="mx-auto max-w-xl px-4 py-12">
-      <h1 className="text-2xl font-bold">Event workspace</h1>
-      <p>Matches, the attendee directory and connections arrive in M3.</p>
-    </main>
+    <WorkspaceShell type="attendee" events={events} activeSlug={slug}>
+      <section className="workspace-welcome">
+        <span className="eyebrow">YOUR EVENT</span>
+        <h1>
+          {current.name}
+          <span className="accent-period">.</span>
+        </h1>
+        <p>
+          Welcome back, {g.account.full_name.split(" ")[0] ?? "there"}. Use the
+          switcher above to move between the events you belong to.
+        </p>
+      </section>
+      <section className="workspace-grid">
+        <div className="workspace-empty">
+          <div className="empty-icon">
+            <Users size={30} />
+          </div>
+          <span className="eyebrow">WHO IS HERE</span>
+          <h2>Matches and the attendee directory arrive next.</h2>
+          <p>
+            Once discovery is on, this is where you will see who else is at{" "}
+            {current.name} and who you should meet.
+          </p>
+        </div>
+        <aside className="privacy-card">
+          <CalendarDays size={26} aria-hidden="true" />
+          <h2>Event details</h2>
+          <p>
+            The public page for this event carries the programme, venue and
+            joining details.
+          </p>
+          <Link href={routes.eventLanding(slug)}>View the event page</Link>
+        </aside>
+      </section>
+      <section className="workspace-actions">
+        <LeaveEvent slug={slug} name={current.name} />
+      </section>
+    </WorkspaceShell>
   );
 }
