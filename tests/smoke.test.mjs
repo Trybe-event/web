@@ -12,6 +12,18 @@ const get = (path, options = {}) =>
   });
 const location = (r) => new URL(r.headers.get("location"), base).pathname;
 
+test("organizer event editing and sharing require organizer sign-in", async () => {
+  for (const path of [
+    "/organizer/events/new",
+    "/organizer/events/11111111-1111-4111-8111-111111111111/edit",
+    "/organizer/events/11111111-1111-4111-8111-111111111111/share",
+  ]) {
+    const response = await get(path);
+    assert.ok([303, 307, 308].includes(response.status), path);
+    assert.equal(location(response), "/organizer/sign-in", path);
+  }
+});
+
 test("sign-in and sign-up render safely without credentials", async () => {
   for (const role of ["organizer", "attendee"]) {
     for (const mode of ["sign-in", "sign-up"]) {
