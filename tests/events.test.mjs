@@ -77,10 +77,9 @@ test("the switcher lists active memberships only", async () => {
       response: { status: 200 },
     }),
   });
-  assert.deepEqual(
-    plain(await harness.events.listMyEvents()),
-    [{ slug: "atlas-summit", name: "Atlas Summit" }],
-  );
+  assert.deepEqual(plain(await harness.events.listMyEvents()), [
+    { slug: "atlas-summit", name: "Atlas Summit" },
+  ]);
 });
 
 test("an unreachable API yields the safe empty list for the switcher", async () => {
