@@ -47,13 +47,17 @@ const sessionSchema = z.object({
 });
 
 export function ProgramBuilder() {
-  const { event, save } = useEventEditor();
+  const { event, save, setSectionBusy } = useEventEditor();
   const [program, setProgram] = useState<Schemas["Program"]>();
   const [failure, setFailure] = useState<string>();
   const [busy, setBusy] = useState(false);
   const [serverErrors, setServerErrors] = useState<Record<string, string>>({});
   const lock = useRef(false);
   const [editor, setEditor] = useState<Editor>();
+  useEffect(() => {
+    setSectionBusy("program", Boolean(editor) || busy);
+    return () => setSectionBusy("program", false);
+  }, [editor, busy, setSectionBusy]);
   const [removing, setRemoving] = useState<{
     day?: Schemas["ProgramDay"];
     session?: Schemas["Session"];
