@@ -34,6 +34,7 @@ test("signed-out workspace visits go to their own sign-in", async () => {
     ["/attendee", "/attendee/sign-in"],
     ["/attendee/profile", "/attendee/sign-in"],
     ["/attendee/profile/edit", "/attendee/sign-in"],
+    ["/events/atlas-summit", "/attendee/sign-in"],
   ]) {
     const r = await get(path);
     assert.equal(r.status, 307, path);
@@ -75,7 +76,52 @@ test("proxy refuses unlisted endpoints, wrong methods and cross-site writes", as
   assert.equal(cross.status, 403);
 });
 
+test("the join flow carries the event slug through the account steps", async () => {
+  // Signing up or in from an event keeps the slug, and the final step sends the
+  // attendee back to that event rather than to their workspace home.
+  for (const path of ["/attendee/sign-up", "/attendee/sign-in"]) {
+    const r = await get(`${path}?event=atlas-summit`);
+    assert.equal(r.status, 200, `${path} renders with an event`);
+  }
+  const complete = await get("/attendee/complete?event=atlas-summit");
+  assert.equal(complete.status, 307);
+  assert.equal(location(complete), "/attendee/sign-up");
+  assert.equal(
+    new URL(complete.headers.get("location"), base).search,
+    "?event=atlas-summit",
+    "the event survives the account step",
+  );
+
+  // Anything that is not a real event slug is dropped, not redirected to.
+  const bad = await get("/attendee/complete?event=admin");
+  assert.equal(bad.status, 307);
+  assert.equal(location(bad), "/attendee/sign-up");
+  assert.equal(new URL(bad.headers.get("location"), base).search, "");
+});
+
 test("reserved words are never treated as event slugs", async () => {
-  for (const path of ["/admin", "/dev"])
+  for (const path of ["/admin", "/dev", "/events/admin"])
     assert.equal((await get(path)).status, 404, path);
+});
+
+test("an event landing page offers the join entry points", async () => {
+  const r = await get("/atlas-summit");
+  assert.equal(r.status, 200);
+  const html = await r.text();
+  assert.ok(html.includes("/attendee/sign-up?event=atlas-summit"));
+  assert.ok(html.includes("/attendee/sign-in?event=atlas-summit"));
+});
+
+test("every well-formed event link carries its own slug", async () => {
+  // Any slug that isn't reserved is an event link, and its join links keep that slug.
+  const r = await get("/some-other-event");
+  assert.equal(r.status, 200);
+  const html = await r.text();
+  assert.ok(html.includes("?event=some-other-event"));
+  assert.ok(!html.includes("?event=atlas-summit"));
+
+  // The attendee-only workspace under /events stays behind the guard.
+  const workspace = await get("/events/some-other-event");
+  assert.equal(workspace.status, 307);
+  assert.equal(location(workspace), "/attendee/sign-in");
 });
