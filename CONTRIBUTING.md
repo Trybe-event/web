@@ -6,8 +6,9 @@ Read this guide with [AGENTS.md](AGENTS.md) and [CONVENTIONS.md](CONVENTIONS.md)
 
 - Fetch before starting and before requesting review. Use the milestone named in the issue, then work in a descriptive issue branch such as `m2/web-event-form-shell`. Do not use `codex/` branch names.
 - Merge the latest milestone into a branch that has already been pushed. Never force-push a shared branch, overwrite a partner's work, or push directly to `main` or a milestone branch.
-- Keep dependent PRs in order: dashboard #42, form shell #44, then basics/program #45. Later work must include earlier fixes. After each merge, sync the remaining branches and rerun checks.
-- Feature PRs target their milestone. Promote the audited milestone to `main` only after its audit gate passes. A conflict-free PR is not evidence that the milestone audit passed. Humans perform merges.
+- Keep dependent PRs in order: dashboard #42 (already merged), form shell #44, then basics/program #45. Later work must include earlier fixes. After each merge, sync the remaining branches and rerun checks.
+- Feature PRs normally target their milestone. A maintainer may explicitly request another target; record that decision in the PR and sync against that target. On 16 October 2026 the maintainer requested #44 and #45 be prepared for `main`, which already contains #42 and the current M2 integration. This changes their target, not their audit status.
+- Promote milestones only after their audit gates pass. A conflict-free PR is not evidence that an audit passed. Humans perform merges.
 
 ## Keep integration consistent
 
