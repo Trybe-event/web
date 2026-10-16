@@ -165,8 +165,10 @@ export function EventForm({
       },
     });
     const beforeUnload = (browserEvent: BeforeUnloadEvent) => {
-      if (revision.current !== savedRevision.current)
+      if (revision.current !== savedRevision.current) {
         browserEvent.preventDefault();
+        browserEvent.returnValue = "";
+      }
     };
     window.addEventListener("beforeunload", beforeUnload);
     return () => {
@@ -274,6 +276,7 @@ export function EventForm({
                 sections.current[index] = section;
               }}
               data-stage={index}
+              className="scroll-mt-28"
             >
               <h2 tabIndex={-1} className="mb-5 text-xl font-bold">
                 {title}
