@@ -10,9 +10,10 @@ export const metadata: Metadata = { title: "Organizer workspace" };
 
 // Organizer home. The events dashboard replaces the placeholder card in web#1 (M2).
 export default async function OrganizerHome() {
-  const g = await requireAccount("organizer");
-  if ("unavailable" in g) return <WorkspaceUnavailable type="organizer" />;
-  const firstName = g.account.full_name.split(" ")[0] ?? "there";
+  const accountAccess = await requireAccount("organizer");
+  if ("unavailable" in accountAccess)
+    return <WorkspaceUnavailable type="organizer" />;
+  const firstName = accountAccess.account.full_name.split(" ")[0] ?? "there";
   return (
     <WorkspaceHome
       type="organizer"
@@ -23,7 +24,7 @@ export default async function OrganizerHome() {
         cta: "Account foundation ready",
       }}
       privacy={{
-        body: `This account manages events for ${g.account.organization ?? "your organization"}. It stays separate from attendee accounts.`,
+        body: `This account manages events for ${accountAccess.account.organization ?? "your organization"}. It stays separate from attendee accounts.`,
         status: "Organizer account confirmed",
       }}
     />
