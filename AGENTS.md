@@ -35,6 +35,8 @@ Breaking either rule is a release-blocking defect, even if every test passes.
 
 ## Sources of truth, in this order
 
+Read [CONTRIBUTING.md](CONTRIBUTING.md) for the shared integration, verification and handoff checklist used by all contributors and coding assistants.
+
 1. **The GitHub issue you are working on.** Its Scope, Implementation plan and Acceptance criteria define the work. Read the whole issue, including "Depends on", "Your sequence" and "Workflow".
 2. **`openapi/openapi.yaml`** in `Trybe-event/api`. The contract between frontend and backend. Every request, response, field name and error code comes from here.
 3. **`CONVENTIONS.md`** in the repository. Layout, branches, migrations, logging, tests.
