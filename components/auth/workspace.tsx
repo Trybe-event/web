@@ -5,15 +5,24 @@ import type { ReactNode } from "react";
 import { Logo } from "@/components/ui";
 import { type AccountType, workspacePath } from "@/lib/account";
 
+import type { EventOption } from "@/lib/events";
+
+import { EventSwitcher } from "./event-switcher";
 import { SignOut } from "./sign-out";
 import { ThemeToggle } from "./theme-toggle";
 
 // WorkspaceShell is the header and frame shared by organizer and attendee workspaces.
+// Attendee pages pass the memberships from GET /me/events, which renders the event
+// switcher (web#9) under the header.
 export function WorkspaceShell({
   type,
+  events,
+  activeSlug,
   children,
 }: {
   type: AccountType;
+  events?: EventOption[];
+  activeSlug?: string;
   children: ReactNode;
 }) {
   return (
@@ -30,6 +39,9 @@ export function WorkspaceShell({
           <SignOut />
         </div>
       </header>
+      {events && events.length > 0 && (
+        <EventSwitcher events={events} activeSlug={activeSlug} />
+      )}
       {children}
     </main>
   );
@@ -61,12 +73,21 @@ type HomeProps = {
   firstName: string;
   card: { title: string; body: string; href?: string; cta?: string };
   privacy: { body: string; status: string };
+  events?: EventOption[];
+  activeSlug?: string;
 };
 
-export function WorkspaceHome({ type, firstName, card, privacy }: HomeProps) {
+export function WorkspaceHome({
+  type,
+  firstName,
+  card,
+  privacy,
+  events,
+  activeSlug,
+}: HomeProps) {
   const organizer = type === "organizer";
   return (
-    <WorkspaceShell type={type}>
+    <WorkspaceShell type={type} events={events} activeSlug={activeSlug}>
       <section className="workspace-welcome">
         <span className="eyebrow">YOUR TRYBE STARTS HERE</span>
         <h1>
