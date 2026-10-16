@@ -1,3 +1,4 @@
+import { EventBasics, EventDetails } from "@/components/organizer/event-fields";
 import { EventForm } from "@/components/organizer/event-form";
 import { requireAccount } from "@/lib/session";
 export default async function NewEventPage() {
@@ -6,7 +7,11 @@ export default async function NewEventPage() {
   return (
     <>
       <h1 className="mt-8 text-3xl font-bold">Create your event.</h1>
-      <EventForm organizerId={access.account.id} />
+      <EventForm
+        organizerId={access.account.id}
+        basics={<EventBasics />}
+        details={<EventDetails />}
+      />
     </>
   );
 }
