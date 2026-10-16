@@ -2,12 +2,22 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
-export function EventWorkspaceNavigation({ slug }: { slug: string }) {
+export function EventWorkspaceNavigation({
+  slug,
+  networkingClosed = false,
+}: {
+  slug: string;
+  networkingClosed?: boolean;
+}) {
   const pathname = usePathname();
   const base = `/events/${encodeURIComponent(slug)}`;
   const links = [
-    { title: "Matches", href: base },
-    { title: "All attendees", href: `${base}/attendees` },
+    ...(networkingClosed
+      ? [{ title: "Event archive", href: `${base}/archive` }]
+      : [
+          { title: "Matches", href: base },
+          { title: "All attendees", href: `${base}/attendees` },
+        ]),
     { title: "Program", href: `${base}/program` },
     { title: "Notifications", href: "/attendee/notifications" },
     { title: "Profile", href: "/attendee/profile" },

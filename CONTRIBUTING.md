@@ -6,7 +6,7 @@ Read this guide with [AGENTS.md](AGENTS.md) and [CONVENTIONS.md](CONVENTIONS.md)
 
 - Fetch before starting and before requesting review. Use the milestone named in the issue, then work in a descriptive issue branch such as `m2/web-event-form-shell`. Do not use `codex/` branch names.
 - Merge the latest milestone into a branch that has already been pushed. Never force-push a shared branch, overwrite a partner's work, or push directly to `main` or a milestone branch.
-- Keep dependent PRs in order: dashboard #42 (already merged), form shell #44, then basics/program #45. Later work must include earlier fixes. After each merge, sync the remaining branches and rerun checks.
+- Keep dependent work in issue order. Dashboard #1 and event form issues #2/#3 are merged. Publish/review #4 precedes M3 workspace #11, directory #12 and profiles #13. M4 lifecycle #20 precedes archive #21; the archive also requires the M3 discovery/profile work. After each merge, sync the remaining branches and rerun checks.
 - Feature PRs normally target their milestone. A maintainer may explicitly request another target; record that decision in the PR and sync against that target. On 16 October 2026 the maintainer requested #44 and #45 be prepared for `main`, which already contains #42 and the current M2 integration. This changes their target, not their audit status.
 - Promote milestones only after their audit gates pass. A conflict-free PR is not evidence that an audit passed. Humans perform merges.
 
@@ -35,3 +35,11 @@ Read this guide with [AGENTS.md](AGENTS.md) and [CONVENTIONS.md](CONVENTIONS.md)
 PR bodies must state the issue, meaningful changes, every acceptance criterion, commands and results, dependencies and exact checks still pending. Do not mark browser checks, authenticated integration or an audit complete when they were not run. Keep unfinished work visible rather than replacing it with mock success.
 
 Before handoff, push the actual commits, confirm the PR targets the correct milestone, check GitHub's conflict and CI status, and document merge order. Include the current commit and next action in the ignored `.agent/web-<issue>.md` progress file. Never describe unpushed local work as delivered.
+
+### Integration gates for the current delivery
+
+The event review/publish implementation is PR #54 into `main`, following the maintainer's M2 integration request. M3 workspace, directory and profile implementations are PRs #55, #56 and #57 into `milestone/m3`; review and merge in that order. M4 organizer lifecycle is PR #58 into `milestone/m4`; the archive PR includes those controls and the M3 discovery dependencies. Integrate completed M3 work into M4 before reviewing the archive's final standalone diff.
+
+The web implementations do not replace backend work. API issues #10/#11/#12 provide discovery, #14 provides connection lifecycle, and #23/#24 provide independent networking windows, auditing and archive permissions. They were open at this handoff. Keep those integrations and authenticated raw-payload privacy checks visible in the PR checklists. Development-only mocks are not evidence that a production endpoint or server audit exists.
+
+Connections and Inbox account destinations are owned by their separate UI tasks. Event navigation must not link to missing routes or disable working account destinations because an event's networking closes. Until those destinations land, show their unavailable state honestly; do not claim the accepted-connections/Inbox journey has been verified.

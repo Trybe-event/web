@@ -1,4 +1,5 @@
 import { AttendeeDirectory } from "@/components/events/attendee-directory";
+import { redirect } from "next/navigation";
 import { directoryFilters, directoryQuery } from "@/lib/directory";
 import { requireEventWorkspace } from "@/lib/event-workspace";
 
@@ -12,6 +13,8 @@ export default async function AttendeesPage({
   const { slug } = await params;
   const workspace = await requireEventWorkspace(slug);
   if (workspace.kind !== "member") return null;
+  if (workspace.event.networking_state === "closed")
+    redirect(`/events/${encodeURIComponent(slug)}/archive`);
   const query = new URLSearchParams();
   for (const [name, values] of Object.entries(await searchParams))
     for (const value of Array.isArray(values) ? values : values ? [values] : [])

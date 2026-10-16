@@ -1,4 +1,5 @@
 import { AttendeeCard } from "@/components/events/attendee-card";
+import { redirect } from "next/navigation";
 import { Alert, ButtonLink, EmptyState } from "@/components/ui";
 import { LeaveEvent } from "@/components/events/leave-event";
 import { serverApi } from "@/lib/api/server";
@@ -12,6 +13,8 @@ export default async function EventWorkspace({
   const { slug } = await params;
   const workspace = await requireEventWorkspace(slug);
   if (workspace.kind !== "member") return null;
+  if (workspace.event.networking_state === "closed")
+    redirect(`/events/${encodeURIComponent(slug)}/archive`);
   let matches;
   try {
     const client = await serverApi();
