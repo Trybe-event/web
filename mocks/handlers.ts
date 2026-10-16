@@ -259,15 +259,18 @@ export const apiMockHandlers = [
           n.subject_id !== "b1000000-0000-0000-0000-00000000000a" &&
           n.text != null,
       )
-      .map((n) => ({
-        id: n.subject_id,
-        event_id: "11111111-1111-4111-8111-111111111111",
-        status: "pending" as const,
-        message: n.text!.replace(" asked to connect with you.", ""),
-        direction: direction === "incoming" ? "incoming" : "outgoing",
-        other: n.actor,
-        created_at: n.created_at,
-      } as ApiSchemas["ConnectionRequest"]));
+      .map(
+        (n) =>
+          ({
+            id: n.subject_id,
+            event_id: "11111111-1111-4111-8111-111111111111",
+            status: "pending" as const,
+            message: n.text!.replace(" asked to connect with you.", ""),
+            direction: direction === "incoming" ? "incoming" : "outgoing",
+            other: n.actor,
+            created_at: n.created_at,
+          }) as ApiSchemas["ConnectionRequest"],
+      );
     return HttpResponse.json({ items });
   }),
 
@@ -284,8 +287,9 @@ export const apiMockHandlers = [
     }),
   ),
 
-  http.delete("/api/connections/:connectionId", () =>
-    new HttpResponse(null, { status: 204 }),
+  http.delete(
+    "/api/connections/:connectionId",
+    () => new HttpResponse(null, { status: 204 }),
   ),
 
   http.post("/api/connection-requests/:requestId/:action", ({ params }) => {
