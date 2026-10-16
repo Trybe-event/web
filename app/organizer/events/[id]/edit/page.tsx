@@ -1,3 +1,4 @@
+import { EventBasics, EventDetails } from "@/components/organizer/event-fields";
 import { EventForm } from "@/components/organizer/event-form";
 import { WorkspaceShell } from "@/components/auth/workspace";
 import { requireAccount } from "@/lib/session";
@@ -12,7 +13,12 @@ export default async function EditEventPage({
   return (
     <WorkspaceShell type="organizer">
       <h1 className="mt-8 text-3xl font-bold">Set up your event.</h1>
-      <EventForm organizerId={access.account.id} eventId={eventId} />
+      <EventForm
+        organizerId={access.account.id}
+        eventId={eventId}
+        basics={<EventBasics />}
+        details={<EventDetails />}
+      />
     </WorkspaceShell>
   );
 }

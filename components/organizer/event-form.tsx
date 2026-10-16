@@ -11,6 +11,7 @@ import {
   eventDraftValues,
   type EventDraft,
 } from "@/lib/event-form";
+import { EventEditorContext } from "./event-editor-context";
 
 const STAGES = ["Event basics", "Details and program", "Settings and review"];
 export function EventForm({
@@ -222,93 +223,98 @@ export function EventForm({
       <Skeleton className="mt-8 h-96" />
     );
   return (
-    <FormProvider {...form}>
-      <form
-        onSubmit={(submitEvent) => {
-          submitEvent.preventDefault();
-          void save();
-        }}
-        className="mt-6 space-y-6"
-      >
-        <nav
-          aria-label="Event setup stages"
-          className="sticky top-0 z-10 flex flex-wrap gap-2 border-b border-line bg-paper py-3"
+    <EventEditorContext value={{ event, save }}>
+      <FormProvider {...form}>
+        <form
+          onSubmit={(submitEvent) => {
+            submitEvent.preventDefault();
+            void save();
+          }}
+          className="mt-6 space-y-6"
         >
-          {STAGES.map((label, index) => (
+          <nav
+            aria-label="Event setup stages"
+            className="sticky top-0 z-10 flex flex-wrap gap-2 border-b border-line bg-paper py-3"
+          >
+            {STAGES.map((label, index) => (
+              <Button
+                key={label}
+                variant={activeStage === index ? "primary" : "secondary"}
+                aria-current={activeStage === index ? "step" : undefined}
+                onClick={() => navigate(index)}
+              >
+                {index + 1}. {label}
+              </Button>
+            ))}
+          </nav>
+          <div className="flex flex-wrap items-center gap-3">
+            <p role="status" className="text-sm text-muted">
+              {status}
+            </p>
             <Button
-              key={label}
-              variant={activeStage === index ? "primary" : "secondary"}
-              aria-current={activeStage === index ? "step" : undefined}
-              onClick={() => navigate(index)}
-            >
-              {index + 1}. {label}
-            </Button>
-          ))}
-        </nav>
-        <div className="flex flex-wrap items-center gap-3">
-          <p role="status" className="text-sm text-muted">
-            {status}
-          </p>
-          <Button
-            size="sm"
-            variant="secondary"
-            onClick={() => {
-              void save();
-            }}
-          >
-            Save now
-          </Button>
-          <span className="text-xs text-muted">
-            {event.status === "draft"
-              ? "Draft. Only you can see it."
-              : "Editing this event keeps its existing link and QR."}
-          </span>
-        </div>
-        {failure && <Alert>{failure}</Alert>}
-        {STAGES.map((title, index) => (
-          <Card
-            key={title}
-
-            className="min-h-[35vh] scroll-mt-28"
-          >
-            <div
-              ref={(section) => {
-                sections.current[index] = section;
+              size="sm"
+              variant="secondary"
+              onClick={() => {
+                void save();
               }}
-              data-stage={index}
-              className="scroll-mt-28"
             >
-              <h2 tabIndex={-1} className="mb-5 text-xl font-bold">
-                {title}
-              </h2>
-              {index === 0
-                ? (basics ?? (
-                    <Field
-                      label="Event name"
-                      error={form.formState.errors.name?.message}
-                    >
-                      {(props) => (
-                        <Input {...props} {...form.register("name")} />
-                      )}
-                    </Field>
-                  ))
-                : index === 1
-                  ? details
-                  : settings}
-            </div>
-            <div className="mt-6 flex gap-3">
-              {index > 0 && (
-                <Button variant="secondary" onClick={() => navigate(index - 1)}>
-                  Back
-                </Button>
-              )}
-              {index < 2 && (
-                <Button onClick={() => navigate(index + 1)}>Next</Button>
-              )}
-            </div>
-          </Card>
-        ))}
-      </form>
-    </FormProvider>
+              Save now
+            </Button>
+            <span className="text-xs text-muted">
+              {event.status === "draft"
+                ? "Draft. Only you can see it."
+                : "Editing this event keeps its existing link and QR."}
+            </span>
+          </div>
+          {failure && <Alert>{failure}</Alert>}
+          {STAGES.map((title, index) => (
+            <Card
+              key={title}
+
+              className="min-h-[35vh] scroll-mt-28"
+            >
+              <div
+                ref={(section) => {
+                  sections.current[index] = section;
+                }}
+                data-stage={index}
+                className="scroll-mt-28"
+              >
+                <h2 tabIndex={-1} className="mb-5 text-xl font-bold">
+                  {title}
+                </h2>
+                {index === 0
+                  ? (basics ?? (
+                      <Field
+                        label="Event name"
+                        error={form.formState.errors.name?.message}
+                      >
+                        {(props) => (
+                          <Input {...props} {...form.register("name")} />
+                        )}
+                      </Field>
+                    ))
+                  : index === 1
+                    ? details
+                    : settings}
+              </div>
+              <div className="mt-6 flex gap-3">
+                {index > 0 && (
+                  <Button
+                    variant="secondary"
+                    onClick={() => navigate(index - 1)}
+                  >
+                    Back
+                  </Button>
+                )}
+                {index < 2 && (
+                  <Button onClick={() => navigate(index + 1)}>Next</Button>
+                )}
+              </div>
+            </Card>
+          ))}
+        </form>
+      </FormProvider>
+    </EventEditorContext>
   );
 }

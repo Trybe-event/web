@@ -56,6 +56,16 @@ export const eventDraftSchema = z
     networking_closes_at: timestamp.nullable(),
   })
   .superRefine((event, context) => {
+    if (event.format === "physical" || event.format === "hybrid") {
+      for (const field of ["venue_name", "venue_address"] as const) {
+        if (event[field] !== undefined && !event[field]?.trim())
+          context.addIssue({
+            code: "custom",
+            path: [field],
+            message: "Required for in-person and hybrid events.",
+          });
+      }
+    }
     for (const [start, end] of [
       ["starts_at", "ends_at"],
       ["registration_opens_at", "registration_closes_at"],
