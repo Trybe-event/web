@@ -521,6 +521,22 @@ em {
   border: 1px solid var(--line);
   border-radius: 30px;
 }
+.workspace-switcher {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  border-bottom: 1px solid var(--line);
+  padding: 16px 0;
+}
+.switcher-label {
+  font-size: 10px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.switcher-select {
+  max-width: 340px;
+}
 .workspace-welcome {
   margin: 65px 0 40px;
 }
@@ -672,6 +688,14 @@ em {
   }
   .workspace-badge {
     display: none;
+  }
+  .workspace-switcher {
+    align-items: stretch;
+    flex-direction: column;
+    gap: 8px;
+  }
+  .switcher-select {
+    max-width: none;
   }
   .workspace-grid {
     grid-template-columns: 1fr;

@@ -1,7 +1,9 @@
 import type { Metadata } from "next";
 
 import { UnavailableNotice } from "@/components/auth/workspace";
+import { EVENT_PARAM, parseEventParam } from "@/lib/routes";
 import { requireAccount } from "@/lib/session";
+
 import { ProfileForm } from "./profile-form";
 
 export const metadata: Metadata = { title: "Edit your profile" };
@@ -9,11 +11,15 @@ export const metadata: Metadata = { title: "Edit your profile" };
 export default async function EditProfile({
   searchParams,
 }: {
-  searchParams: Promise<{ onboarding?: string }>;
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
   const g = await requireAccount("attendee");
   if ("unavailable" in g) return <UnavailableNotice href="/attendee/profile" />;
-  const onboarding = (await searchParams).onboarding === "1";
+  const query = await searchParams;
+  const onboarding = query.onboarding === "1";
+  // An attendee who joined from an event keeps it through onboarding, so the last
+  // step hands them back to /{slug} for the join (web#7).
+  const eventSlug = parseEventParam(query[EVENT_PARAM]);
   return (
     <div className="mx-auto max-w-2xl px-4 py-8">
       {onboarding ? (
@@ -29,7 +35,11 @@ export default async function EditProfile({
       ) : (
         <h1 className="text-3xl font-bold">Edit your profile</h1>
       )}
-      <ProfileForm onboarding={onboarding} fallbackName={g.account.full_name} />
+      <ProfileForm
+        onboarding={onboarding}
+        fallbackName={g.account.full_name}
+        eventSlug={eventSlug}
+      />
     </div>
   );
 }
