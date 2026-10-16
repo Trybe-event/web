@@ -11,5 +11,6 @@ export {
   Skeleton,
 } from "./display";
 export { Field, Input, Select, Textarea } from "./field";
+export { TagInput } from "./tag-input";
 export { Switch } from "./switch";
 export { ToastProvider, useToast } from "./toast";

@@ -3,7 +3,7 @@ import type { Metadata, Viewport } from "next";
 import { cookies } from "next/headers";
 import { DM_Sans, Manrope } from "next/font/google";
 
-import { MockProvider } from "@/components/mock-provider";
+import { DevelopmentApiMockProvider } from "@/components/development-api-mock-provider";
 import { authConfigured } from "@/lib/auth-config";
 
 import "./globals.css";
@@ -40,7 +40,7 @@ export default async function RootLayout({
       className={`${dmSans.variable} ${manrope.variable}`}
     >
       <body className="antialiased">
-        <MockProvider>{children}</MockProvider>
+        <DevelopmentApiMockProvider>{children}</DevelopmentApiMockProvider>
       </body>
     </html>
   );
