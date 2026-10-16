@@ -8,6 +8,7 @@ import { z } from "zod";
 
 import { api, errorMessage, fieldErrors } from "@/lib/api/client";
 import { type AccountType } from "@/lib/account";
+import { withEventParam } from "@/lib/routes";
 
 import { SignOut } from "./sign-out";
 
@@ -68,13 +69,16 @@ const accountCompletionRoutes: Record<AccountType, string> = {
   attendee: "/attendee/profile/edit?onboarding=1",
 };
 
-// CompleteAccount creates the one permanent account type for this sign-in.
+// CompleteAccount creates the one permanent account type for this sign-in. An
+// attendee who arrived from an event keeps it into profile onboarding (web#7).
 export function CompleteAccount({
   type,
   defaultName,
+  eventSlug,
 }: {
   type: AccountType;
   defaultName: string;
+  eventSlug?: string;
 }) {
   const [accountCreationError, setAccountCreationError] = useState("");
   const accountCompletionForm = useForm<AccountCompletionValues>({
@@ -108,7 +112,9 @@ export function CompleteAccount({
               signal: AbortSignal.timeout(15000),
             });
       if (accountCreationResult.response.ok && accountCreationResult.data) {
-        window.location.assign(accountCompletionRoutes[type]);
+        window.location.assign(
+          withEventParam(accountCompletionRoutes[type], eventSlug),
+        );
         return;
       }
       const validationErrors = Object.entries(

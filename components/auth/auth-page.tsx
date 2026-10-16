@@ -2,22 +2,32 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 
 import { workspacePath, type AccountType } from "@/lib/account";
+import { routes, withEventParam } from "@/lib/routes";
 import { getSession } from "@/lib/session";
 
 import { AuthForm } from "./auth-form";
 import { AuthShell } from "./auth-shell";
 
+// An attendee arriving from an event keeps that event through sign-in and sign-up
+// (web#7, web#8): the slug travels in the query and Clerk's redirect carries it on.
 export async function AuthPage({
   type,
   mode,
+  eventSlug,
 }: {
   type: AccountType;
   mode: "sign-in" | "sign-up";
+  eventSlug?: string;
 }) {
   const sessionState = await getSession();
   if (sessionState.kind === "bound")
-    redirect(workspacePath(sessionState.account.type));
-  if (sessionState.kind === "unbound") redirect("/account/setup");
+    redirect(
+      eventSlug && sessionState.account.type === "attendee"
+        ? routes.eventLanding(eventSlug)
+        : workspacePath(sessionState.account.type),
+    );
+  if (sessionState.kind === "unbound")
+    redirect(withEventParam("/account/setup", eventSlug));
   const isSignUp = mode === "sign-up";
   const workspaceRoute = workspacePath(type);
   return (
@@ -66,14 +76,21 @@ export async function AuthPage({
         <div className="notice" role="alert">
           <h3>We couldn&apos;t reach your workspace.</h3>
           <p>Your account has not been changed. Please try again shortly.</p>
-          <Link href={`${workspaceRoute}/${mode}`}>Try again</Link>
+          <Link href={withEventParam(`${workspaceRoute}/${mode}`, eventSlug)}>
+            Try again
+          </Link>
         </div>
       ) : (
-        <AuthForm type={type} mode={mode} />
+        <AuthForm type={type} mode={mode} eventSlug={eventSlug} />
       )}
       <p className="auth-alternative">
         {isSignUp ? "Already have an account?" : "New to Trybe?"}{" "}
-        <Link href={`${workspaceRoute}/${isSignUp ? "sign-in" : "sign-up"}`}>
+        <Link
+          href={withEventParam(
+            `${workspaceRoute}/${isSignUp ? "sign-in" : "sign-up"}`,
+            eventSlug,
+          )}
+        >
           {isSignUp ? "Sign in" : "Create an account"}
         </Link>
       </p>

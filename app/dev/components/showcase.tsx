@@ -20,6 +20,8 @@ import {
   ToastProvider,
   useToast,
 } from "@/components/ui";
+import { EventLinkState } from "@/components/registration/event-link-states";
+import type { EventApiOutcome } from "@/lib/registration/link-states";
 
 export function Showcase() {
   return (
@@ -136,9 +138,46 @@ function Gallery() {
           }
         />
       </Section>
+      <Section title="Event link states (web#10)">
+        <p className="text-sm text-muted">
+          One screen per failure path of an event link. The unknown-event screen
+          is identical for a mistyped, draft or private slug — copy never says
+          whether the event exists.
+        </p>
+        <div className="flex flex-col gap-2">
+          {(Object.entries(DEMO_OUTCOMES) as [string, EventApiOutcome][]).map(
+            ([label, outcome]) => (
+              <Card key={label}>
+                <p className="mb-3 text-xs font-semibold uppercase tracking-wide text-muted">
+                  {label}
+                </p>
+                <EventLinkState outcome={outcome} slug="demo-event" />
+              </Card>
+            ),
+          )}
+        </div>
+      </Section>
     </main>
   );
 }
+
+const DEMO_OUTCOMES: Record<string, EventApiOutcome> = {
+  "Unknown slug (mistyped, draft or private)": {
+    kind: "lookup",
+    httpStatus: 404,
+    code: "not_found",
+  },
+  "Registration not open yet": {
+    kind: "published",
+    registrationState: "not_open",
+  },
+  "Registration closed": {
+    kind: "published",
+    registrationState: "closed",
+  },
+  "Already joined": { kind: "already-member" },
+  "API unreachable": { kind: "unreachable" },
+};
 
 function Section({
   title,
