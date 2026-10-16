@@ -34,6 +34,10 @@ test("signed-out workspace visits go to their own sign-in", async () => {
     ["/attendee", "/attendee/sign-in"],
     ["/attendee/profile", "/attendee/sign-in"],
     ["/attendee/profile/edit", "/attendee/sign-in"],
+    [
+      "/organizer/events/f2d1a2a4-0f0e-4c1d-9d3a-5a5f3f6b7c01/share",
+      "/organizer/sign-in",
+    ],
     ["/events/atlas-summit", "/attendee/sign-in"],
   ]) {
     const r = await get(path);
