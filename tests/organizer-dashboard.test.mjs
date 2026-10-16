@@ -52,6 +52,14 @@ const ui = {
 const registrationView = compile(
   "../components/organizer/registration-trend.tsx",
 );
+const lifecyclePolicy = compile("../lib/event-lifecycle.ts");
+const lifecycleBadges = compile(
+  "../components/organizer/event-status-badges.tsx",
+  {
+    "@/components/ui": ui,
+    "@/lib/event-lifecycle": lifecyclePolicy,
+  },
+);
 function dashboardHarness({ events = [], points = [], failure = false } = {}) {
   const requests = [];
   const data = compile("../lib/organizer-dashboard.ts", {
@@ -74,6 +82,7 @@ function dashboardHarness({ events = [], points = [], failure = false } = {}) {
     "@/components/ui": ui,
     "@/lib/organizer-dashboard": data,
     "./registration-trend": registrationView,
+    "./event-status-badges": lifecycleBadges,
     "./retry-dashboard": {
       RetryDashboard: () => React.createElement("button", null, "Try again"),
     },
@@ -117,7 +126,7 @@ test("dashboard shows real event totals, all statuses and accessible trend value
   assert.match(rendered, />6<\/dd>/);
   assert.ok(!rendered.includes("hidden@example.test"));
   assert.ok(rendered.includes("/organizer/events/event-0/edit"));
-  assert.ok(rendered.includes("/organizer/events/event-1"));
+  assert.ok(rendered.includes("/organizer/events/event-1/share"));
   assert.equal(
     harness.requests.filter((request) =>
       request.path.includes("registrations/trend"),
