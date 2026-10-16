@@ -11,11 +11,11 @@ import { type AccountType } from "@/lib/account";
 
 import { SignOut } from "./sign-out";
 
-const PHONE = /^\+?[0-9 ()-]{6,32}$/;
+const phoneNumberPattern = /^\+?[0-9 ()-]{6,32}$/;
 
 // One schema per account type: organizers must name their organization (PRD §7);
 // attendees may add a private phone number (PRD §12).
-function schemaFor(type: AccountType) {
+function accountCompletionSchema(type: AccountType) {
   return z
     .object({
       full_name: z
@@ -27,24 +27,28 @@ function schemaFor(type: AccountType) {
       phone: z.string().trim(),
       confirm: z.boolean(),
     })
-    .superRefine((v, ctx) => {
-      if (type === "organizer" && v.organization === "") {
-        ctx.addIssue({
+    .superRefine((values, validationContext) => {
+      if (type === "organizer" && values.organization === "") {
+        validationContext.addIssue({
           code: "custom",
           path: ["organization"],
           message: "Enter your organization.",
         });
       }
-      if (type === "attendee" && v.phone !== "" && !PHONE.test(v.phone)) {
-        ctx.addIssue({
+      if (
+        type === "attendee" &&
+        values.phone !== "" &&
+        !phoneNumberPattern.test(values.phone)
+      ) {
+        validationContext.addIssue({
           code: "custom",
           path: ["phone"],
           message:
             "Enter a phone number with digits and an optional leading +.",
         });
       }
-      if (!v.confirm) {
-        ctx.addIssue({
+      if (!values.confirm) {
+        validationContext.addIssue({
           code: "custom",
           path: ["confirm"],
           message: `Confirm that you want an ${type} account.`,
@@ -53,11 +57,13 @@ function schemaFor(type: AccountType) {
     });
 }
 
-type Values = z.infer<ReturnType<typeof schemaFor>>;
+type AccountCompletionValues = z.infer<
+  ReturnType<typeof accountCompletionSchema>
+>;
 
 // After the account is created, organizers go to their workspace and attendees go
 // straight into profile onboarding (PRD §12, §14).
-const next: Record<AccountType, string> = {
+const accountCompletionRoutes: Record<AccountType, string> = {
   organizer: "/organizer",
   attendee: "/attendee/profile/edit?onboarding=1",
 };
@@ -70,9 +76,9 @@ export function CompleteAccount({
   type: AccountType;
   defaultName: string;
 }) {
-  const [failure, setFailure] = useState("");
-  const form = useForm<Values>({
-    resolver: zodResolver(schemaFor(type)),
+  const [accountCreationError, setAccountCreationError] = useState("");
+  const accountCompletionForm = useForm<AccountCompletionValues>({
+    resolver: zodResolver(accountCompletionSchema(type)),
     defaultValues: {
       full_name: defaultName,
       organization: "",
@@ -80,45 +86,65 @@ export function CompleteAccount({
       confirm: false,
     },
   });
-  const { errors, isSubmitting } = form.formState;
+  const { errors, isSubmitting } = accountCompletionForm.formState;
 
-  async function submit(v: Values) {
-    setFailure("");
-    const res =
-      type === "organizer"
-        ? await api.POST("/accounts/organizer", {
-            body: {
-              full_name: v.full_name,
-              organization: v.organization ?? "",
-            },
-          })
-        : await api.POST("/accounts/attendee", {
-            body: { full_name: v.full_name, phone: v.phone || null },
-          });
-    if (!res.error) {
-      window.location.assign(next[type]);
-      return;
-    }
-    if (res.response.status === 400) {
-      for (const [name, message] of Object.entries(fieldErrors(res.error))) {
-        form.setError(name as keyof Values, { message });
+  async function submit(values: AccountCompletionValues) {
+    setAccountCreationError("");
+    try {
+      const accountCreationResult =
+        type === "organizer"
+          ? await api.POST("/accounts/organizer", {
+              body: {
+                full_name: values.full_name,
+                organization: values.organization,
+              },
+              signal: AbortSignal.timeout(15000),
+            })
+          : await api.POST("/accounts/attendee", {
+              body: {
+                full_name: values.full_name,
+                phone: values.phone || null,
+              },
+              signal: AbortSignal.timeout(15000),
+            });
+      if (accountCreationResult.response.ok && accountCreationResult.data) {
+        window.location.assign(accountCompletionRoutes[type]);
+        return;
       }
-      return;
+      const validationErrors = Object.entries(
+        fieldErrors(accountCreationResult.error),
+      );
+      if (
+        accountCreationResult.response.status === 400 &&
+        validationErrors.length > 0
+      ) {
+        for (const [fieldName, message] of validationErrors) {
+          accountCompletionForm.setError(
+            fieldName as keyof AccountCompletionValues,
+            { message },
+          );
+        }
+        return;
+      }
+      setAccountCreationError(
+        accountCreationResult.error?.code === "account_type_conflict"
+          ? `This sign-in already has a different Trybe account type. Organizer and attendee accounts are separate, so sign out and use another email to create an ${type} account.`
+          : errorMessage(
+              accountCreationResult.error,
+              "We couldn't finish setup. Please try again.",
+            ),
+      );
+    } catch {
+      setAccountCreationError(
+        "We couldn't reach account services. Your details are still here. Please try again.",
+      );
     }
-    setFailure(
-      res.error.code === "account_type_conflict"
-        ? `This sign-in already has a different Trybe account type. Organizer and attendee accounts are separate, so sign out and use another email to create an ${type} account.`
-        : errorMessage(
-            res.error,
-            "We couldn't finish setup. Please try again.",
-          ),
-    );
   }
 
   return (
     <form
       className="complete-form"
-      onSubmit={form.handleSubmit(submit)}
+      onSubmit={accountCompletionForm.handleSubmit(submit)}
       noValidate
     >
       <label htmlFor="full_name">Full name</label>
@@ -127,7 +153,7 @@ export function CompleteAccount({
         autoComplete="name"
         aria-invalid={errors.full_name ? true : undefined}
         aria-describedby={errors.full_name ? "full_name-error" : undefined}
-        {...form.register("full_name")}
+        {...accountCompletionForm.register("full_name")}
       />
       {errors.full_name && (
         <p id="full_name-error" className="form-error">
@@ -145,7 +171,7 @@ export function CompleteAccount({
             aria-describedby={
               errors.organization ? "organization-error" : undefined
             }
-            {...form.register("organization")}
+            {...accountCompletionForm.register("organization")}
           />
           {errors.organization && (
             <p id="organization-error" className="form-error">
@@ -169,7 +195,7 @@ export function CompleteAccount({
             aria-describedby={
               errors.phone ? "phone-hint phone-error" : "phone-hint"
             }
-            {...form.register("phone")}
+            {...accountCompletionForm.register("phone")}
           />
           {errors.phone && (
             <p id="phone-error" className="form-error">
@@ -188,13 +214,13 @@ export function CompleteAccount({
         </p>
       </div>
       <label className="confirm-choice">
-        <input type="checkbox" {...form.register("confirm")} />I understand and
-        want an {type} account.
+        <input type="checkbox" {...accountCompletionForm.register("confirm")} />
+        I understand and want an {type} account.
       </label>
       {errors.confirm && <p className="form-error">{errors.confirm.message}</p>}
-      {failure && (
+      {accountCreationError && (
         <p className="form-error" role="alert">
-          {failure}
+          {accountCreationError}
         </p>
       )}
       <button type="submit" className="primary-button" disabled={isSubmitting}>

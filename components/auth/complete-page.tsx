@@ -9,12 +9,19 @@ import { AuthShell } from "./auth-shell";
 import { CompleteAccount } from "./complete-account";
 
 export async function CompletePage({ type }: { type: AccountType }) {
-  const s = await getSession();
-  if (s.kind === "bound") redirect(workspacePath(s.account.type));
-  if (s.kind === "signed-out" || s.kind === "unconfigured")
+  const sessionState = await getSession();
+  if (sessionState.kind === "bound")
+    redirect(workspacePath(sessionState.account.type));
+  if (
+    sessionState.kind === "signed-out" ||
+    sessionState.kind === "unconfigured"
+  )
     redirect(`${workspacePath(type)}/sign-up`);
-  const user = s.kind === "unbound" ? await currentUser() : null;
-  const name = [user?.firstName, user?.lastName].filter(Boolean).join(" ");
+  const clerkUser =
+    sessionState.kind === "unbound" ? await currentUser() : null;
+  const fullName = [clerkUser?.firstName, clerkUser?.lastName]
+    .filter(Boolean)
+    .join(" ");
   return (
     <AuthShell type={type}>
       <span className="eyebrow">ONE LAST INTRODUCTION</span>
@@ -22,8 +29,8 @@ export async function CompletePage({ type }: { type: AccountType }) {
       <p className="auth-intro">
         Confirm your details to finish creating your {type} account.
       </p>
-      {s.kind === "unbound" ? (
-        <CompleteAccount type={type} defaultName={name} />
+      {sessionState.kind === "unbound" ? (
+        <CompleteAccount type={type} defaultName={fullName} />
       ) : (
         <div className="notice" role="alert">
           <p>
