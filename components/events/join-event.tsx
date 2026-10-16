@@ -10,7 +10,15 @@ import { routes } from "@/lib/routes";
 // JoinEvent is the explicit join step (web#7): the attendee presses the button, the
 // API records the membership, and the workspace opens. Joining is idempotent, so a
 // second press is harmless.
-export function JoinEvent({ slug, name }: { slug: string; name: string }) {
+export function JoinEvent({
+  slug,
+  name,
+  label,
+}: {
+  slug: string;
+  name: string;
+  label?: string;
+}) {
   const router = useRouter();
   const [joining, setJoining] = useState(false);
   const [failure, setFailure] = useState("");
@@ -36,8 +44,12 @@ export function JoinEvent({ slug, name }: { slug: string; name: string }) {
 
   return (
     <div className="flex flex-col items-start gap-3">
-      <Button loading={joining} onClick={join} aria-label={`Join ${name}`}>
-        Join {name}
+      <Button
+        loading={joining}
+        onClick={join}
+        aria-label={label ?? `Join ${name}`}
+      >
+        {label ?? `Join ${name}`}
       </Button>
       {failure && <Alert>{failure}</Alert>}
     </div>

@@ -3,8 +3,14 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 
 import { JoinEvent } from "@/components/events/join-event";
+import { JoinReview } from "@/components/events/join-review";
 import { ButtonLink } from "@/components/ui";
-import { getPublicEvent, isEventMember } from "@/lib/events";
+import {
+  getJoinPreview,
+  getPublicEvent,
+  hasEventMembership,
+  type JoinPreviewResult,
+} from "@/lib/events";
 import { isEventSlug, routes, withEventParam } from "@/lib/routes";
 import { getSession } from "@/lib/session";
 
@@ -16,8 +22,8 @@ const FORMAT_LABELS = {
   hybrid: "In person and online",
 } as const;
 
-// Public event landing page (web#6) with the join step (web#7): a signed-out visitor
-// is sent to sign-up or sign-in carrying the slug, and an attendee joins here.
+// Public event landing page (web#6) with the join flow (web#7, web#8). Reading this
+// page never registers anyone: membership only changes when the attendee confirms.
 export default async function EventLanding({
   params,
 }: {
@@ -36,7 +42,9 @@ export default async function EventLanding({
   const event = result?.kind === "found" ? result.event : null;
   const attendee =
     session.kind === "bound" && session.account.type === "attendee";
-  const member = attendee ? await isEventMember(slug) : false;
+  const member = attendee ? await hasEventMembership(slug) : false;
+  // Only an attendee who is not in the event yet has anything to review.
+  const preview = attendee && !member ? await getJoinPreview(slug) : null;
   const name = event?.name ?? slug;
 
   return (
@@ -67,34 +75,96 @@ export default async function EventLanding({
         </p>
       )}
 
-      <div className="mt-8 flex flex-col items-start gap-3">
-        {attendee ? (
-          member ? (
-            <ButtonLink href={routes.eventWorkspace(slug)}>
-              Open your event workspace
-            </ButtonLink>
-          ) : (
-            <JoinEvent slug={slug} name={name} />
-          )
-        ) : session.kind === "bound" ? (
-          <p className="text-sm text-muted">
-            Organizer accounts don&apos;t join events.{" "}
-            <Link href={withEventParam(routes.attendeeSignIn, slug)}>
-              Sign in with an attendee account
-            </Link>{" "}
-            to join this one.
-          </p>
-        ) : (
-          <>
-            <ButtonLink href={withEventParam(routes.attendeeSignUp, slug)}>
-              Join this event
-            </ButtonLink>
-            <Link href={withEventParam(routes.attendeeSignIn, slug)}>
-              I already have an account
-            </Link>
-          </>
-        )}
-      </div>
+      <EventAction
+        slug={slug}
+        name={name}
+        member={member}
+        attendee={attendee}
+        sessionKind={session.kind}
+        preview={preview}
+      />
     </main>
+  );
+}
+
+// EventAction is the one decision this page makes for the visitor: an attendee already
+// in gets their workspace, an attendee who isn't reviews and confirms, an organizer is
+// pointed at an attendee account, and anyone signed out signs up or in carrying the
+// event. Nothing here writes without an explicit press.
+function EventAction({
+  slug,
+  name,
+  member,
+  attendee,
+  sessionKind,
+  preview,
+}: {
+  slug: string;
+  name: string;
+  member: boolean;
+  attendee: boolean;
+  sessionKind: string;
+  preview: JoinPreviewResult | null;
+}) {
+  if (attendee && member)
+    return (
+      <div className="mt-8">
+        <ButtonLink href={routes.eventWorkspace(slug)}>
+          Open your event workspace
+        </ButtonLink>
+      </div>
+    );
+
+  if (attendee && preview?.kind === "review")
+    return (
+      <div className="mt-8 flex flex-col gap-6">
+        <JoinReview slug={slug} name={name} preview={preview.preview} />
+      </div>
+    );
+
+  if (attendee && preview?.kind === "needs_profile")
+    return (
+      <div className="mt-8 flex flex-col items-start gap-3">
+        <p className="text-sm text-muted">
+          Create your profile before you join {name}. It is the profile everyone
+          at the event will see, and you only join when you confirm.
+        </p>
+        <ButtonLink
+          href={withEventParam("/attendee/profile/edit?onboarding=1", slug)}
+        >
+          Create your profile
+        </ButtonLink>
+      </div>
+    );
+
+  if (attendee)
+    // The API couldn't provide the review. Joining stays possible and is idempotent,
+    // and the API is the authority on whether this attendee may join.
+    return (
+      <div className="mt-8">
+        <JoinEvent slug={slug} name={name} />
+      </div>
+    );
+
+  if (sessionKind === "bound")
+    return (
+      <p className="mt-8 text-sm text-muted">
+        Organizer accounts don&apos;t join events.{" "}
+        <Link href={withEventParam(routes.attendeeSignIn, slug)}>
+          Sign in with an attendee account
+        </Link>{" "}
+        to join this one.
+      </p>
+    );
+
+  return (
+    <div className="mt-8 flex flex-col items-start gap-3">
+      <ButtonLink href={withEventParam(routes.attendeeSignUp, slug)}>
+        Join this event
+      </ButtonLink>
+      <Link href={withEventParam(routes.attendeeSignIn, slug)}>
+        I already have an account
+      </Link>
+    </div>
   );
 }
