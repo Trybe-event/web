@@ -11,6 +11,7 @@ import {
   Skeleton,
 } from "@/components/ui";
 import { api, errorMessage, type Schemas } from "@/lib/api/client";
+import { routes, withEventParam } from "@/lib/routes";
 
 import { LINK_LABELS } from "../labels";
 
@@ -28,8 +29,16 @@ const VIEWERS: { id: Viewer; label: string; explain: string }[] = [
   },
 ];
 
-// ProfilePreview shows exactly what the API sends to each kind of viewer.
-export function ProfilePreview({ onboarding }: { onboarding: boolean }) {
+// ProfilePreview shows exactly what the API sends to each kind of viewer. When the
+// attendee is onboarding from an event, the last step sends them back to /{slug} to
+// finish joining it (web#7).
+export function ProfilePreview({
+  onboarding,
+  eventSlug,
+}: {
+  onboarding: boolean;
+  eventSlug?: string;
+}) {
   const [viewer, setViewer] = useState<Viewer>("event_member");
   const [views, setViews] = useState<
     Partial<Record<Viewer, Schemas["Profile"]>>
@@ -85,15 +94,31 @@ export function ProfilePreview({ onboarding }: { onboarding: boolean }) {
         {current && <PreviewCard profile={current} />}
       </section>
       <div className="flex flex-wrap gap-3">
-        <ButtonLink href="/attendee/profile/edit" variant="secondary">
+        <ButtonLink
+          href={withEventParam(
+            onboarding
+              ? "/attendee/profile/edit?onboarding=1"
+              : "/attendee/profile/edit",
+            eventSlug,
+          )}
+          variant="secondary"
+        >
           Edit profile
         </ButtonLink>
-        <ButtonLink
-          href={onboarding ? "/attendee/profile" : "/attendee/profile/settings"}
-          variant={onboarding ? "primary" : "secondary"}
-        >
-          {onboarding ? "Looks good" : "Privacy settings"}
-        </ButtonLink>
+        {onboarding && eventSlug ? (
+          <ButtonLink href={routes.eventLanding(eventSlug)}>
+            Continue to the event
+          </ButtonLink>
+        ) : (
+          <ButtonLink
+            href={
+              onboarding ? "/attendee/profile" : "/attendee/profile/settings"
+            }
+            variant={onboarding ? "primary" : "secondary"}
+          >
+            {onboarding ? "Looks good" : "Privacy settings"}
+          </ButtonLink>
+        )}
       </div>
     </div>
   );

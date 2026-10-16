@@ -26,6 +26,7 @@ import {
   useToast,
 } from "@/components/ui";
 import { api, errorMessage, fieldErrors, type Schemas } from "@/lib/api/client";
+import { withEventParam } from "@/lib/routes";
 import {
   MAX_PROFILE_PHOTO_SOURCE_BYTES,
   PROFILE_PHOTO_TYPES,
@@ -83,9 +84,12 @@ type FormOut = z.output<typeof schema>;
 export function ProfileForm({
   onboarding,
   fallbackName,
+  eventSlug,
 }: {
   onboarding: boolean;
   fallbackName: string;
+  // The event an attendee is joining, carried through onboarding to /{slug} (web#7).
+  eventSlug?: string;
 }) {
   const router = useRouter();
   const toast = useToast();
@@ -254,7 +258,10 @@ export function ProfileForm({
         toast("Profile saved");
         router.push(
           onboarding
-            ? "/attendee/profile/preview?onboarding=1"
+            ? withEventParam(
+                "/attendee/profile/preview?onboarding=1",
+                eventSlug,
+              )
             : "/attendee/profile",
         );
         router.refresh();

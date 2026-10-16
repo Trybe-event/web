@@ -3,20 +3,33 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 
 import { workspacePath, type AccountType } from "@/lib/account";
+import { routes, withEventParam } from "@/lib/routes";
 import { getSession } from "@/lib/session";
 
 import { AuthShell } from "./auth-shell";
 import { CompleteAccount } from "./complete-account";
 
-export async function CompletePage({ type }: { type: AccountType }) {
+// The event being joined reaches this step through Clerk's redirect as ?event=<slug>
+// (web#7), and is handed on to profile onboarding.
+export async function CompletePage({
+  type,
+  eventSlug,
+}: {
+  type: AccountType;
+  eventSlug?: string;
+}) {
   const sessionState = await getSession();
   if (sessionState.kind === "bound")
-    redirect(workspacePath(sessionState.account.type));
+    redirect(
+      eventSlug && sessionState.account.type === "attendee"
+        ? routes.eventLanding(eventSlug)
+        : workspacePath(sessionState.account.type),
+    );
   if (
     sessionState.kind === "signed-out" ||
     sessionState.kind === "unconfigured"
   )
-    redirect(`${workspacePath(type)}/sign-up`);
+    redirect(withEventParam(`${workspacePath(type)}/sign-up`, eventSlug));
   const clerkUser =
     sessionState.kind === "unbound" ? await currentUser() : null;
   const fullName = [clerkUser?.firstName, clerkUser?.lastName]
@@ -30,14 +43,22 @@ export async function CompletePage({ type }: { type: AccountType }) {
         Confirm your details to finish creating your {type} account.
       </p>
       {sessionState.kind === "unbound" ? (
-        <CompleteAccount type={type} defaultName={fullName} />
+        <CompleteAccount
+          type={type}
+          defaultName={fullName}
+          eventSlug={eventSlug}
+        />
       ) : (
         <div className="notice" role="alert">
           <p>
             Account services are temporarily unavailable. Your account type has
             not been changed.
           </p>
-          <Link href={`${workspacePath(type)}/complete`}>Try again</Link>
+          <Link
+            href={withEventParam(`${workspacePath(type)}/complete`, eventSlug)}
+          >
+            Try again
+          </Link>
         </div>
       )}
     </AuthShell>

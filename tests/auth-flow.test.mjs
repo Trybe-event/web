@@ -40,6 +40,26 @@ test("device trust and configured MFA select a supported challenge", () => {
   assert.equal(signInStep("needs_new_password", []), "new-password");
   assert.equal(signInStep("complete", []), "complete");
 });
+test("the event being joined survives a finished authentication attempt", () => {
+  // A new attendee keeps the event into completion; a returning one goes back to it.
+  assert.equal(
+    authenticationDestination("/attendee", true, false, "atlas-summit"),
+    "/attendee/complete?event=atlas-summit",
+  );
+  assert.equal(
+    authenticationDestination("/attendee", false, false, "atlas-summit"),
+    "/atlas-summit",
+  );
+  assert.equal(
+    authenticationDestination("/attendee", true, false),
+    "/attendee/complete",
+  );
+  assert.throws(
+    () => authenticationDestination("/attendee", false, true, "atlas-summit"),
+    /security step/,
+  );
+});
+
 test("sign-up preserves completion and sign-in preserves the role route", () => {
   for (const base of ["/attendee", "/organizer"]) {
     assert.equal(
