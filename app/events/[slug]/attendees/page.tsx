@@ -26,6 +26,7 @@ export default async function AttendeesPage({
       <AttendeeDirectory
         key={directoryQuery(filters).toString()}
         eventId={workspace.event.id}
+        slug={slug}
         filters={filters}
       />
     </div>

@@ -2,6 +2,7 @@ import { http, HttpResponse } from "msw";
 import type { components } from "@/lib/api/schema";
 
 type Profile = components["schemas"]["Profile"];
+const connectionRequests: components["schemas"]["ConnectionRequest"][] = [];
 export const discoveryProfiles: Profile[] = Array.from(
   { length: 25 },
   (_, index) => ({
@@ -18,6 +19,79 @@ export const discoveryProfiles: Profile[] = Array.from(
 );
 
 export const discoveryHandlers = [
+  http.get("/api/events/:eventId/attendees/:attendeeId", ({ params }) => {
+    const profile = discoveryProfiles.find(
+      (item) => item.attendee_id === params.attendeeId,
+    );
+    return profile
+      ? HttpResponse.json(profile)
+      : HttpResponse.json(
+          { code: "not_found", message: "Profile unavailable." },
+          { status: 404 },
+        );
+  }),
+  http.post("/api/connection-requests", async ({ request }) => {
+    const body = (await request.json()) as {
+      event_id: string;
+      recipient_id: string;
+      message?: string;
+    };
+    const other = discoveryProfiles.find(
+      (profile) => profile.attendee_id === body.recipient_id,
+    );
+    if (!other || !other.accepting_requests)
+      return HttpResponse.json(
+        {
+          code: "conflict",
+          message: "This attendee is not accepting requests.",
+        },
+        { status: 409 },
+      );
+    if (other.relationship !== "none")
+      return HttpResponse.json(
+        {
+          code: "conflict",
+          message: "A connection already exists or is pending.",
+        },
+        { status: 409 },
+      );
+    const connection: components["schemas"]["ConnectionRequest"] = {
+      id: crypto.randomUUID(),
+      event_id: body.event_id,
+      other,
+      direction: "outgoing",
+      status: "pending",
+      message: body.message,
+      created_at: new Date().toISOString(),
+    };
+    connectionRequests.push(connection);
+    other.relationship = "pending_outgoing";
+    return HttpResponse.json(connection, { status: 201 });
+  }),
+  http.get("/api/me/connection-requests", ({ request }) =>
+    HttpResponse.json({
+      items: connectionRequests.filter(
+        (item) =>
+          item.status === "pending" &&
+          item.direction === new URL(request.url).searchParams.get("direction"),
+      ),
+    }),
+  ),
+  http.post("/api/connection-requests/:requestId/:action", ({ params }) => {
+    const connection = connectionRequests.find(
+      (item) => item.id === params.requestId,
+    );
+    if (!connection) return;
+    connection.status =
+      params.action === "accept"
+        ? "accepted"
+        : params.action === "cancel"
+          ? "cancelled"
+          : "rejected";
+    connection.other.relationship =
+      connection.status === "accepted" ? "connected" : "none";
+    return HttpResponse.json(connection);
+  }),
   http.get("/api/events/:eventId/attendees", ({ request }) => {
     const query = new URL(request.url).searchParams;
     const selected = discoveryProfiles.filter((profile) => {

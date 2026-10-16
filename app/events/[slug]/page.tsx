@@ -51,6 +51,7 @@ export default async function EventWorkspace({
               key={profile.attendee_id}
               profile={profile}
               reasons={reasons}
+              slug={slug}
             />
           ))}
         </div>
