@@ -110,6 +110,8 @@ test("an event landing page offers the join entry points", async () => {
   const html = await r.text();
   assert.ok(html.includes("/attendee/sign-up?event=atlas-summit"));
   assert.ok(html.includes("/attendee/sign-in?event=atlas-summit"));
+  // web#6: the sign-up entry point carries the PRD's call to action.
+  assert.ok(html.includes("explore the program, and meet the right people."));
   // web#8: a visitor with no attendee session gets no join review and no profile.
   assert.ok(!html.includes("Confirm and join"));
   assert.ok(!html.includes("This is what people at"));

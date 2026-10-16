@@ -1,10 +1,33 @@
 // Unit tests for the event-link state screens (web#10), run with node --test.
 // The pure module in lib/registration/link-states.ts is JSX-free, so these
-// import it directly (Node 22 strips TS types by default).
+// load it here through the suite's transpile harness: the package supports
+// Node >=20.9, where a TypeScript file cannot be imported as a module.
 import test from "node:test";
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
+import vm from "node:vm";
+import ts from "typescript";
 
-import { eventLinkScreen } from "../lib/registration/link-states.ts";
+const compiled = ts.transpileModule(
+  readFileSync(
+    new URL("../lib/registration/link-states.ts", import.meta.url),
+    "utf8",
+  ),
+  { compilerOptions: { module: ts.ModuleKind.CommonJS } },
+).outputText;
+const loaded = { exports: {} };
+const execute = vm.runInNewContext(
+  `(function(require,module,exports){${compiled}\n})`,
+  { Intl, Date },
+);
+execute(
+  (name) => {
+    throw new Error(`Unexpected dependency: ${name}`);
+  },
+  loaded,
+  loaded.exports,
+);
+const { eventLinkScreen } = loaded.exports;
 
 const notFoundOutcome = { kind: "lookup", httpStatus: 404, code: "not_found" };
 
