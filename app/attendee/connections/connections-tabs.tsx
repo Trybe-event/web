@@ -3,7 +3,14 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 
-import { Avatar, Badge, Button, Card, EmptyState, Skeleton } from "@/components/ui";
+import {
+  Avatar,
+  Badge,
+  Button,
+  Card,
+  EmptyState,
+  Skeleton,
+} from "@/components/ui";
 import { api, errorMessage, type Schemas } from "@/lib/api/client";
 
 type Tab = "incoming" | "outgoing" | "connected";
@@ -25,7 +32,7 @@ const EMPTY_INCOMING: RequestWithDirection[] = [];
 const EMPTY_OUTGOING: RequestWithDirection[] = [];
 const EMPTY_CONNECTED: Schemas["Connection"][] = [];
 
-export function ConnectionsTabs(_props: { accountId: string }) {
+export function ConnectionsTabs() {
   const [state, setState] = useState<State>({
     tab: "incoming",
     incoming: EMPTY_INCOMING,
@@ -57,13 +64,11 @@ export function ConnectionsTabs(_props: { accountId: string }) {
           if (data) return data.items as RequestWithDirection[];
           throw error;
         }),
-      api
-        .GET("/me/connections")
-        .then(({ data, error }) => {
-          if (cancelled) return;
-          if (data) return data.items as Schemas["Connection"][];
-          throw error;
-        }),
+      api.GET("/me/connections").then(({ data, error }) => {
+        if (cancelled) return;
+        if (data) return data.items as Schemas["Connection"][];
+        throw error;
+      }),
     ])
       .then(([incoming, outgoing, connected]) => {
         if (cancelled) return;
@@ -89,14 +94,22 @@ export function ConnectionsTabs(_props: { accountId: string }) {
     };
   }, []);
 
-  const activeIncoming = state.incoming.filter((r) => r.direction === "incoming");
-  const activeOutgoing = state.outgoing.filter((r) => r.direction === "outgoing");
+  const activeIncoming = state.incoming.filter(
+    (r) => r.direction === "incoming",
+  );
+  const activeOutgoing = state.outgoing.filter(
+    (r) => r.direction === "outgoing",
+  );
 
   function setTab(tab: Tab) {
     setState((s) => ({ ...s, tab }));
   }
 
-  async function handleDisconnect(connectionId: string, connected: Schemas["Connection"][], setStateFn: (u: (s: State) => State) => void) {
+  async function handleDisconnect(
+    connectionId: string,
+    connected: Schemas["Connection"][],
+    setStateFn: (u: (s: State) => State) => void,
+  ) {
     setStateFn((s) => ({
       ...s,
       connected: s.connected.filter((c) => c.id !== connectionId),
@@ -107,9 +120,9 @@ export function ConnectionsTabs(_props: { accountId: string }) {
     if (error) {
       setStateFn((s) => ({
         ...s,
-        connected: s.connected.filter((c) => c.id !== connectionId).concat(
-          connected.find((c) => c.id === connectionId)!,
-        ),
+        connected: s.connected
+          .filter((c) => c.id !== connectionId)
+          .concat(connected.find((c) => c.id === connectionId)!),
       }));
     }
   }
@@ -127,8 +140,8 @@ export function ConnectionsTabs(_props: { accountId: string }) {
       <div className="mx-auto max-w-2xl px-4 py-8">
         <h1 className="text-3xl font-bold">Your connections</h1>
         <p className="mt-2 text-muted">
-          Accept requests from people at your events, or see who you&apos;re already
-          connected with.
+          Accept requests from people at your events, or see who you&apos;re
+          already connected with.
         </p>
 
         {state.failure && (
@@ -144,7 +157,11 @@ export function ConnectionsTabs(_props: { accountId: string }) {
             <Skeleton className="h-10 w-40" />
           </div>
         ) : (
-          <div role="tablist" aria-label="Connections" className="mt-8 flex gap-2">
+          <div
+            role="tablist"
+            aria-label="Connections"
+            className="mt-8 flex gap-2"
+          >
             {(["incoming", "outgoing", "connected"] as Tab[]).map((tab) => (
               <button
                 key={tab}
@@ -172,7 +189,11 @@ export function ConnectionsTabs(_props: { accountId: string }) {
         {state.loading ? (
           <Skeleton className="mt-6 h-64" />
         ) : state.tab === "incoming" ? (
-          <div id="panel-incoming" role="tabpanel" aria-label="Incoming requests">
+          <div
+            id="panel-incoming"
+            role="tabpanel"
+            aria-label="Incoming requests"
+          >
             {activeIncoming.length === 0 ? (
               <EmptyState title="No pending requests">
                 <p className="text-muted">
@@ -198,11 +219,16 @@ export function ConnectionsTabs(_props: { accountId: string }) {
             )}
           </div>
         ) : state.tab === "outgoing" ? (
-          <div id="panel-outgoing" role="tabpanel" aria-label="Outgoing requests">
+          <div
+            id="panel-outgoing"
+            role="tabpanel"
+            aria-label="Outgoing requests"
+          >
             {activeOutgoing.length === 0 ? (
               <EmptyState title="No outgoing requests">
                 <p className="text-muted">
-                  Requests you&apos;ve sent to people at your events will appear here.
+                  Requests you&apos;ve sent to people at your events will appear
+                  here.
                 </p>
               </EmptyState>
             ) : (
@@ -237,7 +263,9 @@ export function ConnectionsTabs(_props: { accountId: string }) {
                   <ConnectedCard
                     key={connection.id}
                     connection={connection}
-                    onDisconnect={() => handleDisconnect(connection.id, state.connected, setState)}
+                    onDisconnect={() =>
+                      handleDisconnect(connection.id, state.connected, setState)
+                    }
                   />
                 ))}
               </div>
@@ -275,18 +303,21 @@ function IncomingRequest({
       };
     });
 
-    const { error: actedError } = await api.POST("/connection-requests/{requestId}/{action}", {
-      params: { path: { requestId: request.id, action } },
-    });
+    const { error: actedError } = await api.POST(
+      "/connection-requests/{requestId}/{action}",
+      {
+        params: { path: { requestId: request.id, action } },
+      },
+    );
     if (actedError) {
       setError(errorMessage(actedError, "Couldn't update the request."));
       setState((s) => {
         const list = action === "accept" ? s.incoming : s.outgoing;
         return {
           ...s,
-          [action === "accept" ? "incoming" : "outgoing"]: list.filter(
-            (r) => r.id !== optimisticKey,
-          ).concat(request),
+          [action === "accept" ? "incoming" : "outgoing"]: list
+            .filter((r) => r.id !== optimisticKey)
+            .concat(request),
         };
       });
       setActing(false);
@@ -313,13 +344,19 @@ function IncomingRequest({
   return (
     <Card className="flex flex-col gap-3">
       <div className="flex items-center gap-3">
-        <Avatar name={request.other.full_name} src={request.other.photo_url} size={48} />
+        <Avatar
+          name={request.other.full_name}
+          src={request.other.photo_url}
+          size={48}
+        />
         <div className="min-w-0 flex-1">
           <p className="font-semibold">{request.other.full_name}</p>
           {request.other.role && (
             <p className="text-sm text-muted">
               {request.other.role}
-              {request.other.organization ? ` · ${request.other.organization}` : ""}
+              {request.other.organization
+                ? ` · ${request.other.organization}`
+                : ""}
             </p>
           )}
           <p className="mt-1 text-xs text-muted">
@@ -351,7 +388,11 @@ function IncomingRequest({
         >
           Reject
         </Button>
-        <Button loading={acting} disabled={acting} onClick={() => act("accept")}>
+        <Button
+          loading={acting}
+          disabled={acting}
+          onClick={() => act("accept")}
+        >
           Accept
         </Button>
       </div>
@@ -381,14 +422,19 @@ function OutgoingRequest({
       outgoing: s.outgoing.filter((r) => r.id !== optimisticKey),
     }));
 
-    const { error: actedError } = await api.POST("/connection-requests/{requestId}/{action}", {
-      params: { path: { requestId: request.id, action: "cancel" } },
-    });
+    const { error: actedError } = await api.POST(
+      "/connection-requests/{requestId}/{action}",
+      {
+        params: { path: { requestId: request.id, action: "cancel" } },
+      },
+    );
     if (actedError) {
       setError(errorMessage(actedError, "Couldn't cancel the request."));
       setState((s) => ({
         ...s,
-        outgoing: s.outgoing.filter((r) => r.id !== optimisticKey).concat(request),
+        outgoing: s.outgoing
+          .filter((r) => r.id !== optimisticKey)
+          .concat(request),
       }));
       setActing(false);
       return;
@@ -399,13 +445,19 @@ function OutgoingRequest({
   return (
     <Card className="flex flex-col gap-3">
       <div className="flex items-center gap-3">
-        <Avatar name={request.other.full_name} src={request.other.photo_url} size={48} />
+        <Avatar
+          name={request.other.full_name}
+          src={request.other.photo_url}
+          size={48}
+        />
         <div className="min-w-0 flex-1">
           <p className="font-semibold">{request.other.full_name}</p>
           {request.other.role && (
             <p className="text-sm text-muted">
               {request.other.role}
-              {request.other.organization ? ` · ${request.other.organization}` : ""}
+              {request.other.organization
+                ? ` · ${request.other.organization}`
+                : ""}
             </p>
           )}
           <p className="mt-1 text-xs text-muted">
@@ -424,7 +476,12 @@ function OutgoingRequest({
         </div>
       )}
       <div className="flex justify-end">
-        <Button variant="secondary" loading={acting} disabled={acting} onClick={cancel}>
+        <Button
+          variant="secondary"
+          loading={acting}
+          disabled={acting}
+          onClick={cancel}
+        >
           Cancel request
         </Button>
       </div>
@@ -448,9 +505,12 @@ function ConnectedCard({
     setActing(true);
     setError(null);
     onDisconnect();
-    const { error: actedError } = await api.DELETE("/connections/{connectionId}", {
-      params: { path: { connectionId: connection.id } },
-    });
+    const { error: actedError } = await api.DELETE(
+      "/connections/{connectionId}",
+      {
+        params: { path: { connectionId: connection.id } },
+      },
+    );
     if (actedError) {
       setError(errorMessage(actedError, "Couldn't disconnect."));
       onDisconnect();
@@ -463,17 +523,24 @@ function ConnectedCard({
   return (
     <Card className="flex flex-col gap-3">
       <div className="flex items-center gap-3">
-        <Avatar name={connection.other.full_name} src={connection.other.photo_url} size={48} />
+        <Avatar
+          name={connection.other.full_name}
+          src={connection.other.photo_url}
+          size={48}
+        />
         <div className="min-w-0 flex-1">
           <p className="font-semibold">{connection.other.full_name}</p>
           {connection.other.role && (
             <p className="text-sm text-muted">
               {connection.other.role}
-              {connection.other.organization ? ` · ${connection.other.organization}` : ""}
+              {connection.other.organization
+                ? ` · ${connection.other.organization}`
+                : ""}
             </p>
           )}
           <p className="mt-1 text-xs text-muted">
-            Connected {new Date(connection.connected_at).toLocaleDateString("en-GB")}
+            Connected{" "}
+            {new Date(connection.connected_at).toLocaleDateString("en-GB")}
           </p>
         </div>
         <Badge>Connected</Badge>
@@ -498,7 +565,12 @@ function ConnectedCard({
         </ul>
       )}
       <div className="flex justify-end gap-2">
-        <Button variant="secondary" loading={acting} disabled={acting} onClick={disconnectConn}>
+        <Button
+          variant="secondary"
+          loading={acting}
+          disabled={acting}
+          onClick={disconnectConn}
+        >
           Disconnect
         </Button>
       </div>
