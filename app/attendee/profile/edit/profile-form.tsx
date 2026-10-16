@@ -26,7 +26,7 @@ import {
   useToast,
 } from "@/components/ui";
 import { api, errorMessage, fieldErrors, type Schemas } from "@/lib/api/client";
-import { withEventParam } from "@/lib/routes";
+import { routes, withEventParam } from "@/lib/routes";
 import {
   MAX_PROFILE_PHOTO_SOURCE_BYTES,
   PROFILE_PHOTO_TYPES,
@@ -256,13 +256,17 @@ export function ProfileForm({
       });
       if (response.ok) {
         toast("Profile saved");
+        // Onboarding continues to the visibility review; an attendee who edited from an
+        // event link returns to that event, so the Edit link never strands them.
         router.push(
           onboarding
             ? withEventParam(
                 "/attendee/profile/preview?onboarding=1",
                 eventSlug,
               )
-            : "/attendee/profile",
+            : eventSlug
+              ? routes.eventLanding(eventSlug)
+              : "/attendee/profile",
         );
         router.refresh();
         return;
@@ -541,7 +545,13 @@ export function ProfileForm({
         {!onboarding && (
           <Button
             variant="secondary"
-            onClick={() => router.push("/attendee/profile")}
+            onClick={() =>
+              router.push(
+                eventSlug
+                  ? routes.eventLanding(eventSlug)
+                  : "/attendee/profile",
+              )
+            }
           >
             Cancel
           </Button>

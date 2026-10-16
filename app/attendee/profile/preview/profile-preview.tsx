@@ -124,7 +124,10 @@ export function ProfilePreview({
   );
 }
 
-function PreviewCard({ profile }: { profile: Schemas["Profile"] }) {
+// PreviewCard is the shared rendering of a profile as one viewer kind receives it: the
+// profile preview screen and the join review on /{slug} both use it, so what an attendee
+// is shown before joining is exactly what the API sends to event members (web#8).
+export function PreviewCard({ profile }: { profile: Schemas["Profile"] }) {
   return (
     <Card className="flex flex-col gap-4">
       <div className="flex items-center gap-4">
