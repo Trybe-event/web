@@ -14,6 +14,7 @@ import { api, errorMessage } from "@/lib/api/client";
 import type { EventDraft } from "@/lib/event-form";
 import { eventTimeToISO, localEventTime } from "@/lib/event-time";
 import { ProgramBuilder } from "./program-builder";
+import { useEventEditor } from "./event-editor-context";
 
 export function EventTimeInput({
   value,
@@ -82,6 +83,7 @@ export function DraftTimeField({
   optional?: boolean;
 }) {
   const form = useFormContext<EventDraft>();
+  const { event } = useEventEditor();
   const timezone =
     useWatch({ control: form.control, name: "timezone" }) || "UTC";
   return (
@@ -105,7 +107,9 @@ export function DraftTimeField({
                 field.onChange(
                   value ||
                     (name === "starts_at" || name === "ends_at"
-                      ? undefined
+                      ? event[name]
+                        ? ""
+                        : undefined
                       : null),
                 )
               }
@@ -142,6 +146,7 @@ function TextField({
 }
 export function EventBasics() {
   const form = useFormContext<EventDraft>();
+  const { event } = useEventEditor();
   const format = useWatch({ control: form.control, name: "format" });
   return (
     <div className="grid gap-5 md:grid-cols-2">
@@ -151,7 +156,8 @@ export function EventBasics() {
           <Select
             {...props}
             {...form.register("format", {
-              setValueAs: (value: string) => value || undefined,
+              setValueAs: (value: string) =>
+                value || (event.format ? "" : undefined),
             })}
           >
             <option value="">Choose format</option>
@@ -173,7 +179,8 @@ export function EventBasics() {
               list="event-timezones"
               placeholder="Africa/Lagos"
               {...form.register("timezone", {
-                setValueAs: (value: string) => value || undefined,
+                setValueAs: (value: string) =>
+                  value || (event.timezone ? "" : undefined),
               })}
             />
             <datalist id="event-timezones">
@@ -298,6 +305,7 @@ export function EventDetails() {
             disabled={uploading}
             onChange={(change) => {
               const file = change.target.files?.[0];
+              change.target.value = "";
               if (file) void upload(file);
             }}
           />
@@ -311,6 +319,7 @@ export function EventDetails() {
       {uploadFailure && <Alert>{uploadFailure}</Alert>}
       <Button
         variant="secondary"
+        disabled={uploading}
         onClick={() => {
           form.setValue("image_key", null, { shouldDirty: true });
           setUploadStatus("Event image removed.");
