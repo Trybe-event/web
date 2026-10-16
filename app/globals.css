@@ -272,6 +272,7 @@ em {
   gap: 11px;
 }
 .auth-unavailable label,
+.trybe-auth-form label,
 .complete-form label {
   font-size: 12px;
   font-weight: 600;
@@ -290,6 +291,11 @@ em {
 }
 .auth-unavailable input:disabled {
   opacity: 0.6;
+}
+.trybe-auth-form input {
+  min-height: 48px;
+  border-radius: 10px;
+  font-size: 13px;
 }
 .auth-unavailable p,
 .setup-note {
@@ -348,14 +354,6 @@ em {
   text-align: center;
   margin: 28px auto 0;
   max-width: 350px;
-}
-.trybe-clerk-root,
-.trybe-clerk-box {
-  width: 100% !important;
-}
-.trybe-clerk-card {
-  box-shadow: none !important;
-  border: 1px solid var(--line) !important;
 }
 .notice {
   padding: 24px;
