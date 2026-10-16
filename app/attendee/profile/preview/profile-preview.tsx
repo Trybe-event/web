@@ -1,7 +1,9 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useState } from "react";
 
+import { JoinEvent } from "@/components/events/join-event";
 import {
   Alert,
   Avatar,
@@ -11,6 +13,7 @@ import {
   Skeleton,
 } from "@/components/ui";
 import { api, errorMessage, type Schemas } from "@/lib/api/client";
+import { routes, withEventParam } from "@/lib/routes";
 
 import { LINK_LABELS } from "../labels";
 
@@ -28,8 +31,19 @@ const VIEWERS: { id: Viewer; label: string; explain: string }[] = [
   },
 ];
 
-// ProfilePreview shows exactly what the API sends to each kind of viewer.
-export function ProfilePreview({ onboarding }: { onboarding: boolean }) {
+// ProfilePreview shows exactly what the API sends to each kind of viewer. When the
+// attendee is onboarding from an event, this screen is also the visibility review
+// of web#7: it carries the explicit confirm that joins the event and opens the
+// workspace, and nothing registers until that button is pressed.
+export function ProfilePreview({
+  onboarding,
+  eventSlug,
+  eventName,
+}: {
+  onboarding: boolean;
+  eventSlug?: string;
+  eventName?: string;
+}) {
   const [viewer, setViewer] = useState<Viewer>("event_member");
   const [views, setViews] = useState<
     Partial<Record<Viewer, Schemas["Profile"]>>
@@ -55,7 +69,9 @@ export function ProfilePreview({ onboarding }: { onboarding: boolean }) {
       <div>
         <h1 className="text-3xl font-bold">
           {onboarding
-            ? "Here's how people will see you"
+            ? eventName
+              ? `Here's how people at ${eventName} will see you`
+              : "Here's how people will see you"
             : "Preview your profile"}
         </h1>
         <p className="mt-2 text-muted">
@@ -85,21 +101,56 @@ export function ProfilePreview({ onboarding }: { onboarding: boolean }) {
         {current && <PreviewCard profile={current} />}
       </section>
       <div className="flex flex-wrap gap-3">
-        <ButtonLink href="/attendee/profile/edit" variant="secondary">
+        <ButtonLink
+          href={withEventParam(
+            onboarding
+              ? "/attendee/profile/edit?onboarding=1"
+              : "/attendee/profile/edit",
+            eventSlug,
+          )}
+          variant="secondary"
+        >
           Edit profile
         </ButtonLink>
-        <ButtonLink
-          href={onboarding ? "/attendee/profile" : "/attendee/profile/settings"}
-          variant={onboarding ? "primary" : "secondary"}
-        >
-          {onboarding ? "Looks good" : "Privacy settings"}
-        </ButtonLink>
+        {onboarding && eventSlug ? (
+          <>
+            <JoinEvent
+              slug={eventSlug}
+              name={eventName ?? eventSlug}
+              label={`Confirm and join ${eventName ?? eventSlug}`}
+            />
+            <Link
+              className="text-sm font-semibold"
+              href={routes.eventLanding(eventSlug)}
+            >
+              Continue to the event page without joining yet
+            </Link>
+          </>
+        ) : (
+          <ButtonLink
+            href={
+              onboarding ? "/attendee/profile" : "/attendee/profile/settings"
+            }
+            variant={onboarding ? "primary" : "secondary"}
+          >
+            {onboarding ? "Looks good" : "Privacy settings"}
+          </ButtonLink>
+        )}
       </div>
+      {onboarding && eventSlug && (
+        <p className="text-sm text-muted">
+          Nothing has been shared yet. You join {eventName ?? eventSlug} only
+          when you confirm.
+        </p>
+      )}
     </div>
   );
 }
 
-function PreviewCard({ profile }: { profile: Schemas["Profile"] }) {
+// PreviewCard is the shared rendering of a profile as one viewer kind receives it: the
+// profile preview screen and the join review on /{slug} both use it, so what an attendee
+// is shown before joining is exactly what the API sends to event members (web#8).
+export function PreviewCard({ profile }: { profile: Schemas["Profile"] }) {
   return (
     <Card className="flex flex-col gap-4">
       <div className="flex items-center gap-4">

@@ -272,6 +272,7 @@ em {
   gap: 11px;
 }
 .auth-unavailable label,
+.trybe-auth-form label,
 .complete-form label {
   font-size: 12px;
   font-weight: 600;
@@ -290,6 +291,11 @@ em {
 }
 .auth-unavailable input:disabled {
   opacity: 0.6;
+}
+.trybe-auth-form input {
+  min-height: 48px;
+  border-radius: 10px;
+  font-size: 13px;
 }
 .auth-unavailable p,
 .setup-note {
@@ -348,14 +354,6 @@ em {
   text-align: center;
   margin: 28px auto 0;
   max-width: 350px;
-}
-.trybe-clerk-root,
-.trybe-clerk-box {
-  width: 100% !important;
-}
-.trybe-clerk-card {
-  box-shadow: none !important;
-  border: 1px solid var(--line) !important;
 }
 .notice {
   padding: 24px;
@@ -523,6 +521,22 @@ em {
   border: 1px solid var(--line);
   border-radius: 30px;
 }
+.workspace-switcher {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  border-bottom: 1px solid var(--line);
+  padding: 16px 0;
+}
+.switcher-label {
+  font-size: 10px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.switcher-select {
+  max-width: 340px;
+}
 .workspace-welcome {
   margin: 65px 0 40px;
 }
@@ -674,6 +688,14 @@ em {
   }
   .workspace-badge {
     display: none;
+  }
+  .workspace-switcher {
+    align-items: stretch;
+    flex-direction: column;
+    gap: 8px;
+  }
+  .switcher-select {
+    max-width: none;
   }
   .workspace-grid {
     grid-template-columns: 1fr;
