@@ -11,6 +11,11 @@ import { EventSwitcher } from "./event-switcher";
 import { SignOut } from "./sign-out";
 import { ThemeToggle } from "./theme-toggle";
 
+const ATTENDEE_LINKS = [
+  { href: "/attendee/profile", label: "Profile" },
+  { href: "/attendee/connections", label: "Connections" },
+] as const;
+
 // WorkspaceShell is the header and frame shared by organizer and attendee workspaces.
 // Attendee pages pass the memberships from GET /me/events, which renders the event
 // switcher (web#9) under the header.
@@ -36,6 +41,19 @@ export function WorkspaceShell({
             {type === "organizer" ? "Organizer" : "Attendee"} workspace
           </span>
           <ThemeToggle />
+          {type === "attendee" && (
+            <nav className="workspace-nav" aria-label="Attendee sections">
+              {ATTENDEE_LINKS.map((link) => (
+                <Link
+                  key={link.href}
+                  href={link.href}
+                  className="text-sm font-medium text-muted hover:text-paper"
+                >
+                  {link.label}
+                </Link>
+              ))}
+            </nav>
+          )}
           <SignOut />
         </div>
       </header>

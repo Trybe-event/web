@@ -244,6 +244,50 @@ export const apiMockHandlers = [
     return HttpResponse.json(preferences);
   }),
 
+  http.get("/api/me/connection-requests", ({ request }) => {
+    const direction = new URL(request.url).searchParams.get("direction");
+    if (direction !== "incoming" && direction !== "outgoing")
+      return HttpResponse.json<ApiSchemas["Error"]>(
+        { code: "invalid", message: "direction must be incoming or outgoing" },
+        { status: 400 },
+      );
+    const items = notifications
+      .filter(
+        (n) =>
+          n.kind === "connection_request" &&
+          n.read === false &&
+          n.subject_id !== "b1000000-0000-0000-0000-00000000000a" &&
+          n.text != null,
+      )
+      .map((n) => ({
+        id: n.subject_id,
+        event_id: "11111111-1111-4111-8111-111111111111",
+        status: "pending" as const,
+        message: n.text!.replace(" asked to connect with you.", ""),
+        direction: direction === "incoming" ? "incoming" : "outgoing",
+        other: n.actor,
+        created_at: n.created_at,
+      } as ApiSchemas["ConnectionRequest"]));
+    return HttpResponse.json({ items });
+  }),
+
+  http.get("/api/me/connections", () =>
+    HttpResponse.json({
+      items: [
+        {
+          id: "b1000000-0000-0000-0000-00000000000b",
+          origin_event_id: "11111111-1111-4111-8111-111111111111",
+          connected_at: "2026-10-16T09:00:00Z",
+          other: demoActor,
+        },
+      ],
+    }),
+  ),
+
+  http.delete("/api/connections/:connectionId", () =>
+    new HttpResponse(null, { status: 204 }),
+  ),
+
   http.post("/api/connection-requests/:requestId/:action", ({ params }) => {
     const action = params.action as "accept" | "reject" | "cancel";
     const request_ = notifications.find(
