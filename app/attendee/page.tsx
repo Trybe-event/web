@@ -5,6 +5,7 @@ import {
   WorkspaceUnavailable,
 } from "@/components/auth/workspace";
 import { serverApi } from "@/lib/api/server";
+import { listMyEvents } from "@/lib/events";
 import { requireAccount } from "@/lib/session";
 
 export const metadata: Metadata = { title: "Attendee workspace" };
@@ -20,16 +21,22 @@ async function hasProfile(): Promise<boolean | null> {
 }
 
 export default async function AttendeeHome() {
-  const g = await requireAccount("attendee");
-  if ("unavailable" in g) return <WorkspaceUnavailable type="attendee" />;
-  const profile = await hasProfile();
-  const firstName = g.account.full_name.split(" ")[0] ?? "there";
+  const accountAccess = await requireAccount("attendee");
+  if ("unavailable" in accountAccess)
+    return <WorkspaceUnavailable type="attendee" />;
+  const [profileExists, events] = await Promise.all([
+    hasProfile(),
+    listMyEvents(),
+  ]);
+  const attendsEvents = events.length > 0;
+  const firstName = accountAccess.account.full_name.split(" ")[0] ?? "there";
   return (
     <WorkspaceHome
       type="attendee"
       firstName={firstName}
+      events={events}
       card={
-        profile === false
+        profileExists === false
           ? {
               title: "Introduce yourself.",
               body: "Create the profile you'll bring to every event. Your contact details stay private until you choose to share them.",
@@ -38,15 +45,19 @@ export default async function AttendeeHome() {
             }
           : {
               title: "Your profile is ready.",
-              body: "Review what people at your events will see, and choose what each contact detail shows. Event invitations and discovery arrive next.",
-              href: "/attendee/profile",
-              cta: "View your profile",
+              body: attendsEvents
+                ? "Pick an event above to open its workspace, or review what people at your events will see."
+                : "Review what people at your events will see, and choose what each contact detail shows. Event invitations and discovery arrive next.",
+              href: attendsEvents
+                ? "/attendee/profile/preview"
+                : "/attendee/profile",
+              cta: attendsEvents ? "Review your profile" : "View your profile",
             }
       }
       privacy={{
         body: "Your contact details stay private by default. You choose what to share with event members and with connections.",
         status:
-          profile === false
+          profileExists === false
             ? "Profile setup comes next"
             : "Privacy settings available",
       }}
