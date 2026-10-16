@@ -15,6 +15,20 @@ let privacy: ApiSchemas["PrivacySettings"] = {
   ai_matching_opt_out: false,
 };
 
+// A published demo event so organizer screens (web#5 share panel) can be built
+// before the backend lands. registration_url is what the QR encodes.
+const demoEvent: ApiSchemas["Event"] = {
+  name: "Lagos Product Summit 2026",
+  slug: "lagos-product-summit-2026",
+  registration_url: "/e/lagos-product-summit-2026",
+  status: "published",
+  registration_state: "open",
+  networking_state: "open",
+  id: "f2d1a2a4-0f0e-4c1d-9d3a-5a5f3f6b7c01",
+  created_at: now(),
+  updated_at: now(),
+};
+
 const notFound = (message: string) =>
   HttpResponse.json<ApiSchemas["Error"]>(
     { code: "not_found", message },
@@ -70,6 +84,12 @@ export const apiMockHandlers = [
     privacy = (await request.json()) as ApiSchemas["PrivacySettings"];
     return HttpResponse.json(privacy);
   }),
+
+  http.get("/api/events/:eventId", ({ params }) =>
+    params.eventId === "event-not-found"
+      ? notFound("We couldn't find that event.")
+      : HttpResponse.json(demoEvent),
+  ),
 
   http.post("/api/uploads", () =>
     HttpResponse.json<ApiSchemas["Error"]>(
