@@ -610,6 +610,9 @@ paths:
                         profile: { $ref: "#/components/schemas/Profile" }
                         score: { type: number }
                         reasons: { type: array, items: { type: string } }
+        "409":
+          description: Networking isn't open (code networking_not_open or networking_closed)
+          content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } }
 
   # ------------------------------------------------------------------ connections
   /connection-requests:
@@ -958,16 +961,45 @@ paths:
                 properties:
                   messages: { type: integer }
                   notifications: { type: integer }
+  /ws/tickets:
+    post:
+      tags: [messaging]
+      operationId: createSocketTicket
+      summary: Single-use ticket for opening the chat socket
+      description: |
+        Browsers can't send the session on a WebSocket, and the web proxy can't carry an
+        upgrade, so the browser opens the socket on the API directly with a ticket from here
+        (requested through the proxy like any other call). A ticket works once, within 60 s.
+      x-account: attendee
+      x-milestone: M4
+      responses:
+        "201":
+          description: Ticket
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [ticket, expires_at]
+                properties:
+                  ticket: { type: string }
+                  expires_at: { type: string, format: date-time }
   /ws:
     get:
       tags: [messaging]
       operationId: chatSocket
       summary: WebSocket upgrade for live chat; authorized on connect and on every action
-      x-account: attendee
+      description: |
+        Opened directly on the API (not through the web proxy) with a ticket from
+        POST /ws/tickets, from the web app's origin only. Frames are JSON; see docs/messaging.md.
+      x-account: public
       x-milestone: M4
+      parameters:
+        - { name: ticket, in: query, required: true, schema: { type: string } }
       responses:
         "101": { description: Switching protocols }
         "200": { description: Not used; the endpoint always upgrades }
+        "401": { $ref: "#/components/responses/Error" }
+        "403": { $ref: "#/components/responses/Error" }
 
   # ------------------------------------------------------------------ lifecycle
   /events/{eventId}/archive:
@@ -990,6 +1022,10 @@ paths:
                   event: { $ref: "#/components/schemas/PublicEvent" }
                   program: { $ref: "#/components/schemas/Program" }
                   attendees: { type: array, items: { $ref: "#/components/schemas/Profile" } }
+        "403": { $ref: "#/components/responses/Error" }
+        "409":
+          description: Networking hasn't closed yet (code archive_not_ready)
+          content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } }
 
   # ------------------------------------------------------------------ metrics
   /feedback:
