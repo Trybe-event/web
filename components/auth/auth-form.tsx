@@ -34,12 +34,16 @@ type Step =
   | "phone"
   | "totp";
 // Clerk authenticates; the existing completion route binds the account type.
+// An event in the query (web#7, web#8) is carried into the destination, so an
+// attendee signing in from an event page returns to that event.
 export function AuthForm({
   type,
   mode,
+  eventSlug,
 }: {
   type: AccountType;
   mode: "sign-in" | "sign-up";
+  eventSlug?: string;
 }) {
   const workspaceRoute = workspacePath(type);
   const credentialsSchema =
@@ -113,6 +117,7 @@ export function AuthForm({
                 workspaceRoute,
                 signingUp,
                 Boolean(session?.currentTask),
+                eventSlug,
               ),
             ),
           );
