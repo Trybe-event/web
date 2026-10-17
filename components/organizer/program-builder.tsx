@@ -54,10 +54,26 @@ export function ProgramBuilder() {
   const [serverErrors, setServerErrors] = useState<Record<string, string>>({});
   const lock = useRef(false);
   const [editor, setEditor] = useState<Editor>();
+  const editorContainer = useRef<HTMLDivElement>(null);
+  const hasSchedule = Boolean(
+    event.starts_at && event.ends_at && event.timezone,
+  );
   useEffect(() => {
-    setSectionBusy("program", Boolean(editor) || busy);
+    if (!editor) return;
+    editorContainer.current
+      ?.querySelector<HTMLElement>("h4")
+      ?.focus({ preventScroll: true });
+    editorContainer.current?.scrollIntoView({
+      behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches
+        ? "instant"
+        : "smooth",
+      block: "start",
+    });
+  }, [editor]);
+  useEffect(() => {
+    setSectionBusy("program", Boolean(editor) || busy || !program);
     return () => setSectionBusy("program", false);
-  }, [editor, busy, setSectionBusy]);
+  }, [editor, busy, program, setSectionBusy]);
   const [removing, setRemoving] = useState<{
     day?: Schemas["ProgramDay"];
     session?: Schemas["Session"];
@@ -168,9 +184,15 @@ export function ProgramBuilder() {
         Build your program
       </h3>
       <p className="text-sm text-muted">
-        Add days, sessions and speakers. Parallel sessions can share a time
-        slot.
+        Optionally add days, sessions and speakers. Parallel sessions can share
+        a time slot.
       </p>
+      {!hasSchedule && (
+        <p className="text-sm text-muted">
+          Complete and save your event dates and timezone in Event basics before
+          adding program days.
+        </p>
+      )}
       {failure && (
         <Alert>
           {failure}
@@ -299,7 +321,7 @@ export function ProgramBuilder() {
           ))}
           <Button
             size="sm"
-            disabled={busy}
+            disabled={busy || !hasSchedule}
             onClick={() => setEditor({ kind: "session", day })}
           >
             Add session
@@ -309,63 +331,75 @@ export function ProgramBuilder() {
       {program && (
         <Button
           variant="secondary"
-          disabled={busy}
+          disabled={busy || !hasSchedule}
           onClick={() => setEditor({ kind: "day" })}
         >
           Add program day
         </Button>
       )}
-      {editor?.kind === "day" && (
-        <DayEditor
-          key={editor.day?.id || "new-day"}
-          day={editor.day}
-          busy={busy}
-          serverErrors={serverErrors}
-          onCancel={() => setEditor(undefined)}
-          onSave={(body) =>
-            change(() =>
-              editor.day
-                ? api.PATCH("/events/{eventId}/program/days/{dayId}", {
-                    params: {
-                      path: { eventId: event.id, dayId: editor.day.id },
-                    },
-                    body,
-                  })
-                : api.POST("/events/{eventId}/program/days", {
-                    params: { path: { eventId: event.id } },
-                    body,
-                  }),
-            )
-          }
-        />
-      )}
-      {editor?.kind === "session" && (
-        <SessionEditor
-          key={editor.session?.id || `new-session-${editor.day.id}`}
-          editor={editor}
-          event={event}
-          busy={busy}
-          serverErrors={serverErrors}
-          onCancel={() => setEditor(undefined)}
-          onSave={(body) =>
-            change(() =>
-              editor.session
-                ? api.PATCH("/events/{eventId}/program/sessions/{sessionId}", {
-                    params: {
-                      path: { eventId: event.id, sessionId: editor.session.id },
-                    },
-                    body,
-                  })
-                : api.POST("/events/{eventId}/program/days/{dayId}/sessions", {
-                    params: {
-                      path: { eventId: event.id, dayId: editor.day.id },
-                    },
-                    body,
-                  }),
-            )
-          }
-        />
-      )}
+      <div ref={editorContainer} className="scroll-mt-28">
+        {editor?.kind === "day" && (
+          <DayEditor
+            key={editor.day?.id || "new-day"}
+            day={editor.day}
+            event={event}
+            busy={busy}
+            serverErrors={serverErrors}
+            onCancel={() => setEditor(undefined)}
+            onSave={(body) =>
+              change(() =>
+                editor.day
+                  ? api.PATCH("/events/{eventId}/program/days/{dayId}", {
+                      params: {
+                        path: { eventId: event.id, dayId: editor.day.id },
+                      },
+                      body,
+                    })
+                  : api.POST("/events/{eventId}/program/days", {
+                      params: { path: { eventId: event.id } },
+                      body,
+                    }),
+              )
+            }
+          />
+        )}
+        {editor?.kind === "session" && (
+          <SessionEditor
+            key={editor.session?.id || `new-session-${editor.day.id}`}
+            editor={editor}
+            event={event}
+            busy={busy}
+            serverErrors={serverErrors}
+            onCancel={() => setEditor(undefined)}
+            onSave={(body) =>
+              change(() =>
+                editor.session
+                  ? api.PATCH(
+                      "/events/{eventId}/program/sessions/{sessionId}",
+                      {
+                        params: {
+                          path: {
+                            eventId: event.id,
+                            sessionId: editor.session.id,
+                          },
+                        },
+                        body,
+                      },
+                    )
+                  : api.POST(
+                      "/events/{eventId}/program/days/{dayId}/sessions",
+                      {
+                        params: {
+                          path: { eventId: event.id, dayId: editor.day.id },
+                        },
+                        body,
+                      },
+                    ),
+              )
+            }
+          />
+        )}
+      </div>
       <Dialog
         open={!!removing}
         onClose={() => {
@@ -423,12 +457,14 @@ export function ProgramBuilder() {
   );
 }
 function DayEditor({
+  event,
   day,
   busy,
   serverErrors,
   onSave,
   onCancel,
 }: {
+  event: Schemas["Event"];
   day?: Schemas["ProgramDay"];
   busy: boolean;
   serverErrors: Record<string, string>;
@@ -450,9 +486,34 @@ function DayEditor({
   }, [serverErrors, form]);
   return (
     <Card className="space-y-4">
-      <h4 className="font-bold">{day ? "Edit day" : "Add day"}</h4>
+      <h4 tabIndex={-1} className="font-bold">
+        {day ? "Edit day" : "Add day"}
+      </h4>
       <Field label="Date" error={form.formState.errors.date?.message}>
-        {(props) => <Input {...props} type="date" {...form.register("date")} />}
+        {(props) => (
+          <Input
+            {...props}
+            type="date"
+            required
+            min={
+              event.starts_at
+                ? localEventTime(
+                    event.starts_at,
+                    event.timezone || "UTC",
+                  ).slice(0, 10)
+                : undefined
+            }
+            max={
+              event.ends_at
+                ? localEventTime(event.ends_at, event.timezone || "UTC").slice(
+                    0,
+                    10,
+                  )
+                : undefined
+            }
+            {...form.register("date")}
+          />
+        )}
       </Field>
       <Field
         label="Day title"
@@ -532,7 +593,7 @@ function SessionEditor({
   }
   return (
     <Card className="space-y-4">
-      <h4 className="font-bold">
+      <h4 tabIndex={-1} className="font-bold">
         {editor.session ? "Edit session" : "Add session"}
       </h4>
       {(["title", "room", "track"] as const).map((name) => (
@@ -548,7 +609,13 @@ function SessionEditor({
           optional={name !== "title"}
           error={form.formState.errors[name]?.message}
         >
-          {(props) => <Input {...props} {...form.register(name)} />}
+          {(props) => (
+            <Input
+              {...props}
+              required={name === "title"}
+              {...form.register(name)}
+            />
+          )}
         </Field>
       ))}
       <Field
@@ -573,6 +640,10 @@ function SessionEditor({
                 <EventTimeInput
                   {...props}
                   value={field.value}
+                  name={field.name}
+                  ref={field.ref}
+                  onBlur={field.onBlur}
+                  required
                   timezone={event.timezone || "UTC"}
                   onValidationError={(message) =>
                     form.setError(name, { message })
@@ -597,12 +668,20 @@ function SessionEditor({
               optional={name !== "name"}
               error={form.formState.errors.speakers?.[index]?.[name]?.message}
             >
-              {(props) => (
-                <Input
-                  {...props}
-                  {...form.register(`speakers.${index}.${name}`)}
-                />
-              )}
+              {(props) =>
+                name === "bio" ? (
+                  <Textarea
+                    {...props}
+                    {...form.register(`speakers.${index}.${name}`)}
+                  />
+                ) : (
+                  <Input
+                    {...props}
+                    required={name === "name"}
+                    {...form.register(`speakers.${index}.${name}`)}
+                  />
+                )
+              }
             </Field>
           ))}
           <Button
