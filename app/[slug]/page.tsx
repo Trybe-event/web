@@ -15,7 +15,35 @@ import {
 import { isEventSlug, routes, withEventParam } from "@/lib/routes";
 import { getSession } from "@/lib/session";
 
-export const metadata: Metadata = { title: "Event" };
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ slug: string }>;
+}): Promise<Metadata> {
+  const { slug } = await params;
+  const unavailable: Metadata = {
+    title: "Event invitation",
+    robots: { index: false, follow: false },
+  };
+  if (!isEventSlug(slug)) return unavailable;
+  const result = await getPublicEvent(slug);
+  if (result.kind !== "found") return unavailable;
+  const { event } = result;
+  // PublicEvent does not expose visibility. Keep every invitation unindexed so a
+  // private event cannot accidentally become searchable through this shared route.
+  return {
+    title: event.name,
+    description:
+      event.summary ||
+      "Set up your profile, explore the program, and meet the right people.",
+    robots: { index: false, follow: false },
+    openGraph: {
+      title: event.name,
+      description: event.summary || "Meet the right people at this event.",
+      type: "website",
+    },
+  };
+}
 
 const FORMAT_LABELS = {
   physical: "In person",
@@ -54,36 +82,42 @@ export default async function EventLanding({
   return (
     <main className="mx-auto max-w-2xl px-4 py-12">
       <h1 className="font-display text-3xl font-bold">{name}</h1>
-      {
-        <>
-          <p className="mt-3 text-muted">
-            {[
-              FORMAT_LABELS[event.format],
-              new Date(event.starts_at).toLocaleDateString("en-GB", {
-                dateStyle: "long",
-                timeZone: event.timezone,
-              }),
-              event.venue_name,
-            ]
-              .filter(Boolean)
-              .join(" · ")}
-          </p>
-          {event.summary && <p className="mt-4">{event.summary}</p>}
-          {event.description && (
-            <p className="mt-4 whitespace-pre-wrap">{event.description}</p>
-          )}
-          {event.venue_address && (
-            <p className="mt-3 text-muted">{event.venue_address}</p>
-          )}
-          <section className="mt-8 space-y-4" aria-label="Event program">
-            <h2 className="text-xl font-bold">Program</h2>
-            <ProgramView
-              program={event.program ?? { days: [] }}
-              timezone={event.timezone}
-            />
-          </section>
-        </>
-      }
+      <p className="mt-3 text-muted">
+        {[
+          FORMAT_LABELS[event.format],
+          new Date(event.starts_at).toLocaleString("en-GB", {
+            dateStyle: "long",
+            timeStyle: "short",
+            timeZone: event.timezone,
+          }),
+          event.venue_name,
+        ]
+          .filter(Boolean)
+          .join(" · ")}
+      </p>
+      <p className="mt-2 text-sm text-muted">
+        Ends{" "}
+        {new Date(event.ends_at).toLocaleString("en-GB", {
+          dateStyle: "long",
+          timeStyle: "short",
+          timeZone: event.timezone,
+        })}{" "}
+        ({event.timezone})
+      </p>
+      {event.summary && <p className="mt-4">{event.summary}</p>}
+      {event.description && (
+        <p className="mt-4 whitespace-pre-wrap">{event.description}</p>
+      )}
+      {event.venue_address && (
+        <p className="mt-3 text-muted">{event.venue_address}</p>
+      )}
+      <section className="mt-8 space-y-4" aria-label="Event program">
+        <h2 className="text-xl font-bold">Program</h2>
+        <ProgramView
+          program={event.program ?? { days: [] }}
+          timezone={event.timezone}
+        />
+      </section>
 
       <EventAction
         slug={slug}
@@ -137,6 +171,13 @@ function EventAction({
         outcome={{ kind: "published", registrationState }}
         slug={slug}
       />
+    );
+
+  if (sessionKind === "unavailable" || sessionKind === "unconfigured")
+    return (
+      <div className="mt-8">
+        <EventLinkState outcome={{ kind: "unreachable" }} />
+      </div>
     );
 
   if (attendee && preview?.kind === "review")

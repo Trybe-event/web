@@ -12,6 +12,8 @@ async function landing({
   member = false,
   preview = "review",
   unavailable = false,
+  session = "attendee",
+  metadata = false,
 } = {}) {
   const element = (tag) =>
     function TestElement({ children, ...props }) {
@@ -49,6 +51,7 @@ async function landing({
                 name: "Trybe gathering",
                 format: "physical",
                 starts_at: "2026-12-01T09:00:00Z",
+                ends_at: "2026-12-01T17:00:00Z",
                 timezone: "Africa/Lagos",
                 registration_state: state,
               },
@@ -61,13 +64,22 @@ async function landing({
     },
     "@/lib/routes": {
       isEventSlug: () => true,
-      routes: { eventWorkspace: (slug) => `/events/${slug}` },
-      withEventParam: (path) => path,
+      routes: {
+        eventWorkspace: (slug) => `/events/${slug}`,
+        attendeeSignIn: "/attendee/sign-in",
+        attendeeSignUp: "/attendee/sign-up",
+      },
+      withEventParam: (path, slug) => `${path}?event=${slug}`,
     },
     "@/lib/session": {
       getSession: async () => ({
-        kind: "bound",
-        account: { type: "attendee" },
+        kind:
+          session === "signed-out"
+            ? "signed-out"
+            : session === "unavailable"
+              ? "unavailable"
+              : "bound",
+        account: { type: session },
       }),
     },
   };
@@ -87,6 +99,10 @@ async function landing({
     loaded,
     loaded.exports,
   );
+  if (metadata)
+    return loaded.exports.generateMetadata({
+      params: Promise.resolve({ slug: "trybe-gathering" }),
+    });
   const view = await loaded.exports.default({
     params: Promise.resolve({ slug: "trybe-gathering" }),
   });
@@ -104,6 +120,31 @@ test("registration requires a loaded profile review and open registration", asyn
   ]) {
     assert.doesNotMatch(await landing(options), /Confirm and join/);
   }
+});
+
+test("public landing renders event-local schedule and invitation entry points without profiles", async () => {
+  const page = await landing({ session: "signed-out" });
+  assert.match(page, /Trybe gathering/);
+  assert.match(page, /10:00/);
+  assert.match(page, /18:00/);
+  assert.match(page, /attendee\/sign-up\?event=trybe-gathering/);
+  assert.doesNotMatch(page, /Confirm and join/);
+  assert.doesNotMatch(
+    await landing({ session: "organizer" }),
+    /Join this event|Confirm and join/,
+  );
+  assert.doesNotMatch(
+    await landing({ session: "unavailable" }),
+    /Join this event|Confirm and join/,
+  );
+});
+test("link metadata identifies only resolved events and never indexes invitation routes", async () => {
+  const found = await landing({ metadata: true });
+  assert.equal(found.openGraph.title, "Trybe gathering");
+  assert.equal(found.robots.index, false);
+  const failed = await landing({ metadata: true, unavailable: true });
+  assert.equal(failed.title, "Event invitation");
+  assert.equal(failed.openGraph, undefined);
 });
 test("existing membership remains accessible when registration closes", async () => {
   assert.match(
