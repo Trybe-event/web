@@ -22,9 +22,11 @@ import { AttendeeCard } from "./attendee-card";
 export function AttendeeDirectory({
   eventId,
   filters,
+  slug,
 }: {
   eventId: string;
   filters: DirectoryFilters;
+  slug: string;
 }) {
   const router = useRouter();
   const pathname = usePathname();
@@ -227,7 +229,11 @@ export function AttendeeDirectory({
       {profiles && (
         <div className="grid gap-4 xl:grid-cols-2">
           {profiles.map((profile) => (
-            <AttendeeCard key={profile.attendee_id} profile={profile} />
+            <AttendeeCard
+              key={profile.attendee_id}
+              profile={profile}
+              slug={slug}
+            />
           ))}
         </div>
       )}

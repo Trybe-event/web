@@ -1,12 +1,14 @@
-import { Avatar, Badge, Card } from "@/components/ui";
+import { Avatar, Badge, ButtonLink, Card } from "@/components/ui";
 import type { Schemas } from "@/lib/api/client";
 
 export function AttendeeCard({
   profile,
   reasons,
+  slug,
 }: {
   profile: Schemas["Profile"];
   reasons?: string[];
+  slug?: string;
 }) {
   return (
     <Card className="min-w-0 space-y-3 break-words">
@@ -31,6 +33,14 @@ export function AttendeeCard({
       </div>
       {profile.accepting_requests === false && (
         <Badge>Not accepting requests</Badge>
+      )}
+      {slug && (
+        <ButtonLink
+          variant="secondary"
+          href={`/events/${encodeURIComponent(slug)}/attendees/${encodeURIComponent(profile.attendee_id)}`}
+        >
+          View profile
+        </ButtonLink>
       )}
     </Card>
   );
