@@ -4,6 +4,7 @@ The Trybe organizer and attendee application, built with Next.js (App Router), C
 
 - How we work: [`CONVENTIONS.md`](CONVENTIONS.md) and [`AGENTS.md`](AGENTS.md)
 - Shared integration and merge checklist: [`CONTRIBUTING.md`](CONTRIBUTING.md)
+- Required product scope and milestone gates: [`Trybe MVP`](docs/trybe-mvp.md) ([PDF](docs/trybe-mvp.pdf))
 - API contract: [`contract/openapi.yaml`](contract/openapi.yaml), synced from `Trybe-event/api`
 - How M1 was consolidated and where to pick up: [`docs/m1-consolidation.md`](docs/m1-consolidation.md)
 
