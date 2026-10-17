@@ -1,5 +1,5 @@
 "use client";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Controller, useFormContext, useWatch } from "react-hook-form";
 import {
   Alert,
@@ -218,9 +218,14 @@ export function EventBasics() {
 }
 export function EventDetails() {
   const form = useFormContext<EventDraft>();
+  const { setSectionBusy } = useEventEditor();
   const [uploadStatus, setUploadStatus] = useState<string>();
   const [uploadFailure, setUploadFailure] = useState<string>();
   const [uploading, setUploading] = useState(false);
+  useEffect(() => {
+    setSectionBusy("image", uploading);
+    return () => setSectionBusy("image", false);
+  }, [uploading, setSectionBusy]);
   async function upload(file: File) {
     setUploadFailure(undefined);
     if (
