@@ -7,7 +7,7 @@
   },
   "scripts": {
     "predev": "node scripts/check-dependencies.mjs",
-    "dev": "next dev",
+    "dev": "next dev --port 3000",
     "build": "next build",
     "start": "next start",
     "lint": "eslint .",
