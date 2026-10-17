@@ -1,8 +1,8 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { useFormContext, type FieldPath } from "react-hook-form";
+import { useFormContext } from "react-hook-form";
 import { Alert, Button, Card, Field, Select } from "@/components/ui";
 import { api, errorMessage, fieldErrors, type Schemas } from "@/lib/api/client";
 import { eventDraftValues, type EventDraft } from "@/lib/event-form";
@@ -46,21 +46,40 @@ function reviewedValue(name: keyof EventDraft, event: Schemas["Event"]) {
 
 export function EventSettings() {
   const form = useFormContext<EventDraft>();
-  const { event, save, busySections, setSectionBusy } = useEventEditor();
+  const { event, save, busySections, setSectionBusy, reportErrors } =
+    useEventEditor();
   const router = useRouter();
   const [review, setReview] = useState<Review>();
   const [failure, setFailure] = useState<string>();
   const [pending, setPending] = useState(false);
+  const [publishedEvent, setPublishedEvent] = useState<Schemas["Event"]>();
   const requestLock = useRef(createPublicationLock());
+  const reviewHeading = useRef<HTMLHeadingElement>(null);
+  useEffect(() => {
+    if (!review) return;
+    reviewHeading.current?.focus({ preventScroll: true });
+    reviewHeading.current?.scrollIntoView({
+      behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches
+        ? "instant"
+        : "smooth",
+      block: "start",
+    });
+  }, [review]);
   const hasUnfinishedEdits = [...busySections].some(
     (section) => section !== "publication",
   );
 
   function showErrors(errors: Record<string, string>) {
-    for (const [name, message] of Object.entries(errors))
-      form.setError(name as FieldPath<EventDraft>, { message });
+    reportErrors(errors);
   }
   async function loadReview(): Promise<Review> {
+    const localErrors = publicationErrors(form.getValues());
+    if (Object.keys(localErrors).length) {
+      showErrors(localErrors);
+      throw new Error(
+        "Complete the highlighted event details before continuing to review.",
+      );
+    }
     if (!(await save()))
       throw new Error(
         "Fix the highlighted fields and save your changes, then review again.",
@@ -114,6 +133,7 @@ export function EventSettings() {
           showErrors(fieldErrors(result.error));
           throw new Error(errorMessage(result.error));
         }
+        setPublishedEvent(result.data);
         router.replace(
           `/organizer/events/${encodeURIComponent(result.data.id)}/share`,
         );
@@ -137,7 +157,7 @@ export function EventSettings() {
         error={form.formState.errors.visibility?.message}
       >
         {(props) => (
-          <Select {...props} {...form.register("visibility")}>
+          <Select {...props} required {...form.register("visibility")}>
             <option value="">Choose visibility</option>
             <option value="private">Private</option>
             <option value="public">Public</option>
@@ -189,11 +209,18 @@ export function EventSettings() {
         disabled={hasUnfinishedEdits}
         onClick={() => void perform(false)}
       >
-        Save and review event
+        Continue to review
       </Button>
       {review && (
         <Card className="space-y-5" aria-label="Saved event review">
-          <h3 className="text-xl font-bold">Review your event</h3>
+          <span className="eyebrow">FINAL STEP</span>
+          <h3
+            ref={reviewHeading}
+            tabIndex={-1}
+            className="scroll-mt-28 text-xl font-bold"
+          >
+            Review and publish your event
+          </h3>
           <p className="text-sm text-muted">
             These are your saved details. Confirmation checks for changes before
             publishing this same event.
@@ -258,13 +285,33 @@ export function EventSettings() {
           ))}
           <Button
             loading={pending}
-            disabled={hasUnfinishedEdits || review.event.status === "ended"}
+            disabled={
+              hasUnfinishedEdits ||
+              review.event.status === "ended" ||
+              Boolean(publishedEvent)
+            }
             onClick={() => void perform(true)}
           >
             {review.event.status === "draft"
-              ? "Confirm and publish event"
+              ? "Publish event and get your link"
               : "Confirm and open event management"}
           </Button>
+          {publishedEvent && (
+            <div
+              role="status"
+              className="space-y-2 rounded-lg border border-line p-4"
+            >
+              <strong>Your event is published.</strong>
+              <p className="text-sm">
+                Opening the share page with your registration link and QR code.
+              </p>
+              {publishedEvent.registration_url && (
+                <p className="break-all text-sm">
+                  {publishedEvent.registration_url}
+                </p>
+              )}
+            </div>
+          )}
         </Card>
       )}
     </div>

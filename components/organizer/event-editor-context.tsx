@@ -6,6 +6,7 @@ export const EventEditorContext = createContext<{
   save: () => Promise<boolean>;
   busySections: ReadonlySet<string>;
   setSectionBusy: (section: string, busy: boolean) => void;
+  reportErrors: (errors: Record<string, string>) => void;
 } | null>(null);
 export function useEventEditor() {
   const context = useContext(EventEditorContext);
