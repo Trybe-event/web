@@ -7,6 +7,7 @@ export function EventWorkspaceNavigation({ slug }: { slug: string }) {
   const base = `/events/${encodeURIComponent(slug)}`;
   const links = [
     { title: "Matches", href: base },
+    { title: "All attendees", href: `${base}/attendees` },
     { title: "Program", href: `${base}/program` },
     { title: "Notifications", href: "/attendee/notifications" },
     { title: "Profile", href: "/attendee/profile" },
@@ -27,8 +28,7 @@ export function EventWorkspaceNavigation({ slug }: { slug: string }) {
           {link.title}
         </Link>
       ))}
-      {/* TODO(web#12): enable directory navigation when its route lands. */}
-      {["All attendees", "Connections", "Inbox"].map((title) => (
+      {["Connections", "Inbox"].map((title) => (
         <button
           key={title}
           type="button"

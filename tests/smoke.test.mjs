@@ -13,7 +13,12 @@ const get = (path, options = {}) =>
 const location = (r) => new URL(r.headers.get("location"), base).pathname;
 
 test("all event workspace pages require attendee authentication", async () => {
-  for (const path of ["/events/community", "/events/community/program"]) {
+  for (const path of [
+    "/events/community",
+    "/events/community/program",
+    "/events/community/attendees",
+    "/events/community/attendees/20000000-0000-4000-8000-000000000001",
+  ]) {
     const response = await get(path);
     assert.ok([303, 307, 308].includes(response.status), path);
     assert.equal(location(response), "/attendee/sign-in", path);
