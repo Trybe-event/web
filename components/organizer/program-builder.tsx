@@ -2,7 +2,12 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useEffect, useRef, useState } from "react";
 import { Controller, useFieldArray, useForm } from "react-hook-form";
-import { z } from "zod";
+import {
+  programDaySchema,
+  programDayError,
+  sessionSchema,
+  sessionScheduleErrors,
+} from "@/lib/event-program";
 import {
   Alert,
   Badge,
@@ -26,30 +31,12 @@ type Editor =
       day: Schemas["ProgramDay"];
       session?: Schemas["Session"];
     };
-const sessionSchema = z.object({
-  title: z.string().trim().min(1, "Required.").max(200),
-  description: z.string().max(4000).optional(),
-  starts_at: z.string().datetime({ offset: true }),
-  ends_at: z.string().datetime({ offset: true }),
-  room: z.string().max(120).nullable().optional(),
-  track: z.string().max(120).nullable().optional(),
-  speakers: z
-    .array(
-      z.object({
-        name: z.string().trim().min(1).max(120),
-        role: z.string().max(120).nullable().optional(),
-        organization: z.string().max(160).nullable().optional(),
-        bio: z.string().max(1000).nullable().optional(),
-      }),
-    )
-    .max(10)
-    .optional(),
-});
-
 export function ProgramBuilder() {
   const { event, save, setSectionBusy } = useEventEditor();
   const [program, setProgram] = useState<Schemas["Program"]>();
   const [failure, setFailure] = useState<string>();
+  const [notice, setNotice] = useState<string>();
+  const programHeading = useRef<HTMLHeadingElement>(null);
   const [busy, setBusy] = useState(false);
   const [serverErrors, setServerErrors] = useState<Record<string, string>>({});
   const lock = useRef(false);
@@ -114,6 +101,7 @@ export function ProgramBuilder() {
     lock.current = true;
     setBusy(true);
     setFailure(undefined);
+    setNotice(undefined);
     setServerErrors({});
     try {
       if (!(await save()))
@@ -134,6 +122,20 @@ export function ProgramBuilder() {
       setRemoving(undefined);
       try {
         await reload();
+        setNotice(
+          "Program saved. Your days, sessions and speaker details are up to date.",
+        );
+        if (editor)
+          requestAnimationFrame(() => {
+            programHeading.current?.focus({ preventScroll: true });
+            programHeading.current?.scrollIntoView({
+              behavior: window.matchMedia("(prefers-reduced-motion: reduce)")
+                .matches
+                ? "instant"
+                : "smooth",
+              block: "start",
+            });
+          });
       } catch {
         setFailure(
           "The change was saved, but the program could not refresh. Reload it before making more changes.",
@@ -180,13 +182,23 @@ export function ProgramBuilder() {
       className="space-y-4 border-t border-line pt-6"
       aria-labelledby="program-builder-heading"
     >
-      <h3 id="program-builder-heading" className="text-lg font-bold">
+      <h3
+        ref={programHeading}
+        tabIndex={-1}
+        id="program-builder-heading"
+        className="scroll-mt-28 text-lg font-bold"
+      >
         Build your program
       </h3>
       <p className="text-sm text-muted">
         Optionally add days, sessions and speakers. Parallel sessions can share
         a time slot.
       </p>
+      {notice && (
+        <p role="status" className="text-sm">
+          {notice}
+        </p>
+      )}
       {!hasSchedule && (
         <p className="text-sm text-muted">
           Complete and save your event dates and timezone in Event basics before
@@ -257,6 +269,11 @@ export function ProgramBuilder() {
               className="space-y-2 rounded-lg border border-line p-3"
             >
               <h5 className="font-semibold">{session.title}</h5>
+              {session.description && (
+                <p className="whitespace-pre-wrap text-sm text-muted">
+                  {session.description}
+                </p>
+              )}
               <p className="text-sm text-muted">
                 {localEventTime(
                   session.starts_at,
@@ -472,12 +489,7 @@ function DayEditor({
   onCancel: () => void;
 }) {
   const form = useForm<Schemas["ProgramDayInput"]>({
-    resolver: zodResolver(
-      z.object({
-        date: z.string().date(),
-        title: z.string().max(200).nullable().optional(),
-      }),
-    ),
+    resolver: zodResolver(programDaySchema),
     defaultValues: { date: day?.date || "", title: day?.title || "" },
   });
   useEffect(() => {
@@ -526,7 +538,15 @@ function DayEditor({
         <Button
           loading={busy}
           onClick={() => {
-            void form.handleSubmit((body) => onSave(body))();
+            void form.handleSubmit((body) => {
+              const error = programDayError(body.date, event);
+              if (error) {
+                form.setError("date", { message: error });
+                form.setFocus("date");
+                return;
+              }
+              return onSave(body);
+            })();
           }}
         >
           Save day
@@ -571,22 +591,11 @@ function SessionEditor({
   }, [serverErrors, form]);
   const speakers = useFieldArray({ control: form.control, name: "speakers" });
   async function submit(body: Schemas["SessionInput"]) {
-    if (Date.parse(body.ends_at) <= Date.parse(body.starts_at)) {
-      form.setError("ends_at", { message: "End must be after start." });
-      return;
-    }
-    if (
-      !event.starts_at ||
-      !event.ends_at ||
-      Date.parse(body.starts_at) < Date.parse(event.starts_at) ||
-      Date.parse(body.ends_at) > Date.parse(event.ends_at) ||
-      localEventTime(body.starts_at, event.timezone || "UTC").slice(0, 10) !==
-        editor.day.date
-    ) {
-      form.setError("starts_at", {
-        message:
-          "Choose a time on this program day within the event's schedule. Save the event dates first.",
-      });
+    const errors = sessionScheduleErrors(body, editor.day, event);
+    if (Object.keys(errors).length) {
+      for (const [name, message] of Object.entries(errors))
+        form.setError(name as keyof Schemas["SessionInput"], { message });
+      form.setFocus(Object.keys(errors)[0] as keyof Schemas["SessionInput"]);
       return;
     }
     await onSave(body);
@@ -596,6 +605,10 @@ function SessionEditor({
       <h4 tabIndex={-1} className="font-bold">
         {editor.session ? "Edit session" : "Add session"}
       </h4>
+      <p className="text-sm text-muted">
+        Program day: {editor.day.date}. All session times use{" "}
+        {event.timezone || "UTC"}.
+      </p>
       {(["title", "room", "track"] as const).map((name) => (
         <Field
           key={name}
