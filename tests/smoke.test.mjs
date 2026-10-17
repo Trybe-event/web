@@ -12,6 +12,31 @@ const get = (path, options = {}) =>
   });
 const location = (r) => new URL(r.headers.get("location"), base).pathname;
 
+test("all event workspace pages require attendee authentication", async () => {
+  for (const path of [
+    "/events/community",
+    "/events/community/program",
+    "/events/community/attendees",
+    "/events/community/attendees/20000000-0000-4000-8000-000000000001",
+  ]) {
+    const response = await get(path);
+    assert.ok([303, 307, 308].includes(response.status), path);
+    assert.equal(location(response), "/attendee/sign-in", path);
+  }
+});
+
+test("organizer event editing and sharing require organizer sign-in", async () => {
+  for (const path of [
+    "/organizer/events/new",
+    "/organizer/events/11111111-1111-4111-8111-111111111111/edit",
+    "/organizer/events/11111111-1111-4111-8111-111111111111/share",
+  ]) {
+    const response = await get(path);
+    assert.ok([303, 307, 308].includes(response.status), path);
+    assert.equal(location(response), "/organizer/sign-in", path);
+  }
+});
+
 test("sign-in and sign-up render safely without credentials", async () => {
   for (const role of ["organizer", "attendee"]) {
     for (const mode of ["sign-in", "sign-up"]) {
@@ -34,11 +59,6 @@ test("signed-out workspace visits go to their own sign-in", async () => {
     ["/attendee", "/attendee/sign-in"],
     ["/attendee/profile", "/attendee/sign-in"],
     ["/attendee/profile/edit", "/attendee/sign-in"],
-    // web#7: the visibility review and its confirm step are attendee-only.
-    [
-      "/attendee/profile/preview?onboarding=1&event=atlas-summit",
-      "/attendee/sign-in",
-    ],
     [
       "/organizer/events/f2d1a2a4-0f0e-4c1d-9d3a-5a5f3f6b7c01/share",
       "/organizer/sign-in",

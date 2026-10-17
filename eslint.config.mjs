@@ -6,6 +6,8 @@ export default defineConfig([
   ...nextVitals,
   ...nextTs,
   globalIgnores([
+    ".agent/**",
+    ".npm-cache/**",
     ".next/**",
     "out/**",
     "next-env.d.ts",

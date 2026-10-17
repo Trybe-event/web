@@ -1,19 +1,10 @@
 // Unit tests for the event-link state screens (web#10), run with node --test.
+// The pure module in lib/registration/link-states.ts is JSX-free, so these
+// import it directly (Node 22 strips TS types by default).
 import test from "node:test";
 import assert from "node:assert/strict";
-import { readFileSync } from "node:fs";
-import ts from "typescript";
 
-const source = readFileSync(
-  new URL("../lib/registration/link-states.ts", import.meta.url),
-  "utf8",
-);
-const javascript = ts.transpileModule(source, {
-  compilerOptions: { module: ts.ModuleKind.ESNext },
-}).outputText;
-const { eventLinkScreen } = await import(
-  `data:text/javascript;base64,${Buffer.from(javascript).toString("base64")}`
-);
+import { eventLinkScreen } from "../lib/registration/link-states.ts";
 
 const notFoundOutcome = { kind: "lookup", httpStatus: 404, code: "not_found" };
 

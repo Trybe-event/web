@@ -911,6 +911,28 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/ws/tickets": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Single-use ticket for opening the chat socket
+         * @description Browsers can't send the session on a WebSocket, and the web proxy can't carry an
+         *     upgrade, so the browser opens the socket on the API directly with a ticket from here
+         *     (requested through the proxy like any other call). A ticket works once, within 60 s.
+         */
+        post: operations["createSocketTicket"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/ws": {
         parameters: {
             query?: never;
@@ -918,7 +940,11 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** WebSocket upgrade for live chat; authorized on connect and on every action */
+        /**
+         * WebSocket upgrade for live chat; authorized on connect and on every action
+         * @description Opened directly on the API (not through the web proxy) with a ticket from
+         *     POST /ws/tickets, from the web app's origin only. Frames are JSON; see docs/messaging.md.
+         */
         get: operations["chatSocket"];
         put?: never;
         post?: never;
@@ -2264,6 +2290,15 @@ export interface operations {
                     };
                 };
             };
+            /** @description Networking isn't open (code networking_not_open or networking_closed) */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
         };
     };
     sendConnectionRequest: {
@@ -2802,9 +2837,35 @@ export interface operations {
             };
         };
     };
-    chatSocket: {
+    createSocketTicket: {
         parameters: {
             query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Ticket */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        ticket: string;
+                        /** Format: date-time */
+                        expires_at: string;
+                    };
+                };
+            };
+        };
+    };
+    chatSocket: {
+        parameters: {
+            query: {
+                ticket: string;
+            };
             header?: never;
             path?: never;
             cookie?: never;
@@ -2825,6 +2886,8 @@ export interface operations {
                 };
                 content?: never;
             };
+            401: components["responses"]["Error"];
+            403: components["responses"]["Error"];
         };
     };
     getEventArchive: {
@@ -2849,6 +2912,16 @@ export interface operations {
                         program: components["schemas"]["Program"];
                         attendees: components["schemas"]["Profile"][];
                     };
+                };
+            };
+            403: components["responses"]["Error"];
+            /** @description Networking hasn't closed yet (code archive_not_ready) */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
                 };
             };
         };

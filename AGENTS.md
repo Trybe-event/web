@@ -35,6 +35,8 @@ Breaking either rule is a release-blocking defect, even if every test passes.
 
 ## Sources of truth, in this order
 
+Read [CONTRIBUTING.md](CONTRIBUTING.md) for the shared integration, verification and handoff checklist used by all contributors and coding assistants.
+
 1. **The GitHub issue you are working on.** Its Scope, Implementation plan and Acceptance criteria define the work. Read the whole issue, including "Depends on", "Your sequence" and "Workflow".
 2. **`openapi/openapi.yaml`** in `Trybe-event/api`. The contract between frontend and backend. Every request, response, field name and error code comes from here.
 3. **`CONVENTIONS.md`** in the repository. Layout, branches, migrations, logging, tests.
@@ -228,3 +230,13 @@ Keep updates short and factual: what's done, what's next, what's blocked. No res
 - [ ] Only files in the issue's area changed; no contract edits; no unrelated formatting
 - [ ] Branch synced with `milestone/<mN>`; PR opened into `milestone/<mN>` with the template filled in
 - [ ] Progress file shows every checklist item ticked
+
+<!-- BEGIN:nextjs-agent-rules -->
+
+## This is NOT the Next.js you know
+
+This version has breaking changes — APIs, conventions, and file structure may all differ from your training data. Read the relevant guide in `node_modules/next/dist/docs/` (resolved from this file's directory; in monorepos the `next` package may not be visible from the repo root) before writing any code. Heed deprecation notices.
+
+This block is written and re-added by `next dev` — verify at `node_modules/next/dist/server/lib/generate-agent-files.js`. Removing it from a diff only re-creates the uncommitted change; committing it with your work keeps the tree clean.
+
+<!-- END:nextjs-agent-rules -->
