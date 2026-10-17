@@ -2,7 +2,8 @@ import { ArrowUpRight, CalendarDays, Plus } from "lucide-react";
 import Link from "next/link";
 import { Suspense } from "react";
 
-import { Badge, ButtonLink, Card, EmptyState, Skeleton } from "@/components/ui";
+import { ButtonLink, Card, EmptyState, Skeleton } from "@/components/ui";
+import { EventStatusBadges } from "./event-status-badges";
 import {
   loadOrganizerEvents,
   loadRegistrationTrend,
@@ -11,12 +12,6 @@ import {
 
 import { RegistrationTrend } from "./registration-trend";
 import { RetryDashboard } from "./retry-dashboard";
-
-const STATUS_LABELS: Record<OrganizerEvent["status"], string> = {
-  draft: "Draft",
-  published: "Published",
-  ended: "Ended",
-};
 
 export function DashboardLoading() {
   return (
@@ -44,14 +39,12 @@ function EventRow({ event }: { event: OrganizerEvent }) {
   const destination =
     event.status === "draft"
       ? `/organizer/events/${encodeURIComponent(event.id)}/edit`
-      : `/organizer/events/${encodeURIComponent(event.id)}`;
+      : `/organizer/events/${encodeURIComponent(event.id)}/share`;
   return (
     <Card className="grid min-w-0 gap-6 md:grid-cols-[minmax(0,1fr)_14rem]">
       <div className="min-w-0">
         <div className="mb-3 flex flex-wrap items-center gap-2">
-          <Badge tone={event.status === "published" ? "accent" : "neutral"}>
-            {STATUS_LABELS[event.status]}
-          </Badge>
+          <EventStatusBadges event={event} />
         </div>
         <h3 className="break-words text-xl font-bold">
           <Link

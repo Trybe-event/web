@@ -59,6 +59,7 @@ export const CONTRACT_ROUTES: ReadonlyArray<readonly [string, string]> = [
   ["POST", "/conversations/{conversationId}/messages"],
   ["POST", "/conversations/{conversationId}/read"],
   ["GET", "/me/unread"],
+  ["POST", "/ws/tickets"],
   ["GET", "/ws"],
   ["GET", "/events/{eventId}/archive"],
   ["POST", "/feedback"],
