@@ -118,6 +118,7 @@ export function ProfilePreview({
               slug={eventSlug}
               name={eventName ?? eventSlug}
               label={`Confirm and join ${eventName ?? eventSlug}`}
+              disabled={!views.event_member || Boolean(failure)}
             />
             <Link
               className="text-sm font-semibold"

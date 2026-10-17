@@ -2,8 +2,9 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 
-import { JoinEvent } from "@/components/events/join-event";
 import { JoinReview } from "@/components/events/join-review";
+import { ProgramView } from "@/components/events/program-view";
+import { EventLinkState } from "@/components/registration/event-link-states";
 import { ButtonLink } from "@/components/ui";
 import {
   getJoinPreview,
@@ -33,24 +34,27 @@ export default async function EventLanding({
   if (!isEventSlug(slug)) notFound();
 
   const session = await getSession();
-  // Without Clerk keys there is no session to read and no sign-in to offer, so the
-  // page stays a public notice; the join links still carry the slug.
-  const result =
-    session.kind === "unconfigured" ? null : await getPublicEvent(slug);
-  if (result?.kind === "not_found") notFound();
-
-  const event = result?.kind === "found" ? result.event : null;
+  const result = await getPublicEvent(slug);
+  if (result.kind === "not_found")
+    return (
+      <EventLinkState
+        outcome={{ kind: "lookup", httpStatus: 404, code: "not_found" }}
+      />
+    );
+  if (result.kind === "unavailable")
+    return <EventLinkState outcome={{ kind: "unreachable" }} />;
+  const event = result.event;
   const attendee =
     session.kind === "bound" && session.account.type === "attendee";
   const member = attendee ? await hasEventMembership(slug) : false;
   // Only an attendee who is not in the event yet has anything to review.
   const preview = attendee && !member ? await getJoinPreview(slug) : null;
-  const name = event?.name ?? slug;
+  const name = event.name;
 
   return (
     <main className="mx-auto max-w-2xl px-4 py-12">
       <h1 className="font-display text-3xl font-bold">{name}</h1>
-      {event ? (
+      {
         <>
           <p className="mt-3 text-muted">
             {[
@@ -65,15 +69,21 @@ export default async function EventLanding({
               .join(" · ")}
           </p>
           {event.summary && <p className="mt-4">{event.summary}</p>}
+          {event.description && (
+            <p className="mt-4 whitespace-pre-wrap">{event.description}</p>
+          )}
+          {event.venue_address && (
+            <p className="mt-3 text-muted">{event.venue_address}</p>
+          )}
+          <section className="mt-8 space-y-4" aria-label="Event program">
+            <h2 className="text-xl font-bold">Program</h2>
+            <ProgramView
+              program={event.program ?? { days: [] }}
+              timezone={event.timezone}
+            />
+          </section>
         </>
-      ) : (
-        <p className="mt-3 text-muted">
-          {result?.kind === "unavailable"
-            ? "This event's details are temporarily unavailable."
-            : "The full event landing page arrives in M2."}{" "}
-          This event is at <code>/{slug}</code>.
-        </p>
-      )}
+      }
 
       <EventAction
         slug={slug}
@@ -82,6 +92,7 @@ export default async function EventLanding({
         attendee={attendee}
         sessionKind={session.kind}
         preview={preview}
+        registrationState={event.registration_state}
       />
     </main>
   );
@@ -98,6 +109,7 @@ function EventAction({
   attendee,
   sessionKind,
   preview,
+  registrationState,
 }: {
   slug: string;
   name: string;
@@ -105,14 +117,26 @@ function EventAction({
   attendee: boolean;
   sessionKind: string;
   preview: JoinPreviewResult | null;
+  registrationState: "not_open" | "open" | "closed";
 }) {
-  if (attendee && member)
+  if (
+    attendee &&
+    (member || (preview?.kind === "review" && preview.preview.alreadyMember))
+  )
     return (
       <div className="mt-8">
         <ButtonLink href={routes.eventWorkspace(slug)}>
           Open your event workspace
         </ButtonLink>
       </div>
+    );
+
+  if (registrationState !== "open")
+    return (
+      <EventLinkState
+        outcome={{ kind: "published", registrationState }}
+        slug={slug}
+      />
     );
 
   if (attendee && preview?.kind === "review")
@@ -138,11 +162,9 @@ function EventAction({
     );
 
   if (attendee)
-    // The API couldn't provide the review. Joining stays possible and is idempotent,
-    // and the API is the authority on whether this attendee may join.
     return (
       <div className="mt-8">
-        <JoinEvent slug={slug} name={name} />
+        <EventLinkState outcome={{ kind: "unreachable" }} />
       </div>
     );
 

@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useRef, useState } from "react";
 
 import { Alert, Button } from "@/components/ui";
 import { api, errorMessage } from "@/lib/api/client";
@@ -14,38 +14,53 @@ export function JoinEvent({
   slug,
   name,
   label,
+  disabled = false,
 }: {
   slug: string;
   name: string;
   label?: string;
+  disabled?: boolean;
 }) {
   const router = useRouter();
   const [joining, setJoining] = useState(false);
   const [failure, setFailure] = useState("");
+  const pending = useRef(false);
 
   async function join() {
+    if (pending.current || disabled) return;
+    pending.current = true;
     setJoining(true);
     setFailure("");
-    const { error, response } = await api.POST("/e/{slug}/join", {
-      params: { path: { slug } },
-    });
-    if (!error) {
-      router.push(routes.eventWorkspace(slug));
-      router.refresh();
-      return;
+    try {
+      const { error, response } = await api.POST("/e/{slug}/join", {
+        params: { path: { slug } },
+      });
+      if (response.ok && !error) {
+        router.push(routes.eventWorkspace(slug));
+        router.refresh();
+        return;
+      }
+      setFailure(
+        response.status === 409
+          ? errorMessage(error, "You can't join this event right now.")
+          : errorMessage(
+              error,
+              "We couldn't join you to this event. Try again.",
+            ),
+      );
+    } catch {
+      setFailure("We couldn't join you to this event. Try again.");
+    } finally {
+      pending.current = false;
+      setJoining(false);
     }
-    setFailure(
-      response.status === 409
-        ? errorMessage(error, "You can't join this event right now.")
-        : errorMessage(error, "We couldn't join you to this event. Try again."),
-    );
-    setJoining(false);
   }
 
   return (
     <div className="flex flex-col items-start gap-3">
       <Button
         loading={joining}
+        disabled={disabled || joining}
         onClick={join}
         aria-label={label ?? `Join ${name}`}
       >
