@@ -4,6 +4,8 @@ import type { Schemas } from "@/lib/api/client";
 export const EventEditorContext = createContext<{
   event: Schemas["Event"];
   save: () => Promise<boolean>;
+  busySections: ReadonlySet<string>;
+  setSectionBusy: (section: string, busy: boolean) => void;
 } | null>(null);
 export function useEventEditor() {
   const context = useContext(EventEditorContext);
