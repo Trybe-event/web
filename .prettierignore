@@ -1,5 +1,7 @@
 .next
 node_modules
+.agent
+.npm-cache
 package-lock.json
 public/mockServiceWorker.js
 lib/api/schema.d.ts

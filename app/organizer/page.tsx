@@ -1,31 +1,47 @@
 import type { Metadata } from "next";
+import { Suspense } from "react";
 
 import {
-  WorkspaceHome,
+  WorkspaceShell,
   WorkspaceUnavailable,
 } from "@/components/auth/workspace";
+import {
+  DashboardLoading,
+  OrganizerDashboard,
+} from "@/components/organizer/dashboard";
+import { ButtonLink, Card } from "@/components/ui";
 import { requireAccount } from "@/lib/session";
 
 export const metadata: Metadata = { title: "Organizer workspace" };
 
-// Organizer home. The events dashboard replaces the placeholder card in web#1 (M2).
 export default async function OrganizerHome() {
-  const g = await requireAccount("organizer");
-  if ("unavailable" in g) return <WorkspaceUnavailable type="organizer" />;
-  const firstName = g.account.full_name.split(" ")[0] ?? "there";
+  const accountAccess = await requireAccount("organizer");
+  if ("unavailable" in accountAccess)
+    return <WorkspaceUnavailable type="organizer" />;
+  const firstName = accountAccess.account.full_name.split(" ")[0] ?? "there";
   return (
-    <WorkspaceHome
-      type="organizer"
-      firstName={firstName}
-      card={{
-        title: "The next room is yours to create.",
-        body: "Event creation and your registration dashboard arrive next. Your organizer account is ready.",
-        cta: "Account foundation ready",
-      }}
-      privacy={{
-        body: `This account manages events for ${g.account.organization ?? "your organization"}. It stays separate from attendee accounts.`,
-        status: "Organizer account confirmed",
-      }}
-    />
+    <WorkspaceShell type="organizer">
+      <section className="workspace-welcome">
+        <span className="eyebrow">MAKE ROOM FOR CONNECTION</span>
+        <h1>
+          Welcome, {firstName}
+          <span className="accent-period">.</span>
+        </h1>
+        <p>
+          Your events, your community. Keep track of the people signing up and
+          bring your next gathering to life.
+        </p>
+        <ButtonLink href="/organizer/events/new" className="mt-5">
+          Create event
+        </ButtonLink>
+      </section>
+      <Card className="border-lime bg-lime/10 text-sm">
+        <strong>Free demo access.</strong> Create and manage events at no cost
+        during this stage.
+      </Card>
+      <Suspense fallback={<DashboardLoading />}>
+        <OrganizerDashboard />
+      </Suspense>
+    </WorkspaceShell>
   );
 }
