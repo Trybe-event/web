@@ -15,6 +15,85 @@ vm.runInNewContext(`(function(require,module,exports){${compiled}\n})`, {
   URL,
 })(createRequire(import.meta.url), loaded, loaded.exports);
 const { eventDraftSchema, eventDraftValues } = loaded.exports;
+const publicationSource = ts.transpileModule(
+  readFileSync(new URL("../lib/event-publication.ts", import.meta.url), "utf8"),
+  { compilerOptions: { module: ts.ModuleKind.CommonJS } },
+).outputText;
+const publicationModule = { exports: {} };
+vm.runInNewContext(
+  `(function(require,module,exports){${publicationSource}\n})`,
+)(() => loaded.exports, publicationModule, publicationModule.exports);
+const { publicationErrors, createPublicationLock } = publicationModule.exports;
+
+test("double confirmation shares one request and a failed request permits retry", async () => {
+  const run = createPublicationLock();
+  let calls = 0;
+  let release;
+  const gate = new Promise((resolve) => {
+    release = resolve;
+  });
+  const first = run(async () => {
+    calls++;
+    await gate;
+    throw new Error("timeout");
+  });
+  const duplicate = run(async () => {
+    calls++;
+  });
+  assert.equal(first, duplicate);
+  release();
+  await assert.rejects(first, /timeout/);
+  assert.equal(calls, 1);
+  await run(async () => {
+    calls++;
+  });
+  assert.equal(calls, 2);
+});
+
+test("publication requires a complete schedule while partial drafts remain valid", () => {
+  assert.equal(eventDraftSchema.safeParse({}).success, true);
+  const missing = publicationErrors({});
+  for (const field of [
+    "name",
+    "format",
+    "timezone",
+    "starts_at",
+    "ends_at",
+    "visibility",
+  ])
+    assert.ok(missing[field], field);
+});
+
+test("publication requires the correct venue or virtual link for each format", () => {
+  const base = {
+    name: "Community",
+    timezone: "Africa/Lagos",
+    starts_at: "2026-11-01T10:00:00Z",
+    ends_at: "2026-11-01T12:00:00Z",
+    visibility: "private",
+  };
+  assert.ok(publicationErrors({ ...base, format: "physical" }).venue_address);
+  assert.ok(publicationErrors({ ...base, format: "virtual" }).attendance_url);
+  assert.equal(
+    Object.keys(
+      publicationErrors({
+        ...base,
+        format: "hybrid",
+        venue_name: "Hall",
+        venue_address: "Lagos",
+        attendance_url: "https://example.test/join",
+      }),
+    ).length,
+    0,
+  );
+  assert.ok(
+    publicationErrors({
+      ...base,
+      format: "virtual",
+      attendance_url: "javascript:alert(1)",
+    }).attendance_url,
+  );
+});
 test("empty event drafts are valid; unsafe time and link values never autosave", () => {
   assert.equal(eventDraftSchema.safeParse({}).success, true);
   for (const draft of [

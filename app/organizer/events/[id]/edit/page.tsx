@@ -1,5 +1,6 @@
 import { EventBasics, EventDetails } from "@/components/organizer/event-fields";
 import { EventForm } from "@/components/organizer/event-form";
+import { EventSettings } from "@/components/organizer/event-settings";
 import { WorkspaceShell } from "@/components/auth/workspace";
 import { requireAccount } from "@/lib/session";
 export default async function EditEventPage({
@@ -18,6 +19,7 @@ export default async function EditEventPage({
         eventId={eventId}
         basics={<EventBasics />}
         details={<EventDetails />}
+        settings={<EventSettings />}
       />
     </WorkspaceShell>
   );
