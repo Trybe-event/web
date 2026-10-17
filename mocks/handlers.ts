@@ -263,6 +263,60 @@ export const apiMockHandlers = [
     } as ApiSchemas["ConnectionRequest"]);
   }),
 
+  http.post("/api/blocks", () => new HttpResponse(null, { status: 204 })),
+
+  http.delete(
+    "/api/blocks/:attendeeId",
+    () => new HttpResponse(null, { status: 204 }),
+  ),
+
+  http.post("/api/reports", async ({ request }) => {
+    const body = (await request.json()) as {
+      target_type: string;
+      target_id: string;
+      reason: string;
+      details?: string;
+    };
+    return HttpResponse.json<ApiSchemas["Report"]>({
+      id: crypto.randomUUID(),
+      target_type: body.target_type,
+      target_id: body.target_id,
+      reason: body.reason,
+      details: body.details,
+      status: "open",
+      created_at: now(),
+    });
+  }),
+
+  http.get("/api/conversations", () =>
+    HttpResponse.json({
+      items: [
+        {
+          id: "c1000000-0000-0000-0000-000000000001",
+          connection_id: "b1000000-0000-0000-0000-00000000000b",
+          other: demoActor,
+          last_message: {
+            id: "m1000000-0000-0000-0000-000000000001",
+            conversation_id: "c1000000-0000-0000-0000-000000000001",
+            sender_id: "b1000000-0000-0000-0000-00000000000b",
+            body: "Hey! Great meeting you at the event.",
+            created_at: "2026-10-16T10:15:00Z",
+          },
+          unread: 1,
+          can_send: true,
+          created_at: "2026-10-16T10:00:00Z",
+        },
+      ],
+    }),
+  ),
+
+  http.get("/api/me/unread", () =>
+    HttpResponse.json({
+      messages: 1,
+      notifications: 2,
+    }),
+  ),
+
   http.post("/api/uploads", () =>
     HttpResponse.json<ApiSchemas["Error"]>(
       {

@@ -36,6 +36,28 @@ export function WorkspaceShell({
             {type === "organizer" ? "Organizer" : "Attendee"} workspace
           </span>
           <ThemeToggle />
+          {type === "attendee" && (
+            <nav className="workspace-nav" aria-label="Attendee sections">
+              <Link
+                href="/attendee/profile"
+                className="text-sm font-medium text-muted hover:text-paper"
+              >
+                Profile
+              </Link>
+              <Link
+                href="/attendee/connections"
+                className="text-sm font-medium text-muted hover:text-paper"
+              >
+                Connections
+              </Link>
+              <Link
+                href="/attendee/inbox"
+                className="text-sm font-medium text-muted hover:text-paper"
+              >
+                Inbox
+              </Link>
+            </nav>
+          )}
           <SignOut />
         </div>
       </header>
