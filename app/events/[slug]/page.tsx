@@ -1,74 +1,62 @@
-import type { Metadata } from "next";
-import Link from "next/link";
-import { notFound } from "next/navigation";
-import { CalendarDays, Users } from "lucide-react";
-
-import {
-  WorkspaceShell,
-  WorkspaceUnavailable,
-} from "@/components/auth/workspace";
+import { AttendeeCard } from "@/components/events/attendee-card";
+import { Alert, ButtonLink, EmptyState } from "@/components/ui";
 import { LeaveEvent } from "@/components/events/leave-event";
-import { listMyEvents } from "@/lib/events";
-import { isEventSlug, routes } from "@/lib/routes";
-import { requireAccount } from "@/lib/session";
+import { serverApi } from "@/lib/api/server";
+import { requireEventWorkspace } from "@/lib/event-workspace";
 
-export const metadata: Metadata = { title: "Event workspace" };
-
-// Attendee event workspace (web#11). The slug must be one of the caller's active
-// memberships from GET /me/events, so a non-member never sees the workspace.
 export default async function EventWorkspace({
   params,
 }: {
   params: Promise<{ slug: string }>;
 }) {
   const { slug } = await params;
-  if (!isEventSlug(slug)) notFound();
-
-  const g = await requireAccount("attendee");
-  if ("unavailable" in g) return <WorkspaceUnavailable type="attendee" />;
-
-  const events = await listMyEvents();
-  const current = events.find((event) => event.slug === slug);
-  if (!current) notFound();
-
+  const workspace = await requireEventWorkspace(slug);
+  if (workspace.kind !== "member") return null;
+  let matches;
+  try {
+    const client = await serverApi();
+    const result = await client.GET("/events/{eventId}/matches", {
+      params: { path: { eventId: workspace.event.id } },
+      signal: AbortSignal.timeout(8000),
+    });
+    if (result.response.ok) matches = result.data?.items;
+  } catch {
+    /* The retry state below preserves access to the rest of the event. */
+  }
   return (
-    <WorkspaceShell type="attendee" events={events} activeSlug={slug}>
-      <section className="workspace-welcome">
-        <span className="eyebrow">YOUR EVENT</span>
-        <h1>
-          {current.name}
-          <span className="accent-period">.</span>
-        </h1>
-        <p>
-          Welcome back, {g.account.full_name.split(" ")[0] ?? "there"}. Use the
-          switcher above to move between the events you belong to.
-        </p>
-      </section>
-      <section className="workspace-grid">
-        <div className="workspace-empty">
-          <div className="empty-icon">
-            <Users size={30} />
-          </div>
-          <span className="eyebrow">WHO IS HERE</span>
-          <h2>Matches and the attendee directory arrive next.</h2>
-          <p>
-            Once discovery is on, this is where you will see who else is at{" "}
-            {current.name} and who you should meet.
-          </p>
+    <div className="space-y-5">
+      <span className="eyebrow">{workspace.event.name}</span>
+      <h1 className="text-3xl font-bold">Your matches</h1>
+      <p className="text-muted">
+        Find people who share your interests and goals.
+      </p>
+      {!matches ? (
+        <Alert>
+          Matches could not be loaded.{" "}
+          <ButtonLink
+            variant="secondary"
+            href={`/events/${encodeURIComponent(slug)}`}
+          >
+            Try again
+          </ButtonLink>
+        </Alert>
+      ) : !matches.length ? (
+        <EmptyState title="No matches yet">
+          Update your skills, interests and goals to help people find you.
+        </EmptyState>
+      ) : (
+        <div className="grid gap-4 xl:grid-cols-2">
+          {matches.map(({ profile, reasons }) => (
+            <AttendeeCard
+              key={profile.attendee_id}
+              profile={profile}
+              reasons={reasons}
+              slug={slug}
+            />
+          ))}
         </div>
-        <aside className="privacy-card">
-          <CalendarDays size={26} aria-hidden="true" />
-          <h2>Event details</h2>
-          <p>
-            The public page for this event carries the programme, venue and
-            joining details.
-          </p>
-          <Link href={routes.eventLanding(slug)}>View the event page</Link>
-        </aside>
-      </section>
-      <section className="workspace-actions">
-        <LeaveEvent slug={slug} name={current.name} />
-      </section>
-    </WorkspaceShell>
+      )}
+      <LeaveEvent slug={slug} name={workspace.event.name} />
+    </div>
   );
 }
