@@ -6,6 +6,7 @@ import { http, HttpResponse } from "msw";
 import type { components } from "@/lib/api/schema";
 
 import { MOCK_MY_EVENTS, MOCK_PUBLIC_EVENTS } from "./fixtures";
+import { discoveryHandlers } from "./discovery";
 
 type ApiSchemas = components["schemas"];
 
@@ -133,6 +134,7 @@ let preferences: ApiSchemas["NotificationPreferences"] = {
 };
 
 export const apiMockHandlers = [
+  ...discoveryHandlers,
   http.get("/api/me/profile", () =>
     profile
       ? HttpResponse.json(profile)

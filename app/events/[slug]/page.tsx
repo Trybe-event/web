@@ -1,4 +1,5 @@
-import { Alert, Badge, ButtonLink, Card, EmptyState } from "@/components/ui";
+import { AttendeeCard } from "@/components/events/attendee-card";
+import { Alert, ButtonLink, EmptyState } from "@/components/ui";
 import { LeaveEvent } from "@/components/events/leave-event";
 import { serverApi } from "@/lib/api/server";
 import { requireEventWorkspace } from "@/lib/event-workspace";
@@ -46,24 +47,11 @@ export default async function EventWorkspace({
       ) : (
         <div className="grid gap-4 xl:grid-cols-2">
           {matches.map(({ profile, reasons }) => (
-            <Card
+            <AttendeeCard
               key={profile.attendee_id}
-              className="min-w-0 space-y-2 break-words"
-            >
-              <h2 className="text-xl font-bold">{profile.full_name}</h2>
-              <p>{profile.role}</p>
-              {profile.bio && (
-                <p className="text-sm text-muted">{profile.bio}</p>
-              )}
-              <div className="flex flex-wrap gap-2">
-                {reasons.map((reason, index) => (
-                  <Badge key={index}>{reason}</Badge>
-                ))}
-              </div>
-              {!profile.accepting_requests && (
-                <Badge>Not accepting requests</Badge>
-              )}
-            </Card>
+              profile={profile}
+              reasons={reasons}
+            />
           ))}
         </div>
       )}
