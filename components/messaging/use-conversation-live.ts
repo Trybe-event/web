@@ -115,8 +115,9 @@ export function useConversationLive({
             messagesRef.current([frame.message]);
           return;
         }
-        // The socket stays open for an error frame; the next action can fix it.
-        setStatus("retrying");
+        // This socket can't serve the thread (for example a rejected
+        // subscription), so close it and let onclose schedule a fresh ticket.
+        socket?.close();
       };
       socket.onclose = (event) => {
         if (!active) return;
