@@ -1,27 +1,12 @@
 import type { Metadata } from "next";
-import Link from "next/link";
 
-import { requireAccount } from "@/lib/session";
 import { InboxList } from "./inbox-list";
 
 export const metadata: Metadata = { title: "Inbox" };
 
-export default async function InboxPage() {
-  const g = await requireAccount("attendee");
-  if ("unavailable" in g) {
-    return (
-      <main className="workspace">
-        <section className="workspace-welcome notice" role="alert">
-          <h1>Your workspace is temporarily unavailable.</h1>
-          <p>
-            We couldn&apos;t confirm your account. No account details have been
-            changed.
-          </p>
-          <Link href="/attendee/sign-in">Try again</Link>
-        </section>
-      </main>
-    );
-  }
-
+// The list is a client concern: it reads GET /conversations and GET /me/unread
+// through the same-origin /api proxy and keeps the counts live from the
+// notification stream. The layout guards the page.
+export default function InboxPage() {
   return <InboxList />;
 }

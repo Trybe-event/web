@@ -2,6 +2,7 @@ import { ArrowUpRight, CalendarDays, ShieldCheck, Users } from "lucide-react";
 import Link from "next/link";
 import type { ReactNode } from "react";
 
+import { InboxBadge } from "@/components/messaging/inbox-badge";
 import { Logo } from "@/components/ui";
 import { type AccountType, workspacePath } from "@/lib/account";
 
@@ -37,25 +38,8 @@ export function WorkspaceShell({
           </span>
           <ThemeToggle />
           {type === "attendee" && (
-            <nav className="workspace-nav" aria-label="Attendee sections">
-              <Link
-                href="/attendee/profile"
-                className="text-sm font-medium text-muted hover:text-paper"
-              >
-                Profile
-              </Link>
-              <Link
-                href="/attendee/connections"
-                className="text-sm font-medium text-muted hover:text-paper"
-              >
-                Connections
-              </Link>
-              <Link
-                href="/attendee/inbox"
-                className="text-sm font-medium text-muted hover:text-paper"
-              >
-                Inbox
-              </Link>
+            <nav aria-label="Attendee sections">
+              <InboxBadge />
             </nav>
           )}
           <SignOut />
