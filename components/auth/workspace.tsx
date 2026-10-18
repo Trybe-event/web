@@ -2,6 +2,7 @@ import { ArrowUpRight, CalendarDays, ShieldCheck, Users } from "lucide-react";
 import Link from "next/link";
 import type { ReactNode } from "react";
 
+import { RelevancePrompt } from "@/components/feedback/relevance-prompt";
 import { Logo } from "@/components/ui";
 import { type AccountType, workspacePath } from "@/lib/account";
 
@@ -42,6 +43,9 @@ export function WorkspaceShell({
       {events && events.length > 0 && (
         <EventSwitcher events={events} activeSlug={activeSlug} />
       )}
+      {/* The relevance prompt follows the attendee between sections, in the flow of
+          the page so it can never block what they came to do (web#28). */}
+      {type === "attendee" && <RelevancePrompt />}
       {children}
     </main>
   );
