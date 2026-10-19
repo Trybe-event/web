@@ -318,6 +318,30 @@ test("only a message or error frame is acted on", () => {
   );
 });
 
+test("the inbox opens each conversation and the thread leads back", () => {
+  // The thread is only reachable through the inbox (web#19), so the two screens
+  // have to agree on the route even though they live on separate branches.
+  const inbox = readFileSync(
+    new URL("../app/attendee/inbox/inbox-list.tsx", import.meta.url),
+    "utf8",
+  );
+  assert.match(
+    inbox,
+    /href=\{`\/attendee\/inbox\/\$\{conversation\.id\}`\}/,
+    "a conversation card links to its thread",
+  );
+
+  const thread = readFileSync(
+    new URL("../components/messaging/conversation-thread.tsx", import.meta.url),
+    "utf8",
+  );
+  assert.match(
+    thread,
+    /href="\/attendee\/inbox"/,
+    "the thread links back to the inbox",
+  );
+});
+
 test("reconnect waits back off and stop retrying a rejected session", () => {
   assert.equal(reconnectDelay(0), 1000);
   assert.equal(reconnectDelay(1), 2000);

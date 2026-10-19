@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useState } from "react";
 
 import {
@@ -144,43 +145,55 @@ function ConversationCard({
   const lastMessage = conversation.last_message;
   const timestamp = conversationTimestamp(conversation);
 
+  // The card is the way into the thread (web#19); its accessible name is the
+  // person plus the unread count, not every line of the preview.
   return (
-    <Card className="flex items-start gap-3">
-      <Avatar name={other.full_name} src={other.photo_url} size={48} />
-      <div className="min-w-0 flex-1">
-        <div className="flex flex-wrap items-center gap-2">
-          <p className="truncate font-semibold">{other.full_name}</p>
-          {conversation.unread > 0 && (
-            <Badge
-              tone="accent"
-              aria-label={`${conversation.unread} unread messages`}
-            >
-              {conversation.unread} new
-            </Badge>
+    <Link
+      href={`/attendee/inbox/${conversation.id}`}
+      aria-label={
+        conversation.unread > 0
+          ? `Open conversation with ${other.full_name}, ${conversation.unread} unread`
+          : `Open conversation with ${other.full_name}`
+      }
+      className="block rounded-xl"
+    >
+      <Card className="flex items-start gap-3 transition-colors hover:bg-paper">
+        <Avatar name={other.full_name} src={other.photo_url} size={48} />
+        <div className="min-w-0 flex-1">
+          <div className="flex flex-wrap items-center gap-2">
+            <p className="truncate font-semibold">{other.full_name}</p>
+            {conversation.unread > 0 && (
+              <Badge
+                tone="accent"
+                aria-label={`${conversation.unread} unread messages`}
+              >
+                {conversation.unread} new
+              </Badge>
+            )}
+            {!conversation.can_send && (
+              <Badge tone="neutral">Connection ended</Badge>
+            )}
+          </div>
+          {other.role && (
+            <p className="text-sm text-muted">
+              {other.role}
+              {other.organization ? ` · ${other.organization}` : ""}
+            </p>
           )}
-          {!conversation.can_send && (
-            <Badge tone="neutral">Connection ended</Badge>
-          )}
-        </div>
-        {other.role && (
-          <p className="text-sm text-muted">
-            {other.role}
-            {other.organization ? ` · ${other.organization}` : ""}
+          <p className="mt-1 line-clamp-2 text-sm text-muted">
+            {lastMessage ? lastMessage.body : "No messages yet."}
           </p>
+        </div>
+        {timestamp && (
+          <time
+            dateTime={timestamp}
+            className="shrink-0 text-xs text-muted"
+            title={new Date(timestamp).toLocaleString()}
+          >
+            {conversationTimeLabel(timestamp, now)}
+          </time>
         )}
-        <p className="mt-1 line-clamp-2 text-sm text-muted">
-          {lastMessage ? lastMessage.body : "No messages yet."}
-        </p>
-      </div>
-      {timestamp && (
-        <time
-          dateTime={timestamp}
-          className="shrink-0 text-xs text-muted"
-          title={new Date(timestamp).toLocaleString()}
-        >
-          {conversationTimeLabel(timestamp, now)}
-        </time>
-      )}
-    </Card>
+      </Card>
+    </Link>
   );
 }
