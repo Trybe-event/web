@@ -14,6 +14,7 @@ import {
 import { api, errorMessage, type Schemas } from "@/lib/api/client";
 
 import { LINK_LABELS, VISIBILITY_LABELS } from "./labels";
+import { PortfolioLink } from "@/components/ui/portfolio-link";
 
 export function ProfileHome() {
   const router = useRouter();
@@ -71,12 +72,16 @@ export function ProfileHome() {
                       key={i}
                       className="flex flex-wrap items-center justify-between gap-2 text-sm"
                     >
-                      <span>
-                        <span className="font-semibold">
-                          {LINK_LABELS[l.kind]}:
-                        </span>{" "}
-                        {l.value}
-                      </span>
+                      {l.kind === "portfolio" ? (
+                        <PortfolioLink value={l.value} />
+                      ) : (
+                        <span>
+                          <span className="font-semibold">
+                            {LINK_LABELS[l.kind]}:
+                          </span>{" "}
+                          {l.value}
+                        </span>
+                      )}
                       <Badge
                         tone={l.visibility === "hidden" ? "neutral" : "accent"}
                       >
