@@ -140,22 +140,58 @@ const connectedActor: ApiSchemas["Profile"] = {
   relationship: "connected",
 };
 
-const conversations: ApiSchemas["Conversation"][] = [
+const demoConversationId = "c1000000-0000-0000-0000-000000000001";
+// Any id that isn't the other participant's stands in for the viewer, because
+// the thread tells its own messages apart by `sender_id !== other.attendee_id`.
+const demoSelfAttendeeId = "6f2c3d3c-11a1-4c4c-9d9e-000000000002";
+
+// Oldest first, the order the thread renders. The inbox card's last_message is
+// the newest of these (web#19).
+let messages: ApiSchemas["Message"][] = [
   {
-    id: "c1000000-0000-0000-0000-000000000001",
+    id: "m1000000-0000-0000-0000-000000000001",
+    conversation_id: demoConversationId,
+    sender_id: connectedActor.attendee_id,
+    body: "Hey! Great meeting you at the event.",
+    created_at: "2026-10-16T10:15:00Z",
+  },
+  {
+    id: "m1000000-0000-0000-0000-000000000002",
+    conversation_id: demoConversationId,
+    sender_id: demoSelfAttendeeId,
+    body: "You too. Your talk on onboarding stuck with me.",
+    created_at: "2026-10-16T10:18:00Z",
+  },
+  {
+    id: "m1000000-0000-0000-0000-000000000003",
+    conversation_id: demoConversationId,
+    sender_id: connectedActor.attendee_id,
+    body: "Thanks! Want to swap notes next week?",
+    created_at: "2026-10-16T10:20:00Z",
+  },
+];
+
+let conversations: ApiSchemas["Conversation"][] = [
+  {
+    id: demoConversationId,
     connection_id: "b1000000-0000-0000-0000-00000000000b",
     other: connectedActor,
-    last_message: {
-      id: "m1000000-0000-0000-0000-000000000001",
-      conversation_id: "c1000000-0000-0000-0000-000000000001",
-      sender_id: connectedActor.attendee_id,
-      body: "Hey! Great meeting you at the event.",
-      created_at: "2026-10-16T10:15:00Z",
-    },
+    last_message: messages[2],
     unread: 1,
     can_send: true,
   },
 ];
+
+function setConversation(
+  conversationId: string,
+  change: Partial<ApiSchemas["Conversation"]>,
+) {
+  conversations = conversations.map((conversation) =>
+    conversation.id === conversationId
+      ? { ...conversation, ...change }
+      : conversation,
+  );
+}
 
 export const apiMockHandlers = [
   http.get("/api/me/profile", () =>
@@ -291,6 +327,114 @@ export const apiMockHandlers = [
   http.get("/api/conversations", () =>
     HttpResponse.json({ items: conversations }),
   ),
+
+  // Newest first with a cursor, matching the contract (web#19).
+  http.get(
+    "/api/conversations/:conversationId/messages",
+    ({ params, request }) => {
+      const conversationId = slugParam(params.conversationId);
+      if (!conversations.some((item) => item.id === conversationId))
+        return notFound("That conversation isn't in your inbox.");
+      const url = new URL(request.url);
+      const limit = Math.min(
+        100,
+        Math.max(1, Number(url.searchParams.get("limit") ?? 25) || 25),
+      );
+      const cursor = url.searchParams.get("cursor");
+      const newestFirst = [...messages].sort(
+        (left, right) =>
+          right.created_at.localeCompare(left.created_at) ||
+          right.id.localeCompare(left.id),
+      );
+      const start = cursor
+        ? Math.max(
+            0,
+            newestFirst.findIndex((message) => message.id === cursor) + 1,
+          )
+        : 0;
+      const items = newestFirst.slice(start, start + limit);
+      return HttpResponse.json({
+        items,
+        next_cursor:
+          start + limit < newestFirst.length
+            ? (items.at(-1)?.id ?? null)
+            : null,
+      });
+    },
+  ),
+
+  http.post(
+    "/api/conversations/:conversationId/messages",
+    async ({ params, request }) => {
+      const conversationId = slugParam(params.conversationId);
+      const conversation = conversations.find(
+        (item) => item.id === conversationId,
+      );
+      if (!conversation)
+        return notFound("That conversation isn't in your inbox.");
+      const body = (await request.json()) as { body?: string };
+      const text = (body.body ?? "").trim();
+      if (text.length < 1 || text.length > 4000)
+        return HttpResponse.json<ApiSchemas["Error"]>(
+          {
+            code: "invalid",
+            message: "Messages must be between 1 and 4000 characters.",
+            fields: { body: "Write a message up to 4000 characters." },
+          },
+          { status: 400 },
+        );
+      if (!conversation.can_send)
+        return HttpResponse.json<ApiSchemas["Error"]>(
+          {
+            code: "forbidden",
+            message: "This connection is no longer accepting messages.",
+          },
+          { status: 403 },
+        );
+      const message: ApiSchemas["Message"] = {
+        id: crypto.randomUUID(),
+        conversation_id: conversationId,
+        sender_id: demoSelfAttendeeId,
+        body: text,
+        created_at: now(),
+      };
+      messages = [...messages, message];
+      setConversation(conversationId, { last_message: message });
+      return HttpResponse.json(message, { status: 201 });
+    },
+  ),
+
+  http.post("/api/conversations/:conversationId/read", ({ params }) => {
+    const conversationId = slugParam(params.conversationId);
+    if (!conversations.some((item) => item.id === conversationId))
+      return notFound("That conversation isn't in your inbox.");
+    setConversation(conversationId, { unread: 0 });
+    return new HttpResponse(null, { status: 204 });
+  }),
+
+  // Mock mode has no socket; the thread polls /messages instead.
+  http.post("/api/ws/tickets", () =>
+    HttpResponse.json(
+      {
+        ticket: crypto.randomUUID(),
+        expires_at: new Date(Date.now() + 60_000).toISOString(),
+      },
+      { status: 201 },
+    ),
+  ),
+
+  // Blocking ends messaging with that person (web#19), so the composer locks.
+  http.post("/api/blocks", async ({ request }) => {
+    const body = (await request.json()) as { attendee_id?: string };
+    conversations = conversations.map((conversation) =>
+      conversation.other.attendee_id === body.attendee_id
+        ? { ...conversation, can_send: false }
+        : conversation,
+    );
+    return new HttpResponse(null, { status: 204 });
+  }),
+
+  http.post("/api/reports", () => new HttpResponse(null, { status: 201 })),
 
   // The two totals stay consistent with the lists they summarize, so the
   // badge and the inbox header can never disagree in mock mode.
