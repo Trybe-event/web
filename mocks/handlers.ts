@@ -132,6 +132,62 @@ let preferences: ApiSchemas["NotificationPreferences"] = {
   organizer_update: true,
 };
 
+// Connection requests and connections (web#14). The incoming request reuses the
+// notification's subject id, so answering it from the notifications screen and
+// answering it here act on the same record. Accepting mints the connection: only
+// the API can issue one, which is why the page refetches GET /me/connections.
+const firstMockEvent = MOCK_MY_EVENTS[0];
+if (!firstMockEvent)
+  throw new Error("Mock fixtures need at least one event for connections.");
+const demoEventId = firstMockEvent.event.id;
+
+const outgoingActor: ApiSchemas["Profile"] = {
+  attendee_id: "6f2c3d3c-11a1-4c4c-9d9e-000000000003",
+  full_name: "Ada Nwosu",
+  role: "Community Lead",
+  organization: "Trybe",
+  skills: [],
+  interests: [],
+  links: [],
+  accepting_requests: true,
+  relationship: "pending_outgoing",
+};
+
+const connectedActor: ApiSchemas["Profile"] = {
+  ...demoActor,
+  relationship: "connected",
+};
+
+const connectionRequests: ApiSchemas["ConnectionRequest"][] = [
+  {
+    id: "b1000000-0000-0000-0000-00000000000a",
+    event_id: demoEventId,
+    status: "pending",
+    message: "Your talk on onboarding stuck with me.",
+    direction: "incoming",
+    other: { ...demoActor, relationship: "pending_incoming" },
+    created_at: "2026-10-16T09:30:00Z",
+  },
+  {
+    id: "d1000000-0000-0000-0000-000000000001",
+    event_id: demoEventId,
+    status: "pending",
+    message: null,
+    direction: "outgoing",
+    other: outgoingActor,
+    created_at: "2026-10-15T14:05:00Z",
+  },
+];
+
+let connections: ApiSchemas["Connection"][] = [
+  {
+    id: "e1000000-0000-0000-0000-000000000001",
+    origin_event_id: demoEventId,
+    connected_at: "2026-10-14T11:00:00Z",
+    other: connectedActor,
+  },
+];
+
 export const apiMockHandlers = [
   http.get("/api/me/profile", () =>
     profile
@@ -244,23 +300,76 @@ export const apiMockHandlers = [
     return HttpResponse.json(preferences);
   }),
 
-  http.post("/api/connection-requests/:requestId/:action", ({ params }) => {
-    const action = params.action as "accept" | "reject" | "cancel";
-    const request_ = notifications.find(
-      (n) =>
-        n.kind === "connection_request" && n.subject_id === params.requestId,
-    );
-    if (!request_)
-      return notFound("That connection request isn't in your notifications.");
-    request_.read = true;
+  // Pending requests in one direction (web#14). The contract requires the query.
+  http.get("/api/me/connection-requests", ({ request }) => {
+    const direction =
+      new URL(request.url).searchParams.get("direction") === "outgoing"
+        ? "outgoing"
+        : "incoming";
     return HttpResponse.json({
-      id: params.requestId,
-      status: action === "accept" ? "accepted" : "rejected",
-      message: null,
-      direction: "incoming",
-      other: request_.actor,
-      created_at: now(),
-    } as ApiSchemas["ConnectionRequest"]);
+      items: connectionRequests.filter((item) => item.direction === direction),
+    });
+  }),
+
+  http.get("/api/me/connections", () =>
+    HttpResponse.json({ items: connections }),
+  ),
+
+  http.delete("/api/connections/:connectionId", ({ params }) => {
+    const connectionId = slugParam(params.connectionId);
+    const remaining = connections.filter((item) => item.id !== connectionId);
+    if (remaining.length === connections.length)
+      return notFound("That connection isn't yours.");
+    connections = remaining;
+    return new HttpResponse(null, { status: 204 });
+  }),
+
+  // Answering a request. A decided request answers 409, which is the conflict the
+  // page reconciles by refetching the server's state.
+  http.post("/api/connection-requests/:requestId/:action", ({ params }) => {
+    const requestId = slugParam(params.requestId);
+    const action = params.action as "accept" | "reject" | "cancel";
+    const request_ = connectionRequests.find((item) => item.id === requestId);
+    if (!request_) return notFound("That connection request isn't yours.");
+    if (request_.status !== "pending")
+      return HttpResponse.json<ApiSchemas["Error"]>(
+        { code: "conflict", message: "This request was already answered." },
+        { status: 409 },
+      );
+    if ((action === "cancel") !== (request_.direction === "outgoing"))
+      return HttpResponse.json<ApiSchemas["Error"]>(
+        {
+          code: "forbidden",
+          message: "That action doesn't apply to this request.",
+        },
+        { status: 403 },
+      );
+
+    request_.status =
+      action === "accept"
+        ? "accepted"
+        : action === "reject"
+          ? "rejected"
+          : "cancelled";
+
+    // The notification that carried the request stays in the list, already read.
+    const notification = notifications.find(
+      (item) => item.subject_id === requestId,
+    );
+    if (notification) notification.read = true;
+
+    if (action === "accept")
+      connections = [
+        {
+          id: crypto.randomUUID(),
+          origin_event_id: request_.event_id,
+          connected_at: now(),
+          other: { ...request_.other, relationship: "connected" },
+        },
+        ...connections,
+      ];
+
+    return HttpResponse.json(request_);
   }),
 
   http.post("/api/blocks", () => new HttpResponse(null, { status: 204 })),
