@@ -132,6 +132,31 @@ let preferences: ApiSchemas["NotificationPreferences"] = {
   organizer_update: true,
 };
 
+// A conversation exists only for an accepted connection (web#18). The demo
+// inbox is built from this connected profile, so it can never show a pending
+// or rejected request as a conversation.
+const connectedActor: ApiSchemas["Profile"] = {
+  ...demoActor,
+  relationship: "connected",
+};
+
+const conversations: ApiSchemas["Conversation"][] = [
+  {
+    id: "c1000000-0000-0000-0000-000000000001",
+    connection_id: "b1000000-0000-0000-0000-00000000000b",
+    other: connectedActor,
+    last_message: {
+      id: "m1000000-0000-0000-0000-000000000001",
+      conversation_id: "c1000000-0000-0000-0000-000000000001",
+      sender_id: connectedActor.attendee_id,
+      body: "Hey! Great meeting you at the event.",
+      created_at: "2026-10-16T10:15:00Z",
+    },
+    unread: 1,
+    can_send: true,
+  },
+];
+
 export const apiMockHandlers = [
   http.get("/api/me/profile", () =>
     profile
@@ -262,6 +287,19 @@ export const apiMockHandlers = [
       created_at: now(),
     } as ApiSchemas["ConnectionRequest"]);
   }),
+
+  http.get("/api/conversations", () =>
+    HttpResponse.json({ items: conversations }),
+  ),
+
+  // The two totals stay consistent with the lists they summarize, so the
+  // badge and the inbox header can never disagree in mock mode.
+  http.get("/api/me/unread", () =>
+    HttpResponse.json({
+      messages: conversations.reduce((sum, c) => sum + c.unread, 0),
+      notifications: notifications.filter((n) => !n.read).length,
+    }),
+  ),
 
   http.post("/api/uploads", () =>
     HttpResponse.json<ApiSchemas["Error"]>(
