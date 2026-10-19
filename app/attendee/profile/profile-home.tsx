@@ -21,8 +21,6 @@ export function ProfileHome() {
   const router = useRouter();
   const [profile, setProfile] = useState<Schemas["OwnProfile"] | null>(null);
   const [failure, setFailure] = useState<string | null>(null);
-  const [showBlockDialog, setShowBlockDialog] = useState(false);
-  const [showReportDialog, setShowReportDialog] = useState(false);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
 
   useEffect(() => {
@@ -33,28 +31,6 @@ export function ProfileHome() {
       else setFailure(errorMessage(error));
     });
   }, [router]);
-
-  async function handleBlockConfirm() {
-    const { error } = await api.POST("/blocks", {
-      body: { attendee_id: profile?.attendee_id ?? "" },
-    });
-    if (error) {
-      setFailure(errorMessage(error));
-    }
-  }
-
-  async function handleReportConfirm() {
-    const { error } = await api.POST("/reports", {
-      body: {
-        target_type: "profile",
-        target_id: profile?.attendee_id ?? "unknown",
-        reason: "harassment",
-      },
-    });
-    if (error) {
-      setFailure(errorMessage(error));
-    }
-  }
 
   async function handleDeleteConfirm() {
     const { error } = await api.DELETE("/me");
@@ -132,70 +108,10 @@ export function ProfileHome() {
             <ButtonLink href="/attendee/profile/settings" variant="secondary">
               Privacy settings
             </ButtonLink>
-            <Button variant="danger" onClick={() => setShowBlockDialog(true)}>
-              Block
-            </Button>
-            <Button variant="danger" onClick={() => setShowReportDialog(true)}>
-              Report
-            </Button>
             <Button variant="danger" onClick={() => setShowDeleteDialog(true)}>
               Delete account
             </Button>
           </div>
-          {showBlockDialog && (
-            <Dialog
-              open={showBlockDialog}
-              onClose={() => setShowBlockDialog(false)}
-              title="Block this person"
-              description="Are you sure you want to block this attendee? They will not be able to connect with you or see your profile at shared events."
-              actions={
-                <>
-                  <Button
-                    variant="secondary"
-                    onClick={() => setShowBlockDialog(false)}
-                  >
-                    Cancel
-                  </Button>
-                  <Button
-                    variant="danger"
-                    onClick={() => {
-                      handleBlockConfirm();
-                      setShowBlockDialog(false);
-                    }}
-                  >
-                    Block
-                  </Button>
-                </>
-              }
-            />
-          )}
-          {showReportDialog && (
-            <Dialog
-              open={showReportDialog}
-              onClose={() => setShowReportDialog(false)}
-              title="Report this person"
-              description="Why are you reporting this attendee?"
-              actions={
-                <>
-                  <Button
-                    variant="secondary"
-                    onClick={() => setShowReportDialog(false)}
-                  >
-                    Cancel
-                  </Button>
-                  <Button
-                    variant="danger"
-                    onClick={() => {
-                      handleReportConfirm();
-                      setShowReportDialog(false);
-                    }}
-                  >
-                    Report
-                  </Button>
-                </>
-              }
-            />
-          )}
           {showDeleteDialog && (
             <Dialog
               open={showDeleteDialog}
