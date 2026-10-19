@@ -163,11 +163,20 @@ export function ConversationThread({
     if (data) setMessages((held) => mergeMessages(held, data.items));
   }, [conversationId]);
 
+  // The API sends this when a block or disconnect ends the conversation; the
+  // history stays readable and the composer explains why it is locked.
+  const handleAccessEnded = useCallback(() => {
+    setConversation((current) =>
+      current ? { ...current, can_send: false } : current,
+    );
+  }, []);
+
   const live = useConversationLive({
     conversationId,
     enabled: Boolean(conversation),
     onMessages: handleMessages,
     onReconnect: handleReconnect,
+    onAccessEnded: handleAccessEnded,
   });
 
   // Follow new messages only while the reader is already at the bottom, so

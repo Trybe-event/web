@@ -53,7 +53,9 @@ const {
 
 const {
   chatSocketUrl,
+  endsAccess,
   parseServerFrame,
+  pingFrame,
   reconnectDelay,
   shouldReconnect,
   subscribeFrame,
@@ -281,7 +283,7 @@ test("the socket URL upgrades the API origin and carries the ticket", () => {
   assert.equal(chatSocketUrl("ftp://api.trybe.example", "t"), null);
 });
 
-test("only a message or error frame is acted on", () => {
+test("only message, unsubscribed and error frames are acted on", () => {
   assert.deepEqual(plain(subscribeFrame("conversation-1")), {
     type: "subscribe",
     conversation_id: "conversation-1",
@@ -310,11 +312,78 @@ test("only a message or error frame is acted on", () => {
   assert.equal(parseServerFrame({ type: "typing" }), null);
   assert.equal(parseServerFrame("{not json"), null);
   assert.equal(parseServerFrame(null), null);
+  // The API's error frames carry an optional reason, never a message field.
   assert.deepEqual(
     plain(
-      parseServerFrame({ type: "error", code: "forbidden", message: "No." }),
+      parseServerFrame({
+        type: "error",
+        code: "forbidden",
+        conversation_id: "conversation-1",
+      }),
     ),
-    { type: "error", code: "forbidden", message: "No." },
+    { type: "error", code: "forbidden", conversation_id: "conversation-1" },
+  );
+  assert.deepEqual(
+    plain(
+      parseServerFrame({
+        type: "error",
+        code: "rate_limited",
+        reason: "Slow down a little.",
+      }),
+    ),
+    { type: "error", code: "rate_limited", reason: "Slow down a little." },
+  );
+  assert.deepEqual(
+    plain(
+      parseServerFrame({
+        type: "unsubscribed",
+        conversation_id: "conversation-1",
+        reason: "forbidden",
+      }),
+    ),
+    {
+      type: "unsubscribed",
+      conversation_id: "conversation-1",
+      reason: "forbidden",
+    },
+  );
+  assert.equal(parseServerFrame({ type: "error" }), null);
+  assert.deepEqual(plain(pingFrame()), { type: "ping" });
+});
+
+test("a block, disconnect or rejected subscription ends access", () => {
+  const id = "conversation-1";
+  const unsubscribed = (reason, conversation = id) => ({
+    type: "unsubscribed",
+    conversation_id: conversation,
+    reason,
+  });
+  assert.equal(endsAccess(unsubscribed("forbidden"), id), true);
+  assert.equal(endsAccess(unsubscribed("requested"), id), false);
+  assert.equal(
+    endsAccess(unsubscribed("forbidden", "conversation-2"), id),
+    false,
+    "another conversation's access is not this thread's",
+  );
+  assert.equal(endsAccess({ type: "error", code: "forbidden" }, id), true);
+  assert.equal(
+    endsAccess({ type: "error", code: "not_found", conversation_id: id }, id),
+    true,
+  );
+  assert.equal(
+    endsAccess(
+      { type: "error", code: "rate_limited", conversation_id: id },
+      id,
+    ),
+    false,
+    "a rate limit is temporary",
+  );
+  assert.equal(
+    endsAccess(
+      { type: "message", message: message("m1", "2026-10-16T10:00:00Z") },
+      id,
+    ),
+    false,
   );
 });
 
@@ -351,6 +420,9 @@ test("reconnect waits back off and stop retrying a rejected session", () => {
 
   assert.equal(shouldReconnect(1006), true);
   assert.equal(shouldReconnect(1000), false, "we closed it");
-  assert.equal(shouldReconnect(4401), false, "rejected session");
-  assert.equal(shouldReconnect(4403), false, "forbidden conversation");
+  assert.equal(
+    shouldReconnect(1008),
+    false,
+    "inactive account or repeated rate limits",
+  );
 });

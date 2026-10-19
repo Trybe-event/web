@@ -4,8 +4,11 @@ import { useEffect, useRef, useState } from "react";
 
 import { api } from "@/lib/api/client";
 import {
+  PING_INTERVAL_MS,
   chatSocketUrl,
+  endsAccess,
   parseServerFrame,
+  pingFrame,
   reconnectDelay,
   shouldReconnect,
   socketOrigin,
@@ -31,6 +34,8 @@ type LiveHandlers = {
   onMessages: (messages: Message[]) => void;
   /** The socket reopened after a gap; history must be fetched again. */
   onReconnect: () => void;
+  /** A block or disconnect ended access; stop offering the composer. */
+  onAccessEnded: () => void;
 };
 
 /**
@@ -44,14 +49,17 @@ export function useConversationLive({
   enabled,
   onMessages,
   onReconnect,
+  onAccessEnded,
 }: LiveHandlers): { status: LiveStatus } {
   const [status, setStatus] = useState<LiveStatus>("connecting");
   const messagesRef = useRef(onMessages);
   const reconnectRef = useRef(onReconnect);
+  const accessEndedRef = useRef(onAccessEnded);
   useEffect(() => {
     messagesRef.current = onMessages;
     reconnectRef.current = onReconnect;
-  }, [onMessages, onReconnect]);
+    accessEndedRef.current = onAccessEnded;
+  }, [onMessages, onReconnect, onAccessEnded]);
 
   useEffect(() => {
     if (!enabled) return;
@@ -78,6 +86,7 @@ export function useConversationLive({
     let active = true;
     let socket: WebSocket | null = null;
     let retry: ReturnType<typeof setTimeout> | null = null;
+    let ping: ReturnType<typeof setInterval> | null = null;
     let attempt = 0;
     let openedBefore = false;
 
@@ -104,6 +113,11 @@ export function useConversationLive({
         attempt = 0;
         setStatus("live");
         socket?.send(JSON.stringify(subscribeFrame(conversationId)));
+        if (ping) clearInterval(ping);
+        ping = setInterval(
+          () => socket?.send(JSON.stringify(pingFrame())),
+          PING_INTERVAL_MS,
+        );
         if (openedBefore) reconnectRef.current();
         openedBefore = true;
       };
@@ -115,11 +129,19 @@ export function useConversationLive({
             messagesRef.current([frame.message]);
           return;
         }
-        // This socket can't serve the thread (for example a rejected
-        // subscription), so close it and let onclose schedule a fresh ticket.
-        socket?.close();
+        // A block, disconnect or rejected subscription ends this thread for
+        // good, so stop instead of reconnecting into the same answer. Other
+        // frames (subscribed, pong, rate limits) need no action.
+        if (endsAccess(frame, conversationId)) {
+          active = false;
+          setStatus("offline");
+          accessEndedRef.current();
+          socket?.close(1000);
+        }
       };
       socket.onclose = (event) => {
+        if (ping) clearInterval(ping);
+        ping = null;
         if (!active) return;
         if (shouldReconnect(event.code)) {
           schedule();
@@ -137,6 +159,7 @@ export function useConversationLive({
     return () => {
       active = false;
       if (retry) clearTimeout(retry);
+      if (ping) clearInterval(ping);
       socket?.close(1000);
     };
   }, [conversationId, enabled]);
