@@ -307,6 +307,31 @@ export const apiMockHandlers = [
     } as ApiSchemas["ConnectionRequest"]);
   }),
 
+  http.post("/api/blocks", () => new HttpResponse(null, { status: 204 })),
+
+  http.delete(
+    "/api/blocks/{attendeeId}",
+    () => new HttpResponse(null, { status: 204 }),
+  ),
+
+  http.post("/api/reports", async ({ request }) => {
+    const body = (await request.json()) as {
+      target_type: string;
+      target_id: string;
+      reason: string;
+      details?: string;
+    };
+    return HttpResponse.json<ApiSchemas["Report"]>({
+      id: crypto.randomUUID(),
+      target_type: body.target_type,
+      target_id: body.target_id,
+      reason: body.reason,
+      details: body.details,
+      status: "open",
+      created_at: now(),
+    });
+  }),
+
   http.post("/api/uploads", () =>
     HttpResponse.json<ApiSchemas["Error"]>(
       {
