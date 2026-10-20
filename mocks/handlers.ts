@@ -132,6 +132,21 @@ let preferences: ApiSchemas["NotificationPreferences"] = {
   organizer_update: true,
 };
 
+// One accepted connection at the first demo event, so the relevance prompt (web#28)
+// has a real trigger in mock mode. Its profile is the connection view, because a
+// connection sees the links shared with connections.
+const connectionEventId =
+  MOCK_MY_EVENTS.find(({ event }) => event.slug === "atlas-summit")?.event.id ??
+  "";
+const demoConnections: ApiSchemas["Connection"][] = [
+  {
+    id: "b1000000-0000-0000-0000-00000000000b",
+    origin_event_id: connectionEventId,
+    connected_at: "2026-10-16T09:00:00Z",
+    other: { ...demoActor, relationship: "connected" },
+  },
+];
+
 // A conversation exists only for an accepted connection (web#18). The demo
 // inbox is built from this connected profile, so it can never show a pending
 // or rejected request as a conversation.
@@ -303,6 +318,37 @@ export const apiMockHandlers = [
     preferences =
       (await request.json()) as ApiSchemas["NotificationPreferences"];
     return HttpResponse.json(preferences);
+  }),
+
+  // Accepted connections, the source of the feedback prompt's first trigger (web#28).
+  http.get("/api/me/connections", () =>
+    HttpResponse.json({ items: demoConnections }),
+  ),
+
+  // Relevance feedback (web#28). It validates the contract's ranges so a bad client
+  // sees the same 400 the Go API would return.
+  http.post("/api/feedback", async ({ request }) => {
+    const body = (await request.json()) as {
+      event_id?: string;
+      relevance?: number;
+      comment?: string;
+    };
+    const valid =
+      Boolean(body.event_id) &&
+      Number.isInteger(body.relevance) &&
+      (body.relevance ?? 0) >= 1 &&
+      (body.relevance ?? 0) <= 5 &&
+      (body.comment?.length ?? 0) <= 1000;
+    if (!valid)
+      return HttpResponse.json<ApiSchemas["Error"]>(
+        {
+          code: "invalid",
+          message:
+            "Feedback needs an event, a relevance score from 1 to 5, and an optional comment up to 1000 characters.",
+        },
+        { status: 400 },
+      );
+    return new HttpResponse(null, { status: 201 });
   }),
 
   http.post("/api/connection-requests/:requestId/:action", ({ params }) => {
