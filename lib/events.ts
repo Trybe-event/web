@@ -34,22 +34,24 @@ export type PublicEventResult =
   | { kind: "not_found" }
   | { kind: "unavailable" };
 
-// listMyEvents returns the caller's active memberships (GET /me/events), which the
-// contract documents as the source for the event switcher. It never throws: a missing
-// or unreachable API yields an empty list, and the page still renders.
-export async function listMyEvents(): Promise<EventOption[]> {
+// A failed read must not claim the attendee has no events.
+export async function loadMyEvents(): Promise<EventOption[] | null> {
   try {
     const api = await serverApi();
     const { data } = await api.GET("/me/events", {
       signal: AbortSignal.timeout(8000),
     });
-    if (!data) return [];
+    if (!data) return null;
     return data.items
       .filter((item) => item.membership.status === "active" && item.event.slug)
       .map((item) => ({ slug: item.event.slug, name: item.event.name }));
   } catch {
-    return [];
+    return null;
   }
+}
+
+export async function listMyEvents(): Promise<EventOption[]> {
+  return (await loadMyEvents()) ?? [];
 }
 
 // getPublicEvent returns the landing data for a published event. Drafts and unknown

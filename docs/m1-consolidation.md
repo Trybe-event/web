@@ -1,5 +1,9 @@
 # M1 consolidation: one codebase
 
+Current documentation policy (17 October 2026): the maintainer now requires exact
+MVP Markdown/PDF copies in all three repos. Follow `CONTRIBUTING.md`; the historical
+copy-removal discussion below is not an instruction to delete these required copies.
+
 **Read this before starting any Trybe work.** It explains why there were two versions of Milestone 1, which one is now the codebase, what was carried over, what was dropped, and where to pick up. The same document is in `Trybe-event/api` and `Trybe-event/web` at `docs/m1-consolidation.md`.
 
 Date: 15 October 2026. Agreed by the team: `milestone/m1` is the codebase.
