@@ -7,6 +7,7 @@ import { auth } from "@clerk/nextjs/server";
 import createClient from "openapi-fetch";
 
 import type { paths } from "./schema";
+import { authConfigured } from "../auth-config";
 
 export const PROXY_SECRET_HEADER = "X-Trybe-Proxy-Secret";
 
@@ -17,8 +18,7 @@ export function apiBaseUrl(): string {
 }
 
 export async function serverApi() {
-  const { getToken } = await auth();
-  const token = await getToken();
+  const token = authConfigured() ? await (await auth()).getToken() : null;
   const headers: Record<string, string> = {};
   if (token) headers.Authorization = `Bearer ${token}`;
   if (process.env.PROXY_SHARED_SECRET)

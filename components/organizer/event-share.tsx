@@ -2,6 +2,10 @@
 
 import { useEffect, useRef, useState } from "react";
 import QRCode from "qrcode";
+import {
+  drawEventShareGraphic,
+  SHARE_COLORS as BRAND,
+} from "@/lib/event-share-graphic";
 
 import {
   Alert,
@@ -17,20 +21,7 @@ type ShareEvent = {
   registration_url: string | null;
 };
 
-// Printed brand colours, fixed so the exported graphic looks the same
-// regardless of the viewer's light or dark theme.
-const BRAND = {
-  paper: "#faf9f5",
-  ink: "#20261d",
-  muted: "#5f6558",
-  lime: "#c3ef66",
-};
-
 const previewSize = 256;
-// Print canvas: ~10cm at 300 dpi, so the QR stays scannable in print and on phone share.
-const printWidth = 1240;
-const printHeight = 1600;
-const qrScale = 5; // print canvas pixels per QR module
 
 function downloadBlob(data: Blob, filename: string) {
   const url = URL.createObjectURL(data);
@@ -51,96 +42,11 @@ function filenameFor(event: ShareEvent, ext: string) {
   return `${base}-registration-qr.${ext}`;
 }
 
-function wrapLines(
-  ctx: CanvasRenderingContext2D,
-  text: string,
-  maxWidth: number,
-  maxLines: number,
-): string[] {
-  const words = text.split(/\s+/);
-  const lines: string[] = [];
-  let line = "";
-  for (const word of words) {
-    const candidate = line ? `${line} ${word}` : word;
-    if (ctx.measureText(candidate).width > maxWidth && line) {
-      lines.push(line);
-      line = word;
-      if (lines.length === maxLines) break;
-    } else {
-      line = candidate;
-    }
-  }
-  if (lines.length < maxLines && line) lines.push(line);
-  if (lines.length === maxLines && lines.join(" ") !== text) {
-    const last = lines[lines.length - 1];
-    if (last) lines[lines.length - 1] = `${last.slice(0, -1).trim()}…`;
-  }
-  return lines;
-}
-
-function drawGraphic(
-  canvas: HTMLCanvasElement,
-  qr: HTMLCanvasElement,
-  event: ShareEvent,
-  url: string,
-) {
-  canvas.width = printWidth;
-  canvas.height = printHeight;
-  const ctx = canvas.getContext("2d");
-  if (!ctx) return;
-
-  ctx.fillStyle = BRAND.paper;
-  ctx.fillRect(0, 0, printWidth, printHeight);
-
-  // Lime accent bar, echoing the brand header.
-  ctx.fillStyle = BRAND.lime;
-  ctx.fillRect(0, 0, printWidth, 24);
-
-  ctx.fillStyle = BRAND.ink;
-  ctx.textBaseline = "top";
-  ctx.font =
-    "700 64px Manrope, ui-sans-serif, system-ui, 'DM Sans', sans-serif";
-  const nameLines = wrapLines(ctx, event.name, printWidth - 160, 3);
-  let y = 96;
-  for (const line of nameLines) {
-    ctx.fillText(line, 80, y);
-    y += 76;
-  }
-
-  ctx.fillStyle = BRAND.muted;
-  ctx.font = "500 40px 'DM Sans', ui-sans-serif, system-ui, sans-serif";
-  ctx.fillText("Scan the code to register", 80, y + 40);
-
-  const qrSize = qr.width * qrScale;
-  const qrTop = 500;
-  ctx.fillStyle = BRAND.paper;
-  ctx.fillRect(
-    (printWidth - qrSize) / 2 - 40,
-    qrTop - 40,
-    qrSize + 80,
-    qrSize + 80,
-  );
-  ctx.drawImage(qr, (printWidth - qrSize) / 2, qrTop, qrSize, qrSize);
-
-  ctx.fillStyle = BRAND.ink;
-  ctx.font = "600 44px 'DM Sans', ui-sans-serif, system-ui, sans-serif";
-  ctx.fillText("Or open this link:", 80, qrTop + qrSize + 48);
-  ctx.fillRect(80, qrTop + qrSize + 108, printWidth - 160, 2);
-  ctx.font = "500 40px 'DM Sans', ui-sans-serif, system-ui, sans-serif";
-  ctx.fillStyle = BRAND.muted;
-  ctx.fillText(
-    url.length > 46 ? `${url.slice(0, 45)}…` : url,
-    80,
-    qrTop + qrSize + 148,
-  );
-}
-
 function Panel({ event }: { event: ShareEvent }) {
   const url = event.registration_url;
   const published = Boolean(event.slug && url);
 
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  const workerRef = useRef<HTMLCanvasElement | null>(null);
   const [drawError, setDrawError] = useState<string | null>(null);
   const [copying, setCopying] = useState(false);
   const toast = useToast();
@@ -168,32 +74,17 @@ function Panel({ event }: { event: ShareEvent }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [url]);
 
-  async function withGraphic(
-    then: (qr: HTMLCanvasElement, worker: HTMLCanvasElement) => void,
-  ) {
-    const preview = canvasRef.current;
-    if (!preview) {
-      setDrawError("The QR code could not be generated.");
-      return;
-    }
-    if (!workerRef.current)
-      workerRef.current = document.createElement("canvas");
-    const worker = workerRef.current;
+  function withGraphic(then: (worker: HTMLCanvasElement) => void) {
+    if (!url) return;
     try {
-      await QRCode.toCanvas(worker, url ?? "", {
-        margin: 3,
-        scale: qrScale,
-        errorCorrectionLevel: "M",
-        color: { dark: BRAND.ink, light: BRAND.paper },
-      });
-      drawGraphic(worker, worker, event, url ?? "");
+      const worker = document.createElement("canvas");
+      drawEventShareGraphic(worker, event.name, url);
       setDrawError(null);
-      then(preview, worker);
+      then(worker);
     } catch {
-      setDrawError("The QR code could not be generated.");
+      setDrawError("The QR graphic could not be generated. Try again.");
     }
   }
-
   async function copyLink() {
     if (!url) return;
     setCopying(true);
@@ -207,14 +98,15 @@ function Panel({ event }: { event: ShareEvent }) {
     }
   }
 
-  async function downloadPng() {
-    await withGraphic((preview, worker) => {
-      void preview;
+  function downloadPng() {
+    withGraphic((worker) => {
       worker.toBlob((blob) => {
-        if (blob) {
-          downloadBlob(blob, filenameFor(event, "png"));
-          toast("QR graphic downloaded.");
+        if (!blob) {
+          setDrawError("The image could not be exported. Try again.");
+          return;
         }
+        downloadBlob(blob, filenameFor(event, "png"));
+        toast("QR graphic downloaded.");
       }, "image/png");
     });
   }
