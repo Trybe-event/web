@@ -6,7 +6,8 @@ import {
   WorkspaceUnavailable,
 } from "@/components/auth/workspace";
 import { EventSharePanel } from "@/components/organizer/event-share";
-import { Badge } from "@/components/ui";
+import { EventLifecycle } from "@/components/organizer/event-lifecycle";
+import type { Schemas } from "@/lib/api/client";
 import { serverApi } from "@/lib/api/server";
 import { requireAccount } from "@/lib/session";
 
@@ -17,7 +18,6 @@ type ShareEvent = {
   slug: string | null;
   registration_url: string | null;
   status: "draft" | "published" | "ended";
-  registration_state: "not_open" | "open" | "closed";
 };
 
 // web#5: event management shows the registration link and the downloadable
@@ -33,6 +33,7 @@ export default async function ShareEventPage({
   if ("unavailable" in access) return <WorkspaceUnavailable type="organizer" />;
 
   let event: ShareEvent | null = null;
+  let managedEvent: Schemas["Event"] | undefined;
   let gone = false;
   try {
     const api = await serverApi();
@@ -43,12 +44,12 @@ export default async function ShareEventPage({
     if (!data) {
       gone = response.status === 404;
     } else {
+      managedEvent = data;
       event = {
         name: data.name ?? "Unnamed event",
         slug: data.slug ?? null,
         registration_url: data.registration_url ?? null,
         status: data.status,
-        registration_state: data.registration_state ?? "not_open",
       };
     }
   } catch {
@@ -56,7 +57,7 @@ export default async function ShareEventPage({
   }
 
   if (gone) notFound();
-  if (!event) return <WorkspaceUnavailable type="organizer" />;
+  if (!event || !managedEvent) return <WorkspaceUnavailable type="organizer" />;
 
   return (
     <WorkspaceShell type="organizer">
@@ -71,13 +72,11 @@ export default async function ShareEventPage({
             ? "Send the link or the QR graphic: both open your registration page."
             : "This event is still a draft. Publish it to get its permanent link."}
         </p>
-        <div className="mt-3 flex gap-2">
-          <Badge tone={event.status === "published" ? "success" : "neutral"}>
-            {event.status}
-          </Badge>
-          <Badge tone="neutral">{`Registration ${event.registration_state}`}</Badge>
-        </div>
       </section>
+      <EventLifecycle
+        key={`${managedEvent.id}:${managedEvent.updated_at}`}
+        event={managedEvent}
+      />
       <section className="workspace-grid">
         <div>
           <EventSharePanel event={event} />

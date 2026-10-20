@@ -6,6 +6,8 @@ import { http, HttpResponse } from "msw";
 import type { components } from "@/lib/api/schema";
 
 import { MOCK_MY_EVENTS, MOCK_PUBLIC_EVENTS } from "./fixtures";
+import { networkingWindowSchema } from "@/lib/event-lifecycle";
+import { discoveryHandlers } from "./discovery";
 
 type ApiSchemas = components["schemas"];
 
@@ -40,6 +42,15 @@ const demoEvent: ApiSchemas["Event"] = {
   created_at: now(),
   updated_at: now(),
 };
+const managedEvents = new Map<string, ApiSchemas["Event"]>();
+function managedEvent(id: string) {
+  let event = managedEvents.get(id);
+  if (!event) {
+    event = { ...demoEvent, id };
+    managedEvents.set(id, event);
+  }
+  return event;
+}
 
 const notFound = (message: string) =>
   HttpResponse.json<ApiSchemas["Error"]>(
@@ -132,20 +143,26 @@ let preferences: ApiSchemas["NotificationPreferences"] = {
   organizer_update: true,
 };
 
-// One accepted connection at the first demo event, so the relevance prompt (web#28)
-// has a real trigger in mock mode. Its profile is the connection view, because a
-// connection sees the links shared with connections.
-const connectionEventId =
-  MOCK_MY_EVENTS.find(({ event }) => event.slug === "atlas-summit")?.event.id ??
-  "";
-const demoConnections: ApiSchemas["Connection"][] = [
-  {
-    id: "b1000000-0000-0000-0000-00000000000b",
-    origin_event_id: connectionEventId,
-    connected_at: "2026-10-16T09:00:00Z",
-    other: { ...demoActor, relationship: "connected" },
-  },
-];
+// Connection requests and connections (web#14). The incoming request reuses the
+// notification's subject id, so answering it from the notifications screen and
+// answering it here act on the same record. Accepting mints the connection: only
+// the API can issue one, which is why the page refetches GET /me/connections.
+const firstMockEvent = MOCK_MY_EVENTS[0];
+if (!firstMockEvent)
+  throw new Error("Mock fixtures need at least one event for connections.");
+const demoEventId = firstMockEvent.event.id;
+
+const outgoingActor: ApiSchemas["Profile"] = {
+  attendee_id: "6f2c3d3c-11a1-4c4c-9d9e-000000000003",
+  full_name: "Ada Nwosu",
+  role: "Community Lead",
+  organization: "Trybe",
+  skills: [],
+  interests: [],
+  links: [],
+  accepting_requests: true,
+  relationship: "pending_outgoing",
+};
 
 // A conversation exists only for an accepted connection (web#18). The demo
 // inbox is built from this connected profile, so it can never show a pending
@@ -154,6 +171,36 @@ const connectedActor: ApiSchemas["Profile"] = {
   ...demoActor,
   relationship: "connected",
 };
+
+const connectionRequests: ApiSchemas["ConnectionRequest"][] = [
+  {
+    id: "b1000000-0000-0000-0000-00000000000a",
+    event_id: demoEventId,
+    status: "pending",
+    message: "Your talk on onboarding stuck with me.",
+    direction: "incoming",
+    other: { ...demoActor, relationship: "pending_incoming" },
+    created_at: "2026-10-16T09:30:00Z",
+  },
+  {
+    id: "d1000000-0000-0000-0000-000000000001",
+    event_id: demoEventId,
+    status: "pending",
+    message: null,
+    direction: "outgoing",
+    other: outgoingActor,
+    created_at: "2026-10-15T14:05:00Z",
+  },
+];
+
+let connections: ApiSchemas["Connection"][] = [
+  {
+    id: "b1000000-0000-0000-0000-00000000000b",
+    origin_event_id: demoEventId,
+    connected_at: "2026-10-14T11:00:00Z",
+    other: connectedActor,
+  },
+];
 
 const demoConversationId = "c1000000-0000-0000-0000-000000000001";
 // Any id that isn't the other participant's stands in for the viewer, because
@@ -209,6 +256,7 @@ function setConversation(
 }
 
 export const apiMockHandlers = [
+  ...discoveryHandlers,
   http.get("/api/me/profile", () =>
     profile
       ? HttpResponse.json(profile)
@@ -290,8 +338,40 @@ export const apiMockHandlers = [
   http.get("/api/events/:eventId", ({ params }) =>
     params.eventId === "event-not-found"
       ? notFound("We couldn't find that event.")
-      : HttpResponse.json(demoEvent),
+      : HttpResponse.json(managedEvent(slugParam(params.eventId))),
   ),
+  http.put("/api/events/:eventId/networking", async ({ params, request }) => {
+    const parsed = networkingWindowSchema.safeParse(await request.json());
+    if (!parsed.success)
+      return HttpResponse.json(
+        { code: "validation", message: "Check the networking times." },
+        { status: 400 },
+      );
+    const event = managedEvent(slugParam(params.eventId));
+    event.networking_opens_at = parsed.data.opens_at;
+    event.networking_closes_at = parsed.data.closes_at;
+    const time = Date.now();
+    event.networking_state =
+      time < Date.parse(parsed.data.opens_at)
+        ? "not_open"
+        : time >= Date.parse(parsed.data.closes_at)
+          ? "closed"
+          : "open";
+    event.updated_at = now();
+    return HttpResponse.json(event);
+  }),
+  http.post("/api/events/:eventId/status", async ({ params, request }) => {
+    const body = (await request.json()) as { status?: string };
+    if (body.status !== "ended" && body.status !== "published")
+      return HttpResponse.json(
+        { code: "validation", message: "Choose a valid event status." },
+        { status: 400 },
+      );
+    const event = managedEvent(slugParam(params.eventId));
+    event.status = body.status;
+    event.updated_at = now();
+    return HttpResponse.json(event);
+  }),
 
   http.get("/api/notifications", () =>
     HttpResponse.json({
@@ -320,11 +400,6 @@ export const apiMockHandlers = [
     return HttpResponse.json(preferences);
   }),
 
-  // Accepted connections, the source of the feedback prompt's first trigger (web#28).
-  http.get("/api/me/connections", () =>
-    HttpResponse.json({ items: demoConnections }),
-  ),
-
   // Relevance feedback (web#28). It validates the contract's ranges so a bad client
   // sees the same 400 the Go API would return.
   http.post("/api/feedback", async ({ request }) => {
@@ -351,24 +426,82 @@ export const apiMockHandlers = [
     return new HttpResponse(null, { status: 201 });
   }),
 
-  http.post("/api/connection-requests/:requestId/:action", ({ params }) => {
-    const action = params.action as "accept" | "reject" | "cancel";
-    const request_ = notifications.find(
-      (n) =>
-        n.kind === "connection_request" && n.subject_id === params.requestId,
-    );
-    if (!request_)
-      return notFound("That connection request isn't in your notifications.");
-    request_.read = true;
+  // Pending requests in one direction (web#14). The contract requires the query.
+  http.get("/api/me/connection-requests", ({ request }) => {
+    const direction =
+      new URL(request.url).searchParams.get("direction") === "outgoing"
+        ? "outgoing"
+        : "incoming";
     return HttpResponse.json({
-      id: params.requestId,
-      status: action === "accept" ? "accepted" : "rejected",
-      message: null,
-      direction: "incoming",
-      other: request_.actor,
-      created_at: now(),
-    } as ApiSchemas["ConnectionRequest"]);
+      items: connectionRequests.filter((item) => item.direction === direction),
+    });
   }),
+
+  http.get("/api/me/connections", () =>
+    HttpResponse.json({ items: connections }),
+  ),
+
+  http.delete("/api/connections/:connectionId", ({ params }) => {
+    const connectionId = slugParam(params.connectionId);
+    const remaining = connections.filter((item) => item.id !== connectionId);
+    if (remaining.length === connections.length)
+      return notFound("That connection isn't yours.");
+    connections = remaining;
+    return new HttpResponse(null, { status: 204 });
+  }),
+
+  // Answering a request. A decided request answers 409, which is the conflict the
+  // page reconciles by refetching the server's state.
+  http.post("/api/connection-requests/:requestId/:action", ({ params }) => {
+    const requestId = slugParam(params.requestId);
+    const action = params.action as "accept" | "reject" | "cancel";
+    const request_ = connectionRequests.find((item) => item.id === requestId);
+    if (!request_) return notFound("That connection request isn't yours.");
+    if (request_.status !== "pending")
+      return HttpResponse.json<ApiSchemas["Error"]>(
+        { code: "conflict", message: "This request was already answered." },
+        { status: 409 },
+      );
+    if ((action === "cancel") !== (request_.direction === "outgoing"))
+      return HttpResponse.json<ApiSchemas["Error"]>(
+        {
+          code: "forbidden",
+          message: "That action doesn't apply to this request.",
+        },
+        { status: 403 },
+      );
+
+    request_.status =
+      action === "accept"
+        ? "accepted"
+        : action === "reject"
+          ? "rejected"
+          : "cancelled";
+
+    // The notification that carried the request stays in the list, already read.
+    const notification = notifications.find(
+      (item) => item.subject_id === requestId,
+    );
+    if (notification) notification.read = true;
+
+    if (action === "accept")
+      connections = [
+        {
+          id: crypto.randomUUID(),
+          origin_event_id: request_.event_id,
+          connected_at: now(),
+          other: { ...request_.other, relationship: "connected" },
+        },
+        ...connections,
+      ];
+
+    return HttpResponse.json(request_);
+  }),
+
+  http.delete(
+    "/api/blocks/:attendeeId",
+    () => new HttpResponse(null, { status: 204 }),
+  ),
 
   http.get("/api/conversations", () =>
     HttpResponse.json({ items: conversations }),

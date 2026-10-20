@@ -3,9 +3,11 @@ import type { Metadata } from "next";
 import {
   WorkspaceHome,
   WorkspaceUnavailable,
+  WorkspaceShell,
 } from "@/components/auth/workspace";
+import { Alert, ButtonLink } from "@/components/ui";
 import { serverApi } from "@/lib/api/server";
-import { listMyEvents } from "@/lib/events";
+import { loadMyEvents } from "@/lib/events";
 import { requireAccount } from "@/lib/session";
 
 export const metadata: Metadata = { title: "Attendee workspace" };
@@ -26,8 +28,19 @@ export default async function AttendeeHome() {
     return <WorkspaceUnavailable type="attendee" />;
   const [profileExists, events] = await Promise.all([
     hasProfile(),
-    listMyEvents(),
+    loadMyEvents(),
   ]);
+  if (events === null || profileExists === null)
+    return (
+      <WorkspaceShell type="attendee">
+        <Alert>
+          Your profile and events could not be loaded.{" "}
+          <ButtonLink href="/attendee" variant="secondary">
+            Try again
+          </ButtonLink>
+        </Alert>
+      </WorkspaceShell>
+    );
   const attendsEvents = events.length > 0;
   const firstName = accountAccess.account.full_name.split(" ")[0] ?? "there";
   return (
@@ -47,7 +60,7 @@ export default async function AttendeeHome() {
               title: "Your profile is ready.",
               body: attendsEvents
                 ? "Pick an event above to open its workspace, or review what people at your events will see."
-                : "Review what people at your events will see, and choose what each contact detail shows. Event invitations and discovery arrive next.",
+                : "Your event list is empty. Open an organizer's invitation link to review your profile and join an event.",
               href: attendsEvents
                 ? "/attendee/profile/preview"
                 : "/attendee/profile",
