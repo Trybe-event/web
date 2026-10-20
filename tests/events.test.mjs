@@ -200,3 +200,16 @@ test("an unknown event is a 404 while an upstream failure is not", async () => {
   assert.equal(result.kind, "found");
   assert.equal(result.event.name, "Atlas Summit");
 });
+
+test("event loading distinguishes an empty account from an unavailable API", async () => {
+  const empty = eventsHarness({
+    respond: () => ({ data: { items: [] }, response: { status: 200 } }),
+  });
+  assert.deepEqual(plain(await empty.events.loadMyEvents()), []);
+  const failed = eventsHarness({
+    respond: () => {
+      throw new Error("offline");
+    },
+  });
+  assert.equal(await failed.events.loadMyEvents(), null);
+});

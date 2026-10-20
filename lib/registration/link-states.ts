@@ -39,7 +39,7 @@ const unknownScreen: EventLinkScreen = {
 const unavailableScreen: EventLinkScreen = {
   key: "unavailable",
   title: "We couldn’t load this event right now.",
-  body: "Try again in a moment — nothing is wrong with your link.",
+  body: "Try again in a moment. We could not confirm this invitation right now.",
   action: { kind: "refresh", label: "Try again" },
 };
 
@@ -51,7 +51,7 @@ export function eventLinkScreen(
     return {
       key: "joined",
       title: "You’re already in this event.",
-      body: "You don’t need to register again — everything is in your event workspace.",
+      body: "You don’t need to register again. Everything is in your event workspace.",
       action: {
         kind: "link",
         label: "Open the event",

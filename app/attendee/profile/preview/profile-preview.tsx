@@ -1,7 +1,9 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useState } from "react";
 
+import { JoinEvent } from "@/components/events/join-event";
 import {
   Alert,
   Avatar,
@@ -30,14 +32,17 @@ const VIEWERS: { id: Viewer; label: string; explain: string }[] = [
 ];
 
 // ProfilePreview shows exactly what the API sends to each kind of viewer. When the
-// attendee is onboarding from an event, the last step sends them back to /{slug} to
-// finish joining it (web#7).
+// attendee is onboarding from an event, this screen is also the visibility review
+// of web#7: it carries the explicit confirm that joins the event and opens the
+// workspace, and nothing registers until that button is pressed.
 export function ProfilePreview({
   onboarding,
   eventSlug,
+  eventName,
 }: {
   onboarding: boolean;
   eventSlug?: string;
+  eventName?: string;
 }) {
   const [viewer, setViewer] = useState<Viewer>("event_member");
   const [views, setViews] = useState<
@@ -64,7 +69,9 @@ export function ProfilePreview({
       <div>
         <h1 className="text-3xl font-bold">
           {onboarding
-            ? "Here's how people will see you"
+            ? eventName
+              ? `Here's how people at ${eventName} will see you`
+              : "Here's how people will see you"
             : "Preview your profile"}
         </h1>
         <p className="mt-2 text-muted">
@@ -106,9 +113,20 @@ export function ProfilePreview({
           Edit profile
         </ButtonLink>
         {onboarding && eventSlug ? (
-          <ButtonLink href={routes.eventLanding(eventSlug)}>
-            Continue to the event
-          </ButtonLink>
+          <>
+            <JoinEvent
+              slug={eventSlug}
+              name={eventName ?? eventSlug}
+              label={`Confirm and join ${eventName ?? eventSlug}`}
+              disabled={!views.event_member || Boolean(failure)}
+            />
+            <Link
+              className="text-sm font-semibold"
+              href={routes.eventLanding(eventSlug)}
+            >
+              Continue to the event page without joining yet
+            </Link>
+          </>
         ) : (
           <ButtonLink
             href={
@@ -120,6 +138,12 @@ export function ProfilePreview({
           </ButtonLink>
         )}
       </div>
+      {onboarding && eventSlug && (
+        <p className="text-sm text-muted">
+          Nothing has been shared yet. You join {eventName ?? eventSlug} only
+          when you confirm.
+        </p>
+      )}
     </div>
   );
 }

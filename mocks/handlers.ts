@@ -6,6 +6,8 @@ import { http, HttpResponse } from "msw";
 import type { components } from "@/lib/api/schema";
 
 import { MOCK_MY_EVENTS, MOCK_PUBLIC_EVENTS } from "./fixtures";
+import { networkingWindowSchema } from "@/lib/event-lifecycle";
+import { discoveryHandlers } from "./discovery";
 
 type ApiSchemas = components["schemas"];
 
@@ -40,6 +42,15 @@ const demoEvent: ApiSchemas["Event"] = {
   created_at: now(),
   updated_at: now(),
 };
+const managedEvents = new Map<string, ApiSchemas["Event"]>();
+function managedEvent(id: string) {
+  let event = managedEvents.get(id);
+  if (!event) {
+    event = { ...demoEvent, id };
+    managedEvents.set(id, event);
+  }
+  return event;
+}
 
 const notFound = (message: string) =>
   HttpResponse.json<ApiSchemas["Error"]>(
@@ -189,6 +200,7 @@ let connections: ApiSchemas["Connection"][] = [
 ];
 
 export const apiMockHandlers = [
+  ...discoveryHandlers,
   http.get("/api/me/profile", () =>
     profile
       ? HttpResponse.json(profile)
@@ -270,8 +282,40 @@ export const apiMockHandlers = [
   http.get("/api/events/:eventId", ({ params }) =>
     params.eventId === "event-not-found"
       ? notFound("We couldn't find that event.")
-      : HttpResponse.json(demoEvent),
+      : HttpResponse.json(managedEvent(slugParam(params.eventId))),
   ),
+  http.put("/api/events/:eventId/networking", async ({ params, request }) => {
+    const parsed = networkingWindowSchema.safeParse(await request.json());
+    if (!parsed.success)
+      return HttpResponse.json(
+        { code: "validation", message: "Check the networking times." },
+        { status: 400 },
+      );
+    const event = managedEvent(slugParam(params.eventId));
+    event.networking_opens_at = parsed.data.opens_at;
+    event.networking_closes_at = parsed.data.closes_at;
+    const time = Date.now();
+    event.networking_state =
+      time < Date.parse(parsed.data.opens_at)
+        ? "not_open"
+        : time >= Date.parse(parsed.data.closes_at)
+          ? "closed"
+          : "open";
+    event.updated_at = now();
+    return HttpResponse.json(event);
+  }),
+  http.post("/api/events/:eventId/status", async ({ params, request }) => {
+    const body = (await request.json()) as { status?: string };
+    if (body.status !== "ended" && body.status !== "published")
+      return HttpResponse.json(
+        { code: "validation", message: "Choose a valid event status." },
+        { status: 400 },
+      );
+    const event = managedEvent(slugParam(params.eventId));
+    event.status = body.status;
+    event.updated_at = now();
+    return HttpResponse.json(event);
+  }),
 
   http.get("/api/notifications", () =>
     HttpResponse.json({
