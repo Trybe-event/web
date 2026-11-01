@@ -50,10 +50,6 @@ export async function loadMyEvents(): Promise<EventOption[] | null> {
   }
 }
 
-export async function listMyEvents(): Promise<EventOption[]> {
-  return (await loadMyEvents()) ?? [];
-}
-
 // getPublicEvent returns the landing data for a published event. Drafts and unknown
 // slugs return the same 404 from the API, so both are "not_found".
 export async function getPublicEvent(slug: string): Promise<PublicEventResult> {
@@ -74,11 +70,15 @@ export async function getPublicEvent(slug: string): Promise<PublicEventResult> {
 
 // hasEventMembership answers from the membership list (GET /me/events), not from the
 // profile preview, so an attendee who joined before creating a profile still reaches
-// their workspace. An unreachable API reads as false: the caller then offers the join,
-// which is idempotent and cannot double-register.
-export async function hasEventMembership(slug: string): Promise<boolean> {
-  const memberships = await listMyEvents();
-  return memberships.some((event) => event.slug === slug);
+// their workspace. A failed lookup remains unknown: never offer registration on
+// the assumption that an unavailable membership service means "not a member".
+export async function hasEventMembership(
+  slug: string,
+): Promise<boolean | null> {
+  const memberships = await loadMyEvents();
+  return memberships === null
+    ? null
+    : memberships.some((event) => event.slug === slug);
 }
 
 // getJoinPreview loads what an event member would see of the caller's saved profile

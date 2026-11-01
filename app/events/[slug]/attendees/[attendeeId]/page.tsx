@@ -5,6 +5,7 @@ import { ConnectAttendee } from "@/components/events/connect-attendee";
 import { serverApi } from "@/lib/api/server";
 import { profileLinkHref } from "@/lib/connection-action";
 import { requireEventWorkspace } from "@/lib/event-workspace";
+import { PortfolioLink } from "@/components/ui/portfolio-link";
 
 export default async function AttendeeProfilePage({
   params,
@@ -107,18 +108,24 @@ export default async function AttendeeProfilePage({
                 const href = profileLinkHref(link.kind, link.value);
                 return (
                   <li key={index}>
-                    <strong>{LINK_LABELS[link.kind]}: </strong>
-                    {href ? (
-                      <a
-                        className="underline"
-                        href={href}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                      >
-                        {link.value}
-                      </a>
+                    {link.kind === "portfolio" ? (
+                      <PortfolioLink value={link.value} />
                     ) : (
-                      <span>{link.value}</span>
+                      <>
+                        <strong>{LINK_LABELS[link.kind]}: </strong>
+                        {href ? (
+                          <a
+                            className="underline"
+                            href={href}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                          >
+                            {link.value}
+                          </a>
+                        ) : (
+                          <span>{link.value}</span>
+                        )}
+                      </>
                     )}
                   </li>
                 );

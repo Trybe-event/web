@@ -76,7 +76,8 @@ export default async function EventLanding({
     session.kind === "bound" && session.account.type === "attendee";
   const member = attendee ? await hasEventMembership(slug) : false;
   // Only an attendee who is not in the event yet has anything to review.
-  const preview = attendee && !member ? await getJoinPreview(slug) : null;
+  const preview =
+    attendee && member === false ? await getJoinPreview(slug) : null;
   const name = event.name;
 
   return (
@@ -147,12 +148,15 @@ function EventAction({
 }: {
   slug: string;
   name: string;
-  member: boolean;
+  member: boolean | null;
   attendee: boolean;
   sessionKind: string;
   preview: JoinPreviewResult | null;
   registrationState: "not_open" | "open" | "closed";
 }) {
+  if (attendee && member === null)
+    return <EventLinkState outcome={{ kind: "unreachable" }} />;
+
   if (
     attendee &&
     (member || (preview?.kind === "review" && preview.preview.alreadyMember))

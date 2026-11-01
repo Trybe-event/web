@@ -57,10 +57,14 @@ async function landing({
               },
             },
       hasEventMembership: async () => member,
-      getJoinPreview: async () => ({
-        kind: preview,
-        preview: { alreadyMember: false },
-      }),
+      getJoinPreview: async () => {
+        assert.notEqual(
+          member,
+          null,
+          "Unknown membership must not read a profile review",
+        );
+        return { kind: preview, preview: { alreadyMember: false } };
+      },
     },
     "@/lib/routes": {
       isEventSlug: () => true,
@@ -152,4 +156,15 @@ test("existing membership remains accessible when registration closes", async ()
     /Open your event workspace/,
   );
   assert.doesNotMatch(await landing({ member: true }), /Confirm and join/);
+});
+
+test("membership lookup failure offers retry without registration or profile onboarding", async () => {
+  for (const state of ["open", "closed", "not_open"]) {
+    const page = await landing({ member: null, state });
+    assert.match(page, /unreachable/);
+    assert.doesNotMatch(
+      page,
+      /Confirm and join|Create your profile|Open your event workspace/,
+    );
+  }
 });

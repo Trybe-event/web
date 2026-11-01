@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Bell, Check, X } from "lucide-react";
 
 import {
@@ -47,32 +47,54 @@ export function NotificationCenter() {
   const { items, unread, connected, failure, loading, markRead, markAllRead } =
     useNotificationStream();
   const [actingId, setActingId] = useState<string | null>(null);
+  const pendingAction = useRef(false);
+  const [handledRequests, setHandledRequests] = useState<Set<string>>(
+    () => new Set(),
+  );
   const toast = useToast();
 
-  broadcastUnread(unread);
+  useEffect(() => broadcastUnread(unread), [unread]);
 
   async function act(
     notification: Schemas["Notification"],
     action: "accept" | "reject",
   ) {
-    if (!notification.subject_id || notification.kind !== "connection_request")
+    if (
+      pendingAction.current ||
+      !notification.subject_id ||
+      notification.kind !== "connection_request" ||
+      handledRequests.has(notification.subject_id)
+    )
       return;
+    pendingAction.current = true;
+    const requestId = notification.subject_id;
     setActingId(notification.id);
-    const { data, error } = await api.POST(
-      "/connection-requests/{requestId}/{action}",
-      {
-        params: { path: { requestId: notification.subject_id, action } },
-      },
-    );
-    setActingId(null);
-    if (error) {
-      toast(errorMessage(error, `The request wasn't ${action}ed. Try again.`));
-      return;
+    try {
+      const { data, error, response } = await api.POST(
+        "/connection-requests/{requestId}/{action}",
+        {
+          params: { path: { requestId, action } },
+        },
+      );
+      if (!response.ok || error || !data) {
+        toast(
+          errorMessage(error, `The request wasn't ${action}ed. Try again.`),
+        );
+        return;
+      }
+      setHandledRequests((previous) => new Set(previous).add(requestId));
+      toast(action === "accept" ? "Connected." : "Request declined.");
+      // The acted request stays in the list, just already read — the decision
+      // never disappears.
+      await markRead([notification.id]);
+    } catch {
+      toast(
+        "The request could not be confirmed. Check your connections before trying again.",
+      );
+    } finally {
+      pendingAction.current = false;
+      setActingId(null);
     }
-    if (data) toast(action === "accept" ? "Connected." : "Request declined.");
-    // The acted request stays in the list, just already read — the decision
-    // never disappears.
-    await markRead([notification.id]);
   }
 
   return (
@@ -104,10 +126,10 @@ export function NotificationCenter() {
       </div>
       <p className="mt-1 text-sm text-muted">
         {connected
-          ? "Live — new notifications arrive on their own."
+          ? "Live. New notifications arrive on their own."
           : loading
             ? "Loading…"
-            : "Reconnecting — missed updates will appear here."}
+            : "Reconnecting. Missed updates will appear here."}
       </p>
 
       {failure && (
@@ -161,25 +183,29 @@ export function NotificationCenter() {
                 </span>
               </div>
               <p className="mt-1 text-sm font-semibold">{n.text}</p>
-              {n.kind === "connection_request" && n.subject_id && (
-                <div className="mt-3 flex gap-2">
-                  <Button
-                    size="sm"
-                    loading={actingId === n.id}
-                    onClick={() => act(n, "accept")}
-                  >
-                    <Check size={14} aria-hidden="true" /> Accept
-                  </Button>
-                  <Button
-                    size="sm"
-                    variant="secondary"
-                    loading={actingId === n.id}
-                    onClick={() => act(n, "reject")}
-                  >
-                    <X size={14} aria-hidden="true" /> Reject
-                  </Button>
-                </div>
-              )}
+              {n.kind === "connection_request" &&
+                n.subject_id &&
+                !handledRequests.has(n.subject_id) && (
+                  <div className="mt-3 flex gap-2">
+                    <Button
+                      size="sm"
+                      loading={actingId === n.id}
+                      disabled={actingId !== null}
+                      onClick={() => act(n, "accept")}
+                    >
+                      <Check size={14} aria-hidden="true" /> Accept
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="secondary"
+                      loading={actingId === n.id}
+                      disabled={actingId !== null}
+                      onClick={() => act(n, "reject")}
+                    >
+                      <X size={14} aria-hidden="true" /> Reject
+                    </Button>
+                  </div>
+                )}
               {n.kind !== "connection_request" && !n.read && (
                 <div className="mt-3">
                   <Button
