@@ -46,6 +46,14 @@ export default async function EventArchivePage({
         Explore the program and the attendees currently visible to you. New
         connections are closed; existing accepted connections are retained.
       </p>
+      <div className="flex flex-wrap gap-3">
+        <ButtonLink href="/attendee/connections">
+          Your accepted connections
+        </ButtonLink>
+        <ButtonLink href="/attendee/inbox" variant="secondary">
+          Continue a conversation
+        </ButtonLink>
+      </div>
       <section className="space-y-4">
         <h2 className="text-2xl font-bold">Program</h2>
         <ProgramView

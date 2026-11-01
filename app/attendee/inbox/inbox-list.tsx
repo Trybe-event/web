@@ -11,18 +11,18 @@ import {
   Alert,
   Avatar,
   Badge,
+  Button,
   ButtonLink,
   Card,
   EmptyState,
   Skeleton,
 } from "@/components/ui";
-import { api, errorMessage, type Schemas } from "@/lib/api/client";
+import type { Schemas } from "@/lib/api/client";
 import {
   conversationTimeLabel,
   conversationTimestamp,
-  orderedConversations,
-  unreadMessages,
 } from "@/lib/messaging/inbox";
+import { loadInboxSnapshot } from "@/lib/messaging/inbox-read";
 
 // The inbox lists exactly what GET /conversations returns: the API only creates
 // a conversation for an accepted connection, so nothing is derived here from a
@@ -36,31 +36,27 @@ export function InboxList() {
   const [loading, setLoading] = useState(true);
   const [failure, setFailure] = useState<string | null>(null);
   const revision = useInboxLive();
+  const [retryRevision, setRetryRevision] = useState(0);
   // One "now" per render so every card agrees on today and yesterday.
   const [now] = useState(() => new Date());
 
   useEffect(() => {
     let cancelled = false;
+    const abort = new AbortController();
 
     const load = async () => {
-      const [inbox, totals] = await Promise.all([
-        api.GET("/conversations"),
-        api.GET("/me/unread"),
-      ]);
+      setLoading(true);
+      const result = await loadInboxSnapshot(abort.signal);
       if (cancelled) return;
-      if (inbox.error || totals.error || !inbox.data || !totals.data) {
-        setFailure(
-          errorMessage(
-            inbox.error ?? totals.error,
-            "We couldn't load your inbox.",
-          ),
-        );
+      if (result.kind === "unavailable") {
+        setConversations([]);
+        setFailure(result.message);
         setLoading(false);
         return;
       }
 
-      setConversations(orderedConversations(inbox.data.items));
-      const messages = unreadMessages(totals.data);
+      setConversations(result.conversations);
+      const messages = result.unread;
       setUnread(messages);
       setFailure(null);
       setLoading(false);
@@ -73,14 +69,15 @@ export function InboxList() {
     void load();
     return () => {
       cancelled = true;
+      abort.abort();
     };
-  }, [revision]);
+  }, [revision, retryRevision]);
 
   return (
     <div className="mx-auto flex w-full max-w-2xl flex-col px-4 py-8">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <h1 className="text-3xl font-bold">Inbox</h1>
-        {unread > 0 && (
+        {!loading && !failure && unread > 0 && (
           <Badge tone="accent" aria-label={`${unread} unread messages`}>
             {unread} unread
           </Badge>
@@ -93,6 +90,14 @@ export function InboxList() {
       {failure && (
         <div className="mt-6">
           <Alert>{failure}</Alert>
+          <Button
+            className="mt-3"
+            variant="secondary"
+            onClick={() => setRetryRevision((value) => value + 1)}
+            disabled={loading}
+          >
+            Reload inbox
+          </Button>
         </div>
       )}
 

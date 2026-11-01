@@ -19,14 +19,22 @@ export function NetworkingNotice({
         New connection requests are unavailable. Existing accepted connections
         and conversations are not removed by this networking window.
       </p>
-      {state === "closed" && (
-        <ButtonLink
-          variant="secondary"
-          href={`/events/${encodeURIComponent(slug)}/archive`}
-        >
-          View the event archive
+      <div className="flex flex-wrap gap-3">
+        <ButtonLink variant="secondary" href="/attendee/connections">
+          Your connections
         </ButtonLink>
-      )}
+        <ButtonLink variant="secondary" href="/attendee/inbox">
+          Open inbox
+        </ButtonLink>
+        {state === "closed" && (
+          <ButtonLink
+            variant="secondary"
+            href={`/events/${encodeURIComponent(slug)}/archive`}
+          >
+            View the event archive
+          </ButtonLink>
+        )}
+      </div>
     </Card>
   );
 }

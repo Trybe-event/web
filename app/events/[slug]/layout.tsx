@@ -21,9 +21,15 @@ export default async function EventWorkspaceLayout({
   return (
     <WorkspaceShell type="attendee" events={workspace.events} activeSlug={slug}>
       <div className="mt-3 flex min-w-0 flex-col gap-4 pb-6 md:mt-6 md:flex-row md:gap-6 md:pb-8">
-        <EventWorkspaceNavigation slug={slug} networkingClosed={workspace.event.networking_state === "closed"} />
+        <EventWorkspaceNavigation
+          slug={slug}
+          networkingClosed={workspace.event.networking_state === "closed"}
+        />
         <div className="min-w-0 flex-1">
-          <NetworkingNotice state={workspace.event.networking_state} slug={slug} />
+          <NetworkingNotice
+            state={workspace.event.networking_state}
+            slug={slug}
+          />
           {children}
         </div>
       </div>

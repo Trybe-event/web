@@ -55,3 +55,15 @@ test("event navigation opens implemented connections and stays at the top on mob
     /fixed inset-x-0 bottom-0|Connections, not available yet/,
   );
 });
+
+test("closed networking replaces discovery with archive but preserves account connections and inbox", async () => {
+  const html = await renderNavigation(true);
+  assert.match(html, /href="\/events\/community\/archive"/);
+  assert.match(html, /href="\/attendee\/connections"/);
+  assert.match(html, /href="\/attendee\/inbox"/);
+  assert.doesNotMatch(
+    html,
+    /href="\/events\/community"|href="\/events\/community\/attendees"|not available yet/,
+  );
+  assert.match(html, /sticky top-0/);
+});
