@@ -18,6 +18,7 @@ test("all event workspace pages require attendee authentication", async () => {
     "/events/community/program",
     "/events/community/attendees",
     "/events/community/attendees/20000000-0000-4000-8000-000000000001",
+    "/events/community/archive",
   ]) {
     const response = await get(path);
     assert.ok([303, 307, 308].includes(response.status), path);
@@ -99,6 +100,24 @@ test("home offers both account types", async () => {
   );
 });
 
+test("moderation routes require administrator sign-in and expose no self-registration", async () => {
+  for (const path of [
+    "/admin",
+    "/admin/reports",
+    "/admin/reports/11111111-1111-4111-8111-111111111111",
+  ]) {
+    const response = await get(path);
+    assert.equal(response.status, 307);
+    assert.equal(location(response), "/admin/sign-in");
+  }
+  const signIn = await get("/admin/sign-in");
+  assert.equal(signIn.status, 200);
+  const html = await signIn.text();
+  assert.match(html, /Moderation sign-in/);
+  assert.doesNotMatch(html, /Create account|Create your administrator account/);
+  assert.equal((await get("/admin/sign-up")).status, 404);
+});
+
 test("proxy refuses unlisted endpoints, wrong methods and cross-site writes", async () => {
   assert.equal((await get("/api/not-in-contract")).status, 404);
   assert.equal((await get("/api/healthz", { method: "DELETE" })).status, 404);
@@ -137,7 +156,10 @@ test("the join flow carries the event slug through the account steps", async () 
 });
 
 test("reserved words are never treated as event slugs", async () => {
-  for (const path of ["/admin", "/dev", "/events/admin"])
+  const admin = await get("/admin");
+  assert.equal(admin.status, 307);
+  assert.equal(location(admin), "/admin/sign-in");
+  for (const path of ["/dev", "/events/admin"])
     assert.equal((await get(path)).status, 404, path);
 });
 

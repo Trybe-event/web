@@ -1,5 +1,6 @@
 import { http, HttpResponse } from "msw";
 import type { components } from "@/lib/api/schema";
+import { MOCK_PUBLIC_EVENTS } from "./fixtures";
 
 type Profile = components["schemas"]["Profile"];
 const connectionRequests: components["schemas"]["ConnectionRequest"][] = [];
@@ -19,6 +20,24 @@ export const discoveryProfiles: Profile[] = Array.from(
 );
 
 export const discoveryHandlers = [
+  http.get("/api/events/:eventId/archive", ({ params }) => {
+    const event = MOCK_PUBLIC_EVENTS.find((item) => item.id === params.eventId);
+    if (!event)
+      return HttpResponse.json(
+        { code: "not_found", message: "Archive unavailable." },
+        { status: 404 },
+      );
+    if (event.networking_state !== "closed")
+      return HttpResponse.json(
+        { code: "conflict", message: "Networking has not closed." },
+        { status: 409 },
+      );
+    return HttpResponse.json({
+      event,
+      program: event.program || { days: [] },
+      attendees: discoveryProfiles,
+    });
+  }),
   http.get("/api/events/:eventId/attendees/:attendeeId", ({ params }) => {
     const profile = discoveryProfiles.find(
       (item) => item.attendee_id === params.attendeeId,

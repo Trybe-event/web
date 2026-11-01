@@ -16,6 +16,7 @@ import { api, errorMessage, type Schemas } from "@/lib/api/client";
 import { routes, withEventParam } from "@/lib/routes";
 
 import { LINK_LABELS } from "../labels";
+import { PortfolioLink } from "@/components/ui/portfolio-link";
 
 type Viewer = "event_member" | "connection";
 const VIEWERS: { id: Viewer; label: string; explain: string }[] = [
@@ -188,8 +189,14 @@ export function PreviewCard({ profile }: { profile: Schemas["Profile"] }) {
         <ul className="flex flex-col gap-1 text-sm">
           {profile.links.map((l, i) => (
             <li key={i}>
-              <span className="font-semibold">{LINK_LABELS[l.kind]}:</span>{" "}
-              {l.value}
+              {l.kind === "portfolio" ? (
+                <PortfolioLink value={l.value} />
+              ) : (
+                <>
+                  <span className="font-semibold">{LINK_LABELS[l.kind]}:</span>{" "}
+                  {l.value}
+                </>
+              )}
             </li>
           ))}
         </ul>
