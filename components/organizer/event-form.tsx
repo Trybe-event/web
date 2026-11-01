@@ -9,7 +9,13 @@ import {
   useState,
   type ReactNode,
 } from "react";
-import { FormProvider, useForm, type FieldPath } from "react-hook-form";
+import {
+  FormProvider,
+  useForm,
+  useWatch,
+  type FieldPath,
+} from "react-hook-form";
+import { eventFieldStage, eventStageErrors } from "@/lib/event-publication";
 import { Alert, Button, Card, Field, Input, Skeleton } from "@/components/ui";
 import { api, errorMessage, fieldErrors, type Schemas } from "@/lib/api/client";
 import {
@@ -19,7 +25,7 @@ import {
 } from "@/lib/event-form";
 import { EventEditorContext } from "./event-editor-context";
 
-const STAGES = ["Event basics", "Details and program", "Settings and review"];
+const STAGES = ["Event basics", "Details and program", "Settings"];
 export function EventForm({
   eventId,
   organizerId,
@@ -38,6 +44,13 @@ export function EventForm({
     resolver: zodResolver(eventDraftSchema),
     defaultValues: {},
   });
+  const liveValues = useWatch({ control: form.control }) as EventDraft;
+  const [progressFailure, setProgressFailure] = useState<{
+    stage: number;
+    message: string;
+  }>();
+  const [advancing, setAdvancing] = useState(false);
+  const advancingLock = useRef(false);
   const [event, setEvent] = useState<Schemas["Event"]>();
   const [activeStage, setActiveStage] = useState(0);
   const [status, setStatus] = useState("Loading draft...");
@@ -226,6 +239,64 @@ export function EventForm({
       ?.querySelector<HTMLElement>("h2")
       ?.focus({ preventScroll: true });
   }
+  function reportErrors(errors: Record<string, string>) {
+    for (const [name, message] of Object.entries(errors))
+      form.setError(name as FieldPath<EventDraft>, { message });
+    const first = Object.keys(errors).sort(
+      (left, right) => eventFieldStage(left) - eventFieldStage(right),
+    )[0];
+    if (!first) return;
+    const stage = eventFieldStage(first);
+    setProgressFailure({
+      stage,
+      message:
+        errors[first] || "Complete the highlighted fields before continuing.",
+    });
+    navigate(stage);
+    requestAnimationFrame(() => form.setFocus(first as FieldPath<EventDraft>));
+  }
+  async function advance(stage: number) {
+    if (advancingLock.current) return;
+    const errors = Object.assign(
+      {},
+      ...Array.from({ length: stage }, (_, index) =>
+        eventStageErrors(form.getValues(), index),
+      ),
+    );
+    if (Object.keys(errors).length) {
+      reportErrors(errors);
+      return;
+    }
+    if (
+      stage >= 2 &&
+      (busySections.has("program") || busySections.has("image"))
+    ) {
+      setProgressFailure({
+        stage: 1,
+        message:
+          "Save or cancel your program edits, and finish loading or uploading, before continuing.",
+      });
+      navigate(1);
+      return;
+    }
+    advancingLock.current = true;
+    setAdvancing(true);
+    try {
+      if (!(await save())) {
+        setProgressFailure({
+          stage: Math.max(0, stage - 1),
+          message:
+            "Your changes could not be saved. Check the highlighted fields and retry before continuing.",
+        });
+        return;
+      }
+      setProgressFailure(undefined);
+      navigate(stage);
+    } finally {
+      advancingLock.current = false;
+      setAdvancing(false);
+    }
+  }
   if (!event)
     return failure ? (
       <Alert>
@@ -241,9 +312,12 @@ export function EventForm({
       <Skeleton className="mt-8 h-96" />
     );
   return (
-    <EventEditorContext value={{ event, save, busySections, setSectionBusy }}>
+    <EventEditorContext
+      value={{ event, save, busySections, setSectionBusy, reportErrors }}
+    >
       <FormProvider {...form}>
         <form
+          noValidate
           onSubmit={(submitEvent) => {
             submitEvent.preventDefault();
             void save();
@@ -263,7 +337,10 @@ export function EventForm({
                   key={label}
                   variant={activeStage === index ? "primary" : "secondary"}
                   aria-current={activeStage === index ? "step" : undefined}
-                  onClick={() => navigate(index)}
+                  disabled={advancing}
+                  onClick={() =>
+                    index > activeStage ? void advance(index) : navigate(index)
+                  }
                 >
                   {index + 1}. {label}
                 </Button>
@@ -305,6 +382,9 @@ export function EventForm({
                   <h2 tabIndex={-1} className="mb-5 text-xl font-bold">
                     {title}
                   </h2>
+                  {progressFailure?.stage === index && (
+                    <Alert>{progressFailure.message}</Alert>
+                  )}
                   {index === 0
                     ? (basics ?? (
                         <Field
@@ -330,9 +410,36 @@ export function EventForm({
                     </Button>
                   )}
                   {index < 2 && (
-                    <Button onClick={() => navigate(index + 1)}>Next</Button>
+                    <Button
+                      loading={advancing}
+                      disabled={
+                        Object.keys(eventStageErrors(liveValues, index))
+                          .length > 0 ||
+                        (index === 1 &&
+                          (busySections.has("program") ||
+                            busySections.has("image")))
+                      }
+                      onClick={() => void advance(index + 1)}
+                    >
+                      Save and continue
+                    </Button>
                   )}
                 </div>
+                {index < 2 &&
+                  Object.keys(eventStageErrors(liveValues, index)).length >
+                    0 && (
+                    <p className="mt-2 text-sm text-muted">
+                      Complete the required fields in this section to continue.
+                    </p>
+                  )}
+                {index === 1 &&
+                  (busySections.has("program") ||
+                    busySections.has("image")) && (
+                    <p className="mt-2 text-sm text-muted">
+                      Save or cancel open program edits, and wait for the
+                      program or image upload to finish before continuing.
+                    </p>
+                  )}
               </Card>
             ))}
           </fieldset>

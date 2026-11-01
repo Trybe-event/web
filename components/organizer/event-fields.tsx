@@ -101,6 +101,10 @@ export function DraftTimeField({
             <EventTimeInput
               {...props}
               value={field.value}
+              name={field.name}
+              ref={field.ref}
+              onBlur={field.onBlur}
+              required={!optional}
               timezone={timezone}
               onValidationError={(message) => form.setError(name, { message })}
               onChange={(value) =>
@@ -139,7 +143,12 @@ function TextField({
       error={form.formState.errors[name]?.message}
     >
       {(props) => (
-        <Input {...props} maxLength={maxLength} {...form.register(name)} />
+        <Input
+          {...props}
+          required={!optional}
+          maxLength={maxLength}
+          {...form.register(name)}
+        />
       )}
     </Field>
   );
@@ -154,6 +163,7 @@ export function EventBasics() {
       <Field label="Event format" error={form.formState.errors.format?.message}>
         {(props) => (
           <Select
+            required
             {...props}
             {...form.register("format", {
               setValueAs: (value: string) =>
@@ -175,6 +185,7 @@ export function EventBasics() {
         {(props) => (
           <>
             <Input
+              required
               {...props}
               list="event-timezones"
               placeholder="Africa/Lagos"
@@ -195,7 +206,7 @@ export function EventBasics() {
       </Field>
       <DraftTimeField name="starts_at" label="Event starts" />
       <DraftTimeField name="ends_at" label="Event ends" />
-      {format !== "virtual" && (
+      {(format === "physical" || format === "hybrid") && (
         <>
           <TextField name="venue_name" label="Venue name" maxLength={200} />
           <TextField
@@ -205,12 +216,11 @@ export function EventBasics() {
           />
         </>
       )}
-      {format !== "physical" && (
+      {(format === "virtual" || format === "hybrid") && (
         <TextField
           name="attendance_url"
           label="External attendance link"
           maxLength={500}
-          optional
         />
       )}
     </div>
@@ -276,6 +286,7 @@ export function EventDetails() {
       >
         {(props) => (
           <Textarea
+            required
             {...props}
             maxLength={10000}
             {...form.register("description")}
@@ -284,6 +295,7 @@ export function EventDetails() {
       </Field>
       <Field
         label="Topics"
+        optional
         hint="Press comma or Enter to add a topic."
         error={form.formState.errors.topics?.message}
       >

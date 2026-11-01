@@ -143,6 +143,118 @@ let preferences: ApiSchemas["NotificationPreferences"] = {
   organizer_update: true,
 };
 
+// Connection requests and connections (web#14). The incoming request reuses the
+// notification's subject id, so answering it from the notifications screen and
+// answering it here act on the same record. Accepting mints the connection: only
+// the API can issue one, which is why the page refetches GET /me/connections.
+const firstMockEvent = MOCK_MY_EVENTS[0];
+if (!firstMockEvent)
+  throw new Error("Mock fixtures need at least one event for connections.");
+const demoEventId = firstMockEvent.event.id;
+
+const outgoingActor: ApiSchemas["Profile"] = {
+  attendee_id: "6f2c3d3c-11a1-4c4c-9d9e-000000000003",
+  full_name: "Ada Nwosu",
+  role: "Community Lead",
+  organization: "Trybe",
+  skills: [],
+  interests: [],
+  links: [],
+  accepting_requests: true,
+  relationship: "pending_outgoing",
+};
+
+// A conversation exists only for an accepted connection (web#18). The demo
+// inbox is built from this connected profile, so it can never show a pending
+// or rejected request as a conversation.
+const connectedActor: ApiSchemas["Profile"] = {
+  ...demoActor,
+  relationship: "connected",
+};
+
+const connectionRequests: ApiSchemas["ConnectionRequest"][] = [
+  {
+    id: "b1000000-0000-0000-0000-00000000000a",
+    event_id: demoEventId,
+    status: "pending",
+    message: "Your talk on onboarding stuck with me.",
+    direction: "incoming",
+    other: { ...demoActor, relationship: "pending_incoming" },
+    created_at: "2026-10-16T09:30:00Z",
+  },
+  {
+    id: "d1000000-0000-0000-0000-000000000001",
+    event_id: demoEventId,
+    status: "pending",
+    message: null,
+    direction: "outgoing",
+    other: outgoingActor,
+    created_at: "2026-10-15T14:05:00Z",
+  },
+];
+
+let connections: ApiSchemas["Connection"][] = [
+  {
+    id: "b1000000-0000-0000-0000-00000000000b",
+    origin_event_id: demoEventId,
+    connected_at: "2026-10-14T11:00:00Z",
+    other: connectedActor,
+  },
+];
+
+const demoConversationId = "c1000000-0000-0000-0000-000000000001";
+// Any id that isn't the other participant's stands in for the viewer, because
+// the thread tells its own messages apart by `sender_id !== other.attendee_id`.
+const demoSelfAttendeeId = "6f2c3d3c-11a1-4c4c-9d9e-000000000002";
+
+// Oldest first, the order the thread renders. The inbox card's last_message is
+// the newest of these (web#19).
+let messages: ApiSchemas["Message"][] = [
+  {
+    id: "m1000000-0000-0000-0000-000000000001",
+    conversation_id: demoConversationId,
+    sender_id: connectedActor.attendee_id,
+    body: "Hey! Great meeting you at the event.",
+    created_at: "2026-10-16T10:15:00Z",
+  },
+  {
+    id: "m1000000-0000-0000-0000-000000000002",
+    conversation_id: demoConversationId,
+    sender_id: demoSelfAttendeeId,
+    body: "You too. Your talk on onboarding stuck with me.",
+    created_at: "2026-10-16T10:18:00Z",
+  },
+  {
+    id: "m1000000-0000-0000-0000-000000000003",
+    conversation_id: demoConversationId,
+    sender_id: connectedActor.attendee_id,
+    body: "Thanks! Want to swap notes next week?",
+    created_at: "2026-10-16T10:20:00Z",
+  },
+];
+
+let conversations: ApiSchemas["Conversation"][] = [
+  {
+    id: demoConversationId,
+    connection_id: "b1000000-0000-0000-0000-00000000000b",
+    other: connectedActor,
+    last_message: messages[2],
+    unread: 1,
+    can_send: true,
+  },
+];
+
+function setConversation(
+  conversationId: string,
+  change: Partial<ApiSchemas["Conversation"]>,
+) {
+  conversations = conversations.map((conversation) =>
+    conversation.id === conversationId
+      ? { ...conversation, ...change }
+      : conversation,
+  );
+}
+
 export const apiMockHandlers = [
   ...discoveryHandlers,
   http.get("/api/me/profile", () =>
@@ -288,24 +400,229 @@ export const apiMockHandlers = [
     return HttpResponse.json(preferences);
   }),
 
-  http.post("/api/connection-requests/:requestId/:action", ({ params }) => {
-    const action = params.action as "accept" | "reject" | "cancel";
-    const request_ = notifications.find(
-      (n) =>
-        n.kind === "connection_request" && n.subject_id === params.requestId,
-    );
-    if (!request_)
-      return notFound("That connection request isn't in your notifications.");
-    request_.read = true;
-    return HttpResponse.json({
-      id: params.requestId,
-      status: action === "accept" ? "accepted" : "rejected",
-      message: null,
-      direction: "incoming",
-      other: request_.actor,
-      created_at: now(),
-    } as ApiSchemas["ConnectionRequest"]);
+  // Relevance feedback (web#28). It validates the contract's ranges so a bad client
+  // sees the same 400 the Go API would return.
+  http.post("/api/feedback", async ({ request }) => {
+    const body = (await request.json()) as {
+      event_id?: string;
+      relevance?: number;
+      comment?: string;
+    };
+    const valid =
+      Boolean(body.event_id) &&
+      Number.isInteger(body.relevance) &&
+      (body.relevance ?? 0) >= 1 &&
+      (body.relevance ?? 0) <= 5 &&
+      (body.comment?.length ?? 0) <= 1000;
+    if (!valid)
+      return HttpResponse.json<ApiSchemas["Error"]>(
+        {
+          code: "invalid",
+          message:
+            "Feedback needs an event, a relevance score from 1 to 5, and an optional comment up to 1000 characters.",
+        },
+        { status: 400 },
+      );
+    return new HttpResponse(null, { status: 201 });
   }),
+
+  // Pending requests in one direction (web#14). The contract requires the query.
+  http.get("/api/me/connection-requests", ({ request }) => {
+    const direction =
+      new URL(request.url).searchParams.get("direction") === "outgoing"
+        ? "outgoing"
+        : "incoming";
+    return HttpResponse.json({
+      items: connectionRequests.filter((item) => item.direction === direction),
+    });
+  }),
+
+  http.get("/api/me/connections", () =>
+    HttpResponse.json({ items: connections }),
+  ),
+
+  http.delete("/api/connections/:connectionId", ({ params }) => {
+    const connectionId = slugParam(params.connectionId);
+    const remaining = connections.filter((item) => item.id !== connectionId);
+    if (remaining.length === connections.length)
+      return notFound("That connection isn't yours.");
+    connections = remaining;
+    return new HttpResponse(null, { status: 204 });
+  }),
+
+  // Answering a request. A decided request answers 409, which is the conflict the
+  // page reconciles by refetching the server's state.
+  http.post("/api/connection-requests/:requestId/:action", ({ params }) => {
+    const requestId = slugParam(params.requestId);
+    const action = params.action as "accept" | "reject" | "cancel";
+    const request_ = connectionRequests.find((item) => item.id === requestId);
+    if (!request_) return notFound("That connection request isn't yours.");
+    if (request_.status !== "pending")
+      return HttpResponse.json<ApiSchemas["Error"]>(
+        { code: "conflict", message: "This request was already answered." },
+        { status: 409 },
+      );
+    if ((action === "cancel") !== (request_.direction === "outgoing"))
+      return HttpResponse.json<ApiSchemas["Error"]>(
+        {
+          code: "forbidden",
+          message: "That action doesn't apply to this request.",
+        },
+        { status: 403 },
+      );
+
+    request_.status =
+      action === "accept"
+        ? "accepted"
+        : action === "reject"
+          ? "rejected"
+          : "cancelled";
+
+    // The notification that carried the request stays in the list, already read.
+    const notification = notifications.find(
+      (item) => item.subject_id === requestId,
+    );
+    if (notification) notification.read = true;
+
+    if (action === "accept")
+      connections = [
+        {
+          id: crypto.randomUUID(),
+          origin_event_id: request_.event_id,
+          connected_at: now(),
+          other: { ...request_.other, relationship: "connected" },
+        },
+        ...connections,
+      ];
+
+    return HttpResponse.json(request_);
+  }),
+
+  http.delete(
+    "/api/blocks/:attendeeId",
+    () => new HttpResponse(null, { status: 204 }),
+  ),
+
+  http.get("/api/conversations", () =>
+    HttpResponse.json({ items: conversations }),
+  ),
+
+  // Newest first with a cursor, matching the contract (web#19).
+  http.get(
+    "/api/conversations/:conversationId/messages",
+    ({ params, request }) => {
+      const conversationId = slugParam(params.conversationId);
+      if (!conversations.some((item) => item.id === conversationId))
+        return notFound("That conversation isn't in your inbox.");
+      const url = new URL(request.url);
+      const limit = Math.min(
+        100,
+        Math.max(1, Number(url.searchParams.get("limit") ?? 25) || 25),
+      );
+      const cursor = url.searchParams.get("cursor");
+      const newestFirst = [...messages].sort(
+        (left, right) =>
+          right.created_at.localeCompare(left.created_at) ||
+          right.id.localeCompare(left.id),
+      );
+      const start = cursor
+        ? Math.max(
+            0,
+            newestFirst.findIndex((message) => message.id === cursor) + 1,
+          )
+        : 0;
+      const items = newestFirst.slice(start, start + limit);
+      return HttpResponse.json({
+        items,
+        next_cursor:
+          start + limit < newestFirst.length
+            ? (items.at(-1)?.id ?? null)
+            : null,
+      });
+    },
+  ),
+
+  http.post(
+    "/api/conversations/:conversationId/messages",
+    async ({ params, request }) => {
+      const conversationId = slugParam(params.conversationId);
+      const conversation = conversations.find(
+        (item) => item.id === conversationId,
+      );
+      if (!conversation)
+        return notFound("That conversation isn't in your inbox.");
+      const body = (await request.json()) as { body?: string };
+      const text = (body.body ?? "").trim();
+      if (text.length < 1 || text.length > 4000)
+        return HttpResponse.json<ApiSchemas["Error"]>(
+          {
+            code: "invalid",
+            message: "Messages must be between 1 and 4000 characters.",
+            fields: { body: "Write a message up to 4000 characters." },
+          },
+          { status: 400 },
+        );
+      if (!conversation.can_send)
+        return HttpResponse.json<ApiSchemas["Error"]>(
+          {
+            code: "forbidden",
+            message: "This connection is no longer accepting messages.",
+          },
+          { status: 403 },
+        );
+      const message: ApiSchemas["Message"] = {
+        id: crypto.randomUUID(),
+        conversation_id: conversationId,
+        sender_id: demoSelfAttendeeId,
+        body: text,
+        created_at: now(),
+      };
+      messages = [...messages, message];
+      setConversation(conversationId, { last_message: message });
+      return HttpResponse.json(message, { status: 201 });
+    },
+  ),
+
+  http.post("/api/conversations/:conversationId/read", ({ params }) => {
+    const conversationId = slugParam(params.conversationId);
+    if (!conversations.some((item) => item.id === conversationId))
+      return notFound("That conversation isn't in your inbox.");
+    setConversation(conversationId, { unread: 0 });
+    return new HttpResponse(null, { status: 204 });
+  }),
+
+  // Mock mode has no socket; the thread polls /messages instead.
+  http.post("/api/ws/tickets", () =>
+    HttpResponse.json(
+      {
+        ticket: crypto.randomUUID(),
+        expires_at: new Date(Date.now() + 60_000).toISOString(),
+      },
+      { status: 201 },
+    ),
+  ),
+
+  // Blocking ends messaging with that person (web#19), so the composer locks.
+  http.post("/api/blocks", async ({ request }) => {
+    const body = (await request.json()) as { attendee_id?: string };
+    conversations = conversations.map((conversation) =>
+      conversation.other.attendee_id === body.attendee_id
+        ? { ...conversation, can_send: false }
+        : conversation,
+    );
+    return new HttpResponse(null, { status: 204 });
+  }),
+
+  http.post("/api/reports", () => new HttpResponse(null, { status: 201 })),
+
+  // The two totals stay consistent with the lists they summarize, so the
+  // badge and the inbox header can never disagree in mock mode.
+  http.get("/api/me/unread", () =>
+    HttpResponse.json({
+      messages: conversations.reduce((sum, c) => sum + c.unread, 0),
+      notifications: notifications.filter((n) => !n.read).length,
+    }),
+  ),
 
   http.post("/api/uploads", () =>
     HttpResponse.json<ApiSchemas["Error"]>(

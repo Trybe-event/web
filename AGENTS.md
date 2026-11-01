@@ -31,6 +31,9 @@ Breaking either rule is a release-blocking defect, even if every test passes.
 
 ## Read first
 
+Read `docs/trybe-mvp.md` (matching PDF: `docs/trybe-mvp.pdf`) and `CONTRIBUTING.md`.
+The MVP scope, milestone order and audit gates are required for every task and PR.
+
 `docs/m1-consolidation.md` explains which codebase is current (`milestone/m1`), what was carried over from the second M1 implementation on `main`, and where to pick up. Read it before your first task.
 
 ## Sources of truth, in this order

@@ -7,9 +7,11 @@ import {
   Alert,
   Avatar,
   Badge,
+  Button,
   ButtonLink,
   Card,
   Skeleton,
+  Dialog,
 } from "@/components/ui";
 import { api, errorMessage, type Schemas } from "@/lib/api/client";
 
@@ -19,6 +21,7 @@ export function ProfileHome() {
   const router = useRouter();
   const [profile, setProfile] = useState<Schemas["OwnProfile"] | null>(null);
   const [failure, setFailure] = useState<string | null>(null);
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
 
   useEffect(() => {
     api.GET("/me/profile").then(({ data, error, response }) => {
@@ -28,6 +31,15 @@ export function ProfileHome() {
       else setFailure(errorMessage(error));
     });
   }, [router]);
+
+  async function handleDeleteConfirm() {
+    const { error } = await api.DELETE("/me");
+    if (error) {
+      setFailure(errorMessage(error));
+    } else {
+      router.replace("/attendee/sign-in");
+    }
+  }
 
   return (
     <div className="mx-auto flex max-w-3xl flex-col gap-6 px-4 py-8">
@@ -96,7 +108,37 @@ export function ProfileHome() {
             <ButtonLink href="/attendee/profile/settings" variant="secondary">
               Privacy settings
             </ButtonLink>
+            <Button variant="danger" onClick={() => setShowDeleteDialog(true)}>
+              Delete account
+            </Button>
           </div>
+          {showDeleteDialog && (
+            <Dialog
+              open={showDeleteDialog}
+              onClose={() => setShowDeleteDialog(false)}
+              title="Delete account"
+              description="This will permanently delete your account. This action cannot be undone. Your connections may already have copied or seen your data."
+              actions={
+                <>
+                  <Button
+                    variant="secondary"
+                    onClick={() => setShowDeleteDialog(false)}
+                  >
+                    Cancel
+                  </Button>
+                  <Button
+                    variant="danger"
+                    onClick={() => {
+                      handleDeleteConfirm();
+                      setShowDeleteDialog(false);
+                    }}
+                  >
+                    Delete
+                  </Button>
+                </>
+              }
+            />
+          )}
         </>
       )}
     </div>

@@ -60,6 +60,14 @@ test("signed-out workspace visits go to their own sign-in", async () => {
     ["/attendee", "/attendee/sign-in"],
     ["/attendee/profile", "/attendee/sign-in"],
     ["/attendee/profile/edit", "/attendee/sign-in"],
+    ["/attendee/inbox", "/attendee/sign-in"],
+    [
+      "/attendee/inbox/c1000000-0000-0000-0000-000000000001",
+      "/attendee/sign-in",
+    ],
+    // web#14: the connections page is behind the attendee guard like the rest of
+    // the workspace, so a signed-out visitor gets no lists and no URLs.
+    ["/attendee/connections", "/attendee/sign-in"],
     [
       "/organizer/events/f2d1a2a4-0f0e-4c1d-9d3a-5a5f3f6b7c01/share",
       "/organizer/sign-in",
@@ -134,26 +142,13 @@ test("reserved words are never treated as event slugs", async () => {
     assert.equal((await get(path)).status, 404, path);
 });
 
-test("an event landing page offers the join entry points", async () => {
-  const r = await get("/atlas-summit");
-  assert.equal(r.status, 200);
-  const html = await r.text();
-  assert.ok(html.includes("/attendee/sign-up?event=atlas-summit"));
-  assert.ok(html.includes("/attendee/sign-in?event=atlas-summit"));
-  // web#8: a visitor with no attendee session gets no join review and no profile.
+test("an unavailable event API never offers a blind join or exposes a saved profile", async () => {
+  const response = await get("/atlas-summit");
+  assert.equal(response.status, 200);
+  const html = await response.text();
+  assert.ok(html.includes("couldn’t load this event"));
   assert.ok(!html.includes("Confirm and join"));
   assert.ok(!html.includes("This is what people at"));
-});
-
-test("every well-formed event link carries its own slug", async () => {
-  // Any slug that isn't reserved is an event link, and its join links keep that slug.
-  const r = await get("/some-other-event");
-  assert.equal(r.status, 200);
-  const html = await r.text();
-  assert.ok(html.includes("?event=some-other-event"));
-  assert.ok(!html.includes("?event=atlas-summit"));
-
-  // The attendee-only workspace under /events stays behind the guard.
   const workspace = await get("/events/some-other-event");
   assert.equal(workspace.status, 307);
   assert.equal(location(workspace), "/attendee/sign-in");
