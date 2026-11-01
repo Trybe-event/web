@@ -10,7 +10,7 @@ import { serverApi } from "./api/server";
 import { isAccountType, workspacePath, type AccountType } from "./account";
 import { authConfigured } from "./auth-config";
 
-export type Account = components["schemas"]["Account"] & { type: AccountType };
+export type Account = components["schemas"]["Account"];
 
 export type SessionState =
   | { kind: "unconfigured" } // Clerk keys not set
@@ -32,7 +32,10 @@ export async function getSession(): Promise<SessionState> {
     } = await accountApiClient.GET("/me/account", {
       signal: AbortSignal.timeout(8000),
     });
-    if (boundAccount && isAccountType(boundAccount.type))
+    if (
+      boundAccount &&
+      (isAccountType(boundAccount.type) || boundAccount.type === "admin")
+    )
       return { kind: "bound", account: boundAccount as Account };
     if (
       accountResponse.status === 404 &&
@@ -54,7 +57,9 @@ export async function getSession(): Promise<SessionState> {
  */
 export async function requireAccount(
   type: AccountType,
-): Promise<{ account: Account } | { unavailable: true }> {
+): Promise<
+  { account: Account & { type: AccountType } } | { unavailable: true }
+> {
   const sessionState = await getSession();
   if (
     sessionState.kind === "unconfigured" ||
@@ -65,5 +70,5 @@ export async function requireAccount(
   if (sessionState.kind === "unavailable") return { unavailable: true };
   if (sessionState.account.type !== type)
     redirect(workspacePath(sessionState.account.type));
-  return { account: sessionState.account };
+  return { account: sessionState.account as Account & { type: AccountType } };
 }

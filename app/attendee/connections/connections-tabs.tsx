@@ -21,6 +21,10 @@ import {
 } from "@/components/ui";
 import { api, errorMessage, type Schemas } from "@/lib/api/client";
 import {
+  fetchPendingRequests,
+  fetchAcceptedConnections,
+} from "@/lib/connection-reads";
+import {
   TAB_EMPTY,
   TAB_ORDER,
   actionFailureMessage,
@@ -81,6 +85,7 @@ export function ConnectionsTabs() {
   const [notice, setNotice] = useState<Notice | null>(null);
   const [retry, setRetry] = useState<Retry | null>(null);
   const [confirming, setConfirming] = useState<Connection | null>(null);
+  const mutationPending = useRef(false);
   const tabRefs = useRef<Partial<Record<Tab, HTMLButtonElement | null>>>({});
 
   const requestList = useCallback(
@@ -95,43 +100,39 @@ export function ConnectionsTabs() {
 
   const loadRequests = useCallback(async () => {
     const [incomingResult, outgoingResult] = await Promise.all([
-      api.GET("/me/connection-requests", {
-        params: { query: { direction: "incoming" } },
-      }),
-      api.GET("/me/connection-requests", {
-        params: { query: { direction: "outgoing" } },
-      }),
+      fetchPendingRequests("incoming"),
+      fetchPendingRequests("outgoing"),
     ]);
-    if (incomingResult.data)
-      setIncoming(orderedRequests(pendingOnly(incomingResult.data.items)));
-    if (outgoingResult.data)
-      setOutgoing(orderedRequests(pendingOnly(outgoingResult.data.items)));
+    setIncoming(orderedRequests(pendingOnly(incomingResult.items ?? [])));
+    setOutgoing(orderedRequests(pendingOnly(outgoingResult.items ?? [])));
     return incomingResult.error ?? outgoingResult.error ?? null;
   }, []);
 
   const loadConnections = useCallback(async () => {
-    const { data } = await api.GET("/me/connections");
-    if (data) setConnected(orderedConnections(data.items));
+    const result = await fetchAcceptedConnections();
+    setConnected(orderedConnections(result.items ?? []));
+    return result.error;
   }, []);
 
   useEffect(() => {
     let active = true;
     const load = async () => {
-      const [failure] = await Promise.all([
+      const [requestFailure, connectionFailure] = await Promise.all([
         loadRequests(),
         loadConnections(),
         // Memberships only supply the slug a profile link needs; without them the
         // cards simply carry no link, so this failure isn't a page failure.
-        api.GET("/me/events").then(({ data }) => {
-          if (active && data) setSlugByEventId(eventSlugs(data.items));
-        }),
+        api
+          .GET("/me/events")
+          .then(({ data }) => {
+            if (active && data) setSlugByEventId(eventSlugs(data.items));
+          })
+          .catch(() => {
+            if (active) setSlugByEventId(EMPTY_SLUGS);
+          }),
       ]);
       if (!active) return;
-      setLoadFailure(
-        failure
-          ? errorMessage(failure, "We couldn't load your connections.")
-          : null,
-      );
+      setLoadFailure(requestFailure ?? connectionFailure);
       setLoading(false);
     };
     void load();
@@ -140,95 +141,123 @@ export function ConnectionsTabs() {
     };
   }, [loadRequests, loadConnections]);
 
+  async function refreshLists() {
+    setLoading(true);
+    const [requestFailure, connectionFailure] = await Promise.all([
+      loadRequests(),
+      loadConnections(),
+    ]);
+    setLoadFailure(requestFailure ?? connectionFailure);
+    setLoading(false);
+  }
+
   async function act(request: Request, action: ConnectionAction) {
-    const list = actionList(action);
-    const listBefore = requestList(list);
-    const indexBefore = indexOfId(listBefore, request.id);
-    setActingId(request.id);
-    setActingAction(action);
-    setNotice(null);
-    setRetry(null);
-    // Optimistic: the row leaves the list its action belongs to. An accept adds
-    // nothing here, because only the server can issue a connection.
-    setRequestList(list, removeById(listBefore, request.id));
-
-    let status: number | undefined;
-    let failure: { code?: string; message?: string } | null = null;
+    if (mutationPending.current) return;
+    mutationPending.current = true;
     try {
-      const result = await api.POST(
-        "/connection-requests/{requestId}/{action}",
-        { params: { path: { requestId: request.id, action } } },
-      );
-      status = result.response.status;
-      failure =
-        (result.error as { code?: string; message?: string } | undefined) ??
-        null;
-    } catch {
-      status = undefined; // the request never reached the server
-    }
-    setActingId(null);
-    setActingAction(null);
+      const list = actionList(action);
+      const listBefore = requestList(list);
+      const indexBefore = indexOfId(listBefore, request.id);
+      setActingId(request.id);
+      setActingAction(action);
+      setNotice(null);
+      setRetry(null);
+      // Optimistic: the row leaves the list its action belongs to. An accept adds
+      // nothing here, because only the server can issue a connection.
+      setRequestList(list, removeById(listBefore, request.id));
 
-    if (failure || status === undefined || status >= 400) {
-      setRequestList(list, insertAt(listBefore, indexBefore, request));
-      setNotice({
-        tone: "danger",
-        message: actionFailureMessage(action, failure, status),
-      });
-      if (retryable(status)) setRetry({ kind: "request", request, action });
-      // A conflict means someone else decided first: show the server's state.
-      if (conflict(failure, status)) {
-        await loadRequests();
-        await loadConnections();
+      let status: number | undefined;
+      let failure: { code?: string; message?: string } | null = null;
+      try {
+        const result = await api.POST(
+          "/connection-requests/{requestId}/{action}",
+          { params: { path: { requestId: request.id, action } } },
+        );
+        status = result.response.status;
+        failure =
+          (result.error as { code?: string; message?: string } | undefined) ??
+          null;
+      } catch {
+        status = undefined; // the request never reached the server
       }
-      return;
-    }
 
-    // The server's answer decides the lists: an acceptance only exists in
-    // GET /me/connections, so both lists are refetched before the notice.
-    if (refetchAfter(action).includes("connections")) await loadConnections();
-    await loadRequests();
-    setNotice({
-      tone: "success",
-      message: actionSuccessMessage(action, request.other.full_name),
-    });
+      if (failure || status === undefined || status >= 400) {
+        setRequestList(list, insertAt(listBefore, indexBefore, request));
+        setNotice({
+          tone: "danger",
+          message: actionFailureMessage(action, failure, status),
+        });
+        if (retryable(status)) setRetry({ kind: "request", request, action });
+        // A conflict means someone else decided first: show the server's state.
+        if (conflict(failure, status)) {
+          const [requestFailure, connectionFailure] = await Promise.all([
+            loadRequests(),
+            loadConnections(),
+          ]);
+          setLoadFailure(requestFailure ?? connectionFailure);
+        }
+        return;
+      }
+
+      // The server's answer decides the lists: an acceptance only exists in
+      // GET /me/connections, so both lists are refetched before the notice.
+      const connectionFailure = refetchAfter(action).includes("connections")
+        ? await loadConnections()
+        : null;
+      const requestFailure = await loadRequests();
+      setLoadFailure(requestFailure ?? connectionFailure);
+      setNotice({
+        tone: "success",
+        message: actionSuccessMessage(action, request.other.full_name),
+      });
+    } finally {
+      mutationPending.current = false;
+      setActingId(null);
+      setActingAction(null);
+    }
   }
 
   async function disconnect(connection: Connection) {
-    const indexBefore = indexOfId(connected, connection.id);
-    setActingId(connection.id);
-    setActingAction(null);
-    setNotice(null);
-    setRetry(null);
-    setConnected(removeById(connected, connection.id));
-
-    let status: number | undefined;
-    let failure: { message?: string } | null = null;
+    if (mutationPending.current) return;
+    mutationPending.current = true;
     try {
-      const result = await api.DELETE("/connections/{connectionId}", {
-        params: { path: { connectionId: connection.id } },
-      });
-      status = result.response.status;
-      failure = (result.error as { message?: string } | undefined) ?? null;
-    } catch {
-      status = undefined;
-    }
-    setActingId(null);
-    setConfirming(null);
+      const indexBefore = indexOfId(connected, connection.id);
+      setActingId(connection.id);
+      setActingAction(null);
+      setNotice(null);
+      setRetry(null);
+      setConnected(removeById(connected, connection.id));
 
-    if (failure || status === undefined || status >= 400) {
-      setConnected(insertAt(connected, indexBefore, connection));
+      let status: number | undefined;
+      let failure: { message?: string } | null = null;
+      try {
+        const result = await api.DELETE("/connections/{connectionId}", {
+          params: { path: { connectionId: connection.id } },
+        });
+        status = result.response.status;
+        failure = (result.error as { message?: string } | undefined) ?? null;
+      } catch {
+        status = undefined;
+      }
+      setConfirming(null);
+
+      if (failure || status === undefined || status >= 400) {
+        setConnected(insertAt(connected, indexBefore, connection));
+        setNotice({
+          tone: "danger",
+          message: errorMessage(failure, "We couldn't disconnect. Try again."),
+        });
+        if (retryable(status)) setRetry({ kind: "connection", connection });
+        return;
+      }
       setNotice({
-        tone: "danger",
-        message: errorMessage(failure, "We couldn't disconnect. Try again."),
+        tone: "success",
+        message: `You're no longer connected with ${connection.other.full_name}.`,
       });
-      if (retryable(status)) setRetry({ kind: "connection", connection });
-      return;
+    } finally {
+      mutationPending.current = false;
+      setActingId(null);
     }
-    setNotice({
-      tone: "success",
-      message: `You're no longer connected with ${connection.other.full_name}.`,
-    });
   }
 
   function runRetry() {
@@ -278,6 +307,14 @@ export function ConnectionsTabs() {
       {loadFailure && (
         <div className="mt-6">
           <Alert>{loadFailure}</Alert>
+          <Button
+            className="mt-3"
+            variant="secondary"
+            onClick={refreshLists}
+            disabled={loading}
+          >
+            Reload connections
+          </Button>
         </div>
       )}
 
@@ -306,7 +343,7 @@ export function ConnectionsTabs() {
           </div>
           <Skeleton className="h-40" />
         </div>
-      ) : (
+      ) : loadFailure ? null : (
         <>
           <div
             role="tablist"

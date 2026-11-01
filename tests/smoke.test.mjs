@@ -94,6 +94,24 @@ test("home offers both account types", async () => {
   );
 });
 
+test("moderation routes require administrator sign-in and expose no self-registration", async () => {
+  for (const path of [
+    "/admin",
+    "/admin/reports",
+    "/admin/reports/11111111-1111-4111-8111-111111111111",
+  ]) {
+    const response = await get(path);
+    assert.equal(response.status, 307);
+    assert.equal(location(response), "/admin/sign-in");
+  }
+  const signIn = await get("/admin/sign-in");
+  assert.equal(signIn.status, 200);
+  const html = await signIn.text();
+  assert.match(html, /Moderation sign-in/);
+  assert.doesNotMatch(html, /Create account|Create your administrator account/);
+  assert.equal((await get("/admin/sign-up")).status, 404);
+});
+
 test("proxy refuses unlisted endpoints, wrong methods and cross-site writes", async () => {
   assert.equal((await get("/api/not-in-contract")).status, 404);
   assert.equal((await get("/api/healthz", { method: "DELETE" })).status, 404);
