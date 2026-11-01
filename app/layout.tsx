@@ -44,5 +44,14 @@ export default async function RootLayout({
       </body>
     </html>
   );
-  return authConfigured() ? <ClerkProvider>{page}</ClerkProvider> : page;
+  return authConfigured() ? (
+    <ClerkProvider
+      prefetchUI={false}
+      proxyUrl={process.env.NODE_ENV === "development" ? "/__clerk" : undefined}
+    >
+      {page}
+    </ClerkProvider>
+  ) : (
+    page
+  );
 }

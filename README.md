@@ -96,3 +96,22 @@ credentials, local tunnel logs or temporary URLs.
 To return to laptop-only testing, stop the tunnel, restore both origin settings
 to `http://localhost:3000`, and restart web and API. Use Ctrl+C in each existing
 service terminal before restarting to avoid duplicate listeners.
+
+### Single-instance development startup
+
+`npm run dev` checks its configured port before launching. If an existing service
+responds to the Trybe health probe, it reports that instance and exits successfully
+without spawning a second server. If the listener cannot be confirmed, it reports
+that fact and exits nonzero without killing anything. This does not certify that
+sign-in or the database is ready. Use `/api/readyz` (web) or `/readyz` (API) for that.
+
+Keep one terminal per service. Ctrl+C stops the process tree started by that
+launcher on Windows; it never terminates unrelated Node or Go instances.
+
+Development authentication uses Clerk's built-in frontend API proxy at `/__clerk`.
+Both the server matcher (including SDK `.js` files) and client provider use that
+path. This lets the phone retrieve Clerk JS and frontend API responses through the
+configured Trybe origin. Production authentication settings remain unchanged.
+A failed SDK initialization displays a reload action after 20 seconds; the submit
+button remains disabled until authentication is initialized. Credentials are not
+submitted while the SDK is unavailable.

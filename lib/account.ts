@@ -13,6 +13,7 @@ export function isAccountType(value: unknown): value is AccountType {
 }
 
 /** Workspace home for an account type. */
-export function workspacePath(type: AccountType): string {
+export function workspacePath(type: AccountType | "admin"): string {
+  if (type === "admin") return "/admin";
   return type === "organizer" ? "/organizer" : "/attendee";
 }

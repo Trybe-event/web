@@ -22,6 +22,7 @@ export function EventWorkspaceNavigation({ slug }: { slug: string }) {
     { title: "Notifications", href: "/attendee/notifications", icon: Bell },
     { title: "Profile", href: "/attendee/profile", icon: UserRound },
     { title: "Settings", href: "/attendee/profile/settings", icon: Settings },
+    { title: "Connections", href: "/attendee/connections", icon: Link2 },
   ];
   return (
     <nav
@@ -39,25 +40,24 @@ export function EventWorkspaceNavigation({ slug }: { slug: string }) {
           <span>{link.title}</span>
         </Link>
       ))}
-      {[
-        { title: "Connections", icon: Link2 },
-        { title: "Inbox", icon: MessageSquare },
-      ].map(({ title, icon: Icon }) => (
-        <button
-          key={title}
-          type="button"
-          disabled
-          title={`${title} is not available yet`}
-          aria-label={`${title}, not available yet`}
-          className="flex min-h-14 min-w-0 flex-col items-center justify-center gap-1 rounded-xl px-1 py-2 text-center text-[11px] leading-tight text-muted md:min-h-11 md:flex-row md:justify-start md:gap-2 md:px-3 md:py-3 md:text-left md:text-sm"
-        >
-          <Icon size={17} aria-hidden="true" className="shrink-0" />
-          <span>
-            {title}
-            <span className="block text-[10px]">Not available yet</span>
-          </span>
-        </button>
-      ))}
+      {[{ title: "Inbox", icon: MessageSquare }].map(
+        ({ title, icon: Icon }) => (
+          <button
+            key={title}
+            type="button"
+            disabled
+            title={`${title} is not available yet`}
+            aria-label={`${title}, not available yet`}
+            className="flex min-h-14 min-w-0 flex-col items-center justify-center gap-1 rounded-xl px-1 py-2 text-center text-[11px] leading-tight text-muted md:min-h-11 md:flex-row md:justify-start md:gap-2 md:px-3 md:py-3 md:text-left md:text-sm"
+          >
+            <Icon size={17} aria-hidden="true" className="shrink-0" />
+            <span>
+              {title}
+              <span className="block text-[10px]">Not available yet</span>
+            </span>
+          </button>
+        ),
+      )}
     </nav>
   );
 }

@@ -122,3 +122,18 @@ test("mock mode cannot replace a server-bound organizer with an attendee", async
     "organizer",
   );
 });
+
+test("operator-provisioned administrators are recognized but cannot enter attendee or organizer workspaces", async () => {
+  const harness = sessionHarness({
+    lookup: {
+      data: { type: "admin", id: "operator" },
+      response: { status: 200 },
+    },
+  });
+  assert.equal((await harness.session.getSession()).account.type, "admin");
+  for (const workspace of ["attendee", "organizer"])
+    await assert.rejects(
+      harness.session.requireAccount(workspace),
+      /redirect:\/admin/,
+    );
+});
