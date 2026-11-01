@@ -154,19 +154,19 @@ test("the switcher lists active memberships only", async () => {
       response: { status: 200 },
     }),
   });
-  assert.deepEqual(plain(await harness.events.listMyEvents()), [
+  assert.deepEqual(plain(await harness.events.loadMyEvents()), [
     { slug: "atlas-summit", name: "Atlas Summit" },
   ]);
 });
 
-test("an unreachable API yields the safe empty answers", async () => {
+test("membership outages remain unknown rather than claiming nonmembership", async () => {
   const harness = eventsHarness({
     respond: () => {
       throw new Error("Network unavailable");
     },
   });
-  assert.deepEqual(plain(await harness.events.listMyEvents()), []);
-  assert.equal(await harness.events.hasEventMembership("atlas-summit"), false);
+  assert.equal(await harness.events.loadMyEvents(), null);
+  assert.equal(await harness.events.hasEventMembership("atlas-summit"), null);
   assert.deepEqual(plain(await harness.events.getPublicEvent("atlas-summit")), {
     kind: "unavailable",
   });
@@ -199,4 +199,18 @@ test("an unknown event is a 404 while an upstream failure is not", async () => {
   const result = await found.events.getPublicEvent("atlas-summit");
   assert.equal(result.kind, "found");
   assert.equal(result.event.name, "Atlas Summit");
+});
+
+test("event loading distinguishes an empty account from an unavailable API", async () => {
+  const empty = eventsHarness({
+    respond: () => ({ data: { items: [] }, response: { status: 200 } }),
+  });
+  assert.deepEqual(plain(await empty.events.loadMyEvents()), []);
+  assert.equal(await empty.events.hasEventMembership("atlas-summit"), false);
+  const failed = eventsHarness({
+    respond: () => {
+      throw new Error("offline");
+    },
+  });
+  assert.equal(await failed.events.loadMyEvents(), null);
 });

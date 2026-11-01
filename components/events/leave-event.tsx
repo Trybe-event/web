@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useRef, useState } from "react";
 
 import { Alert, Button, Dialog } from "@/components/ui";
 import { api, errorMessage } from "@/lib/api/client";
@@ -14,23 +14,35 @@ export function LeaveEvent({ slug, name }: { slug: string; name: string }) {
   const [isConfirming, setConfirming] = useState(false);
   const [isLeaving, setLeaving] = useState(false);
   const [failure, setFailure] = useState("");
+  const pending = useRef(false);
 
   async function leave() {
+    if (pending.current) return;
+    pending.current = true;
     setLeaving(true);
     setFailure("");
-    const { error, response } = await api.POST("/e/{slug}/leave", {
-      params: { path: { slug } },
-    });
-    if (response.ok) {
-      setConfirming(false);
-      router.push("/attendee");
-      router.refresh();
-      return;
+    try {
+      const { error, response } = await api.POST("/e/{slug}/leave", {
+        params: { path: { slug } },
+      });
+      if (response.ok) {
+        setConfirming(false);
+        router.push("/attendee");
+        router.refresh();
+        return;
+      }
+      setFailure(
+        errorMessage(
+          error,
+          "We couldn't remove you from this event. Try again.",
+        ),
+      );
+    } catch {
+      setFailure("We couldn't remove you from this event. Try again.");
+    } finally {
+      pending.current = false;
+      setLeaving(false);
     }
-    setFailure(
-      errorMessage(error, "We couldn't remove you from this event. Try again."),
-    );
-    setLeaving(false);
   }
 
   return (

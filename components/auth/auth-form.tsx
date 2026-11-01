@@ -2,7 +2,7 @@
 
 import { useAuth, useSignIn, useSignUp } from "@clerk/nextjs";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useId, useState } from "react";
+import { useEffect, useId, useState } from "react";
 import { useForm, useWatch } from "react-hook-form";
 import { z } from "zod";
 
@@ -55,6 +55,16 @@ export function AuthForm({
   const { signIn, errors: signInErrors } = useSignIn();
   const { signUp, errors: signUpErrors } = useSignUp();
   const { isLoaded } = useAuth();
+  const [authenticationLoadTimedOut, setAuthenticationLoadTimedOut] =
+    useState(false);
+  useEffect(() => {
+    if (isLoaded) return;
+    const timer = window.setTimeout(
+      () => setAuthenticationLoadTimedOut(true),
+      20000,
+    );
+    return () => window.clearTimeout(timer);
+  }, [isLoaded]);
   const [authenticationStep, setAuthenticationStep] =
     useState<Step>("credentials");
   const [isAuthenticationPending, setAuthenticationPending] = useState(false);
@@ -301,10 +311,24 @@ export function AuthForm({
           >
             {mode === "sign-up" ? "Create account" : "Sign in"}
           </Button>
-          {!isLoaded && (
-            <p className="text-sm text-muted" role="status">
-              Connecting securely...
-            </p>
+          {!isLoaded && authenticationLoadTimedOut ? (
+            <Alert>
+              Sign-in could not connect. Your details have not been submitted.
+              Check your connection, then reload this page.
+              <Button
+                type="button"
+                variant="ghost"
+                onClick={() => window.location.reload()}
+              >
+                Reload sign-in
+              </Button>
+            </Alert>
+          ) : (
+            !isLoaded && (
+              <p className="text-sm text-muted" role="status">
+                Connecting securely...
+              </p>
+            )
           )}
         </form>
       )}

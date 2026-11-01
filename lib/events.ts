@@ -34,21 +34,19 @@ export type PublicEventResult =
   | { kind: "not_found" }
   | { kind: "unavailable" };
 
-// listMyEvents returns the caller's active memberships (GET /me/events), which the
-// contract documents as the source for the event switcher. It never throws: a missing
-// or unreachable API yields an empty list, and the page still renders.
-export async function listMyEvents(): Promise<EventOption[]> {
+// A failed read must not claim the attendee has no events.
+export async function loadMyEvents(): Promise<EventOption[] | null> {
   try {
     const api = await serverApi();
     const { data } = await api.GET("/me/events", {
       signal: AbortSignal.timeout(8000),
     });
-    if (!data) return [];
+    if (!data) return null;
     return data.items
       .filter((item) => item.membership.status === "active" && item.event.slug)
       .map((item) => ({ slug: item.event.slug, name: item.event.name }));
   } catch {
-    return [];
+    return null;
   }
 }
 
@@ -72,11 +70,15 @@ export async function getPublicEvent(slug: string): Promise<PublicEventResult> {
 
 // hasEventMembership answers from the membership list (GET /me/events), not from the
 // profile preview, so an attendee who joined before creating a profile still reaches
-// their workspace. An unreachable API reads as false: the caller then offers the join,
-// which is idempotent and cannot double-register.
-export async function hasEventMembership(slug: string): Promise<boolean> {
-  const memberships = await listMyEvents();
-  return memberships.some((event) => event.slug === slug);
+// their workspace. A failed lookup remains unknown: never offer registration on
+// the assumption that an unavailable membership service means "not a member".
+export async function hasEventMembership(
+  slug: string,
+): Promise<boolean | null> {
+  const memberships = await loadMyEvents();
+  return memberships === null
+    ? null
+    : memberships.some((event) => event.slug === slug);
 }
 
 // getJoinPreview loads what an event member would see of the caller's saved profile
