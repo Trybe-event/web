@@ -156,7 +156,10 @@ test("the join flow carries the event slug through the account steps", async () 
 });
 
 test("reserved words are never treated as event slugs", async () => {
-  for (const path of ["/admin", "/dev", "/events/admin"])
+  const admin = await get("/admin");
+  assert.equal(admin.status, 307);
+  assert.equal(location(admin), "/admin/sign-in");
+  for (const path of ["/dev", "/events/admin"])
     assert.equal((await get(path)).status, 404, path);
 });
 
