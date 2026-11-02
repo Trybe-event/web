@@ -1,8 +1,8 @@
 # Trybe MVP Scope and Delivery Plan
 
-**Version 1.1 | Updated 17 October 2026**
+**Version 1.2 | Updated 3 November 2026**
 
-> Roadmap-only revision of the v1.0 MVP baseline. The four milestones and launch scope are unchanged. This Markdown and `trybe-mvp.pdf` include the future poster/code-entry addendum; adding it does not sign off a milestone or make those features part of the current build.
+> The four-milestone v1.0 baseline remains the delivery structure. The 3 November release extension authorizes short event invitations and transactional email. Earlier future-only wording for those specific items is superseded by that extension. No document update signs off a release gate.
 
 The minimum viable product proves one complete outcome: an organizer creates an event, attendees join through its link, and they discover, connect, and communicate with relevant people while controlling contact visibility.
 
@@ -199,3 +199,36 @@ These enhancements are outside the current four-milestone MVP. The current M2 de
 - Let attendees enter an event code to resolve an invitation, then sign in or create a profile as needed, review their details and explicitly confirm joining. Preserve the intended event through onboarding. Looking up a code never registers anyone, and an organizer account cannot join as an attendee.
 - Add event-code storage and lookup through a future reviewed API contract. Codes must resolve the same event as the QR, honor private-event and registration rules, resist enumeration and never grant access to attendee directories or contacts on their own.
 - Release only after final-resolution QR scans on two phones, typed-code lookup, mobile download, long-text, failure, privacy and account-boundary checks pass. Full requirements are in PRD section 65.
+
+## Maintainer release extension: 3 November 2026
+
+### Six-character event invitations
+
+- Generate six random lowercase alphanumeric characters for each published event. A code such as jyka2k is independent of the event title. Uppercase entry can normalize to the same invitation.
+- Replace all existing non-null event invitation keys in a controlled migration, as explicitly requested by the maintainer. Retire the previous keys without redirects or aliases. Previously downloaded QR images stop working; organizers must share the new link and QR.
+- Reserve retired keys against future reuse. Restore the permanent-link guard after migration. Subsequent edits and repeated publication keep the new link stable.
+- A code lookup opens an invitation; it never registers a person. Preserve the code through attendee sign-in, onboarding and explicit registration. Organizer accounts cannot join as attendees. Unknown, retired and draft invitations expose no attendee data.
+- Keep the current QR export, add a readable code, and let the marketing event-code entry hand off to the real app. Full 4K poster generation remains future work.
+
+### Transactional email and scheduling
+
+- Use Resend, with an explicitly selected TLS-only SMTP alternative. Keep credentials and delivery server-side. SMTP is not an automatic fallback after a Resend timeout.
+- Provide branded HTML and plain-text welcome, event registration, organizer start snapshot, ending-soon reminder, end-event reminder, organizer summary and personal attendee recap templates.
+- Resolve only the verified primary Clerk sign-in address. Hidden profile contact values never choose recipients. Respect account deletion, membership and applicable notification preferences.
+- Use a durable queue with deduplication, bounded retries, frozen retry payloads and provider idempotency. Uncertain SMTP outcomes require review. An explicit activation timestamp prevents mailing historical signups accidentally.
+- Show real recorded numbers: registrations, requests, accepted requests, current connections and conversations. Personal recaps contain only the attendee's own counts. Do not call registrations physical attendance or include private messages, contacts or confidential moderation reports.
+- Schedule an organizer snapshot at the start, a reminder within two hours of the finish and a review/end-event reminder when the scheduled finish arrives. Send final recaps once the event is marked ended. Email scheduling does not automatically change event status.
+- Clerk continues to own authentication verification, reset codes and sign-in security alerts. A real verified sending-domain/inbox check is required before enabling Trybe delivery.
+
+### Stable integration and live release gates
+
+- Integrate and test reviewed M1-M4 code on `stable` under the maintainer's latest instruction. Keep `main` unchanged until later approved promotion. Retain `stable`, `main` and the four milestone branches. Safeguard unique unmerged branch tips with archive tags before removing obsolete branches or closing redundant PRs.
+- Record API/database, web/build/privacy, short-key migration, email retry/deletion, disposable backup/restore and pilot-size latency results on the tested revisions.
+- Keep real Clerk, mobile/keyboard/theme/reconnect, Supabase recovery, provider inbox, hosted performance and operational ownership checks visible until demonstrated. Stable integration is not a claim of production launch approval. Gate automatic backend release separately.
+
+### Future paid tickets and public marketing events
+
+- Add separately scoped public event listings and ticket checkout on the marketing site. Private events must not appear in public discovery.
+- Record successful purchases idempotently from a signature-verified payment webhook. Support a purchase before the attendee creates an account, and clearly instruct the buyer to register with the same email.
+- Claim a purchase only after verified ownership of that email and creation of an attendee account. An unverified email match must never grant a ticket or convert an organizer identity. Preserve explicit event joining where required.
+- Define payment provider, currencies, prices, capacity, duplicate purchases, refunds, cancellations, transfers and reconciliation in a reviewed contract before building collection. No payment processing is included in the current release extension.
