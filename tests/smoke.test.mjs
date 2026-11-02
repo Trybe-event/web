@@ -163,6 +163,17 @@ test("reserved words are never treated as event slugs", async () => {
     assert.equal((await get(path)).status, 404, path);
 });
 
+test("six-character codes normalize case and survive the account step", async () => {
+  const invitation = await get("/JYKA2K");
+  assert.equal(invitation.status, 307);
+  assert.equal(location(invitation), "/jyka2k");
+  const complete = await get("/attendee/complete?event=jyka2k");
+  assert.equal(complete.status, 307);
+  const target = new URL(complete.headers.get("location"), base);
+  assert.equal(target.pathname, "/attendee/sign-up");
+  assert.equal(target.searchParams.get("event"), "jyka2k");
+});
+
 test("an unavailable event API never offers a blind join or exposes a saved profile", async () => {
   const response = await get("/atlas-summit");
   assert.equal(response.status, 200);

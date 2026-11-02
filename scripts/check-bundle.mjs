@@ -16,6 +16,8 @@ const forbidden = [
   /(?<!env\.)API_INTERNAL_URL/,
   /(?<!env\.)DATABASE_URL/,
   /(?<!env\.)STORAGE_SECRET/,
+  /(?<!env\.)RESEND_API_KEY/,
+  /(?<!env\.)SMTP_PASSWORD/,
   /\bsk_(live|test)_[A-Za-z0-9]{10,}/,
   /whsec_[A-Za-z0-9+/=]{10,}/,
   /postgres(ql)?:\/\/[^\s"']+@/,
@@ -23,6 +25,8 @@ const forbidden = [
 const values = [
   process.env.CLERK_SECRET_KEY,
   process.env.PROXY_SHARED_SECRET,
+  process.env.RESEND_API_KEY,
+  process.env.SMTP_PASSWORD,
 ].filter((v) => v && v.length >= 8);
 
 const hits = [];

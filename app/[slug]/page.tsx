@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 
 import { JoinReview } from "@/components/events/join-review";
 import { ProgramView } from "@/components/events/program-view";
@@ -59,6 +59,8 @@ export default async function EventLanding({
   params: Promise<{ slug: string }>;
 }) {
   const { slug } = await params;
+  if (/^[a-z0-9]{6}$/i.test(slug) && slug !== slug.toLowerCase())
+    redirect(`/${slug.toLowerCase()}`);
   if (!isEventSlug(slug)) notFound();
 
   const session = await getSession();
