@@ -1,3 +1,4 @@
+import { BrandMark } from "@/components/brand-mark";
 import { ArrowUpRight, ShieldCheck, Sparkles } from "lucide-react";
 import Link from "next/link";
 import type { ReactNode } from "react";
@@ -55,7 +56,9 @@ export function AuthShell({
         <div className="connection-art" aria-hidden="true">
           <div className="orbit orbit-one" />
           <div className="orbit orbit-two" />
-          <div className="art-center">✳</div>
+          <div className="art-center">
+            <BrandMark />
+          </div>
           <span className="orbit-note note-one">
             {organizer ? "Your event" : "Shared interests"}
             <ArrowUpRight size={16} />

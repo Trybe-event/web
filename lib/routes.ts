@@ -8,6 +8,8 @@ export const RESERVED_SLUGS = new Set([
   "account",
   "profile",
   "events",
+  "event-artwork",
+  "event-images",
   "sign-in",
   "sign-up",
   "dev",

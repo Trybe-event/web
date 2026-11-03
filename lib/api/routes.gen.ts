@@ -14,6 +14,7 @@ export const CONTRACT_ROUTES: ReadonlyArray<readonly [string, string]> = [
   ["PUT", "/me/privacy"],
   ["POST", "/uploads"],
   ["POST", "/events"],
+  ["DELETE", "/events/{eventId}"],
   ["GET", "/events/{eventId}"],
   ["PATCH", "/events/{eventId}"],
   ["POST", "/events/{eventId}/publish"],

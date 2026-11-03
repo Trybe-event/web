@@ -77,3 +77,44 @@ test("sign-up preserves completion and sign-in preserves the role route", () => 
     );
   }
 });
+
+test("authentication rejects untrusted destinations and malformed event identifiers", () => {
+  for (const destination of [
+    "https://evil.example",
+    "//evil.example",
+    "/attendee/../organizer",
+    "/attendee?redirect=https://evil.example",
+    "/attendee%2f..%2fadmin",
+    "/logout",
+  ]) {
+    assert.throws(
+      () => authenticationDestination(destination, false, false),
+      /not allowed/,
+    );
+  }
+  for (const event of [
+    "https://evil.example",
+    "//evil.example",
+    "../admin",
+    "admin",
+    "attendee",
+    "abc123?redirect=https://evil.example",
+    "%2f%2fevil.example",
+    "abc123\\evil",
+    "abc123#evil",
+    "abc123\n",
+  ]) {
+    assert.throws(
+      () => authenticationDestination("/attendee", false, false, event),
+      /not allowed/,
+    );
+  }
+  assert.throws(
+    () => authenticationDestination("/organizer", false, false, "abc123"),
+    /not allowed/,
+  );
+  assert.equal(
+    authenticationDestination("/attendee", false, false, "8p5lxp"),
+    "/8p5lxp",
+  );
+});

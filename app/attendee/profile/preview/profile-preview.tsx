@@ -117,8 +117,8 @@ export function ProfilePreview({
           <>
             <JoinEvent
               slug={eventSlug}
-              name={eventName ?? eventSlug}
-              label={`Confirm and join ${eventName ?? eventSlug}`}
+              name={eventName ?? "this event"}
+              label="Confirm and join"
               disabled={!views.event_member || Boolean(failure)}
             />
             <Link
@@ -141,7 +141,7 @@ export function ProfilePreview({
       </div>
       {onboarding && eventSlug && (
         <p className="text-sm text-muted">
-          Nothing has been shared yet. You join {eventName ?? eventSlug} only
+          Nothing has been shared yet. You join {eventName ?? "this event"} only
           when you confirm.
         </p>
       )}
