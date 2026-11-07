@@ -5,7 +5,9 @@ import {
   WorkspaceUnavailable,
   WorkspaceShell,
 } from "@/components/auth/workspace";
-import { Alert, ButtonLink } from "@/components/ui";
+import { DiscoverEvents } from "@/components/events/discover-events";
+import { EventCodeEntry } from "@/components/events/event-code-entry";
+import { Alert, ButtonLink, Card } from "@/components/ui";
 import { serverApi } from "@/lib/api/server";
 import { loadMyEvents } from "@/lib/events";
 import { requireAccount } from "@/lib/session";
@@ -60,7 +62,7 @@ export default async function AttendeeHome() {
               title: "Your profile is ready.",
               body: attendsEvents
                 ? "Pick an event above to open its workspace, or review what people at your events will see."
-                : "Your event list is empty. Open an organizer's invitation link to review your profile and join an event.",
+                : "You haven't joined an event yet. Enter an event's link or code, or pick one of the upcoming events below.",
               href: attendsEvents
                 ? "/attendee/profile/preview"
                 : "/attendee/profile",
@@ -74,6 +76,15 @@ export default async function AttendeeHome() {
             ? "Profile setup comes next"
             : "Privacy settings available",
       }}
-    />
+    >
+      <div className="mt-8 flex flex-col gap-8">
+        <Card>
+          <EventCodeEntry />
+        </Card>
+        <DiscoverEvents
+          joinedSlugs={new Set(events.map((event) => event.slug))}
+        />
+      </div>
+    </WorkspaceHome>
   );
 }
