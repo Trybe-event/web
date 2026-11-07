@@ -1,10 +1,5 @@
 import { clerk } from "@clerk/testing/playwright";
-import {
-  devices,
-  expect,
-  type Browser,
-  type Page,
-} from "@playwright/test";
+import { devices, expect, type Browser, type Page } from "@playwright/test";
 
 const baseURL = process.env.TRYBE_E2E_WEB_URL ?? "http://localhost:3000";
 

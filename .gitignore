@@ -12,3 +12,7 @@ npm-debug.log*
 *.tsbuildinfo
 next-env.d.ts
 .agent/
+
+# Playwright output (npm run test:e2e)
+/e2e-report/
+/test-results/

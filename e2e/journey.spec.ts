@@ -60,20 +60,21 @@ test("organizer publishes an event with a permanent invitation link", async () =
   ));
   expect(slug).toMatch(/^[a-z0-9]{6}$/);
   await organizer.goto("/organizer");
-  await expect(
-    organizer.getByText(/Pilot journey/).first(),
-  ).toBeVisible();
+  await expect(organizer.getByText(/Pilot journey/).first()).toBeVisible();
 });
 
 async function joinOnLink(page: Page) {
   await page.goto(`/${slug}`);
-  await page.getByRole("button", { name: /join|confirm and join/i }).first().click();
+  await page
+    .getByRole("button", { name: /join|confirm and join/i })
+    .first()
+    .click();
   const confirm = page.getByRole("button", { name: "Confirm and join" });
   if (await confirm.isVisible().catch(() => false)) await confirm.click();
   await expect(
-    page.getByRole("link", { name: "Open your event workspace" }).or(
-      page.getByRole("navigation", { name: "Event workspace" }),
-    ),
+    page
+      .getByRole("link", { name: "Open your event workspace" })
+      .or(page.getByRole("navigation", { name: "Event workspace" })),
   ).toBeVisible();
 }
 
@@ -161,15 +162,17 @@ test("a blocked attendee cannot message", async () => {
     .getByRole("dialog")
     .getByRole("button", { name: /^Block/ })
     .click();
-  await expect(attendeeA.getByRole("textbox", { name: "Message" })).toBeDisabled();
+  await expect(
+    attendeeA.getByRole("textbox", { name: "Message" }),
+  ).toBeDisabled();
 
   // The blocked side gets no usable composer: disabled, or not rendered at all.
   await attendeeB.reload();
   await expect(attendeeB.getByRole("heading").first()).toBeVisible();
   const composer = attendeeB.getByRole("textbox", { name: "Message" });
-  expect(
-    (await composer.count()) === 0 || (await composer.isDisabled()),
-  ).toBe(true);
+  expect((await composer.count()) === 0 || (await composer.isDisabled())).toBe(
+    true,
+  );
   // And the server refuses a send outright, whatever the page shows.
   const conversationId = new URL(attendeeB.url()).pathname.split("/").pop();
   const attempt = await api(

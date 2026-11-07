@@ -6,3 +6,5 @@ package-lock.json
 public/mockServiceWorker.js
 lib/api/schema.d.ts
 contract/openapi.yaml
+e2e-report
+test-results

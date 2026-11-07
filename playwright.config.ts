@@ -10,10 +10,7 @@ export default defineConfig({
   fullyParallel: false,
   workers: 1,
   retries: process.env.CI ? 1 : 0,
-  reporter: [
-    ["list"],
-    ["html", { outputFolder: "e2e-report", open: "never" }],
-  ],
+  reporter: [["list"], ["html", { outputFolder: "e2e-report", open: "never" }]],
   use: {
     baseURL: process.env.TRYBE_E2E_WEB_URL ?? "http://localhost:3000",
     trace: "retain-on-failure",
