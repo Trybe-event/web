@@ -20,10 +20,12 @@ export default async function PreviewPage({
   const onboarding = query.onboarding === "1";
   const eventSlug = parseEventParam(query[EVENT_PARAM]);
   // Onboarding from an event link names the event in the review and confirm step
-  // (web#7). An event that no longer resolves falls back to the slug rather than
-  // blocking the attendee's own profile review.
+  // (web#7). An unavailable event never substitutes its code as a display name.
   const event = eventSlug ? await getPublicEvent(eventSlug) : null;
-  const eventName = event?.kind === "found" ? event.event.name : eventSlug;
+  const eventName =
+    event?.kind === "found"
+      ? event.event.name.split(/[:|]/, 1)[0]?.trim()
+      : undefined;
   return (
     <ProfilePreview
       onboarding={onboarding}

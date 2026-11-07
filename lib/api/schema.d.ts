@@ -219,7 +219,8 @@ export interface paths {
         get: operations["getEvent"];
         put?: never;
         post?: never;
-        delete?: never;
+        /** Permanently delete an owned draft and its program; published and ended events cannot be deleted */
+        delete: operations["deleteEventDraft"];
         options?: never;
         head?: never;
         patch: operations["updateEvent"];
@@ -1173,6 +1174,10 @@ export interface components {
             id: string;
             slug: string;
             name: string;
+            /** @description Public host organization name; no personal account fields */
+            organizer_name?: string;
+            /** Format: date-time */
+            registration_closes_at?: string | null;
             format: components["schemas"]["EventFormat"];
             timezone: string;
             /** Format: date-time */
@@ -1196,6 +1201,8 @@ export interface components {
             id: string;
             name: string;
             slug?: string | null;
+            /** @description Short-lived view URL for the event cover */
+            image_url?: string | null;
             status: components["schemas"]["EventStatus"];
             /** Format: date-time */
             starts_at?: string | null;
@@ -1726,6 +1733,28 @@ export interface operations {
             404: components["responses"]["Error"];
         };
     };
+    deleteEventDraft: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                eventId: components["parameters"]["EventId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Draft deleted */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            404: components["responses"]["Error"];
+            409: components["responses"]["Error"];
+        };
+    };
     updateEvent: {
         parameters: {
             query?: never;
@@ -1864,7 +1893,10 @@ export interface operations {
     createProgramDay: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description Keep the same key and body when retrying a create after a lost response */
+                "Idempotency-Key"?: string;
+            };
             path: {
                 eventId: components["parameters"]["EventId"];
             };
@@ -1886,6 +1918,7 @@ export interface operations {
                 };
             };
             400: components["responses"]["Error"];
+            409: components["responses"]["Error"];
         };
     };
     deleteProgramDay: {
@@ -1939,7 +1972,10 @@ export interface operations {
     createSession: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description Keep the same key and body when retrying a create after a lost response */
+                "Idempotency-Key"?: string;
+            };
             path: {
                 eventId: components["parameters"]["EventId"];
                 dayId: components["parameters"]["DayId"];
@@ -1962,6 +1998,7 @@ export interface operations {
                 };
             };
             400: components["responses"]["Error"];
+            409: components["responses"]["Error"];
         };
     };
     deleteSession: {

@@ -28,6 +28,28 @@ export function authenticationDestination(
     throw new Error(
       "Your session requires an additional security step. Please contact support before continuing.",
     );
+  if (!["/attendee", "/organizer", "/admin"].includes(base))
+    throw new Error("The authentication destination is not allowed.");
+  // Accept only an event identifier, never a request-provided redirect URL.
+  if (
+    eventSlug &&
+    (base !== "/attendee" ||
+      !/^[a-z0-9-]{3,80}$/.test(eventSlug) ||
+      [
+        "api",
+        "admin",
+        "organizer",
+        "attendee",
+        "account",
+        "profile",
+        "events",
+        "sign-in",
+        "sign-up",
+        "dev",
+        "_next",
+      ].includes(eventSlug))
+  )
+    throw new Error("The event destination is not allowed.");
   if (!eventSlug) return signingUp ? `${base}/complete` : base;
   return signingUp
     ? `${base}/complete?event=${encodeURIComponent(eventSlug)}`

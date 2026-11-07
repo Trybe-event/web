@@ -9,6 +9,7 @@ type DialogProps = {
   description?: string;
   children?: ReactNode;
   actions: ReactNode;
+  size?: "default" | "wide";
 };
 
 // Dialog uses the native <dialog> element: focus is trapped, Escape closes it, and
@@ -20,6 +21,7 @@ export function Dialog({
   description,
   children,
   actions,
+  size = "default",
 }: DialogProps) {
   const ref = useRef<HTMLDialogElement>(null);
   const id = useId();
@@ -35,7 +37,7 @@ export function Dialog({
       onClose={onClose}
       aria-labelledby={`${id}-title`}
       aria-describedby={description ? `${id}-desc` : undefined}
-      className="m-auto w-[min(32rem,calc(100vw-2rem))] rounded-xl border border-line bg-surface p-6 text-ink backdrop:bg-black/50"
+      className={`m-auto max-h-[calc(100dvh-2rem)] overflow-y-auto ${size === "wide" ? "w-[min(60rem,calc(100vw-2rem))]" : "w-[min(32rem,calc(100vw-2rem))]"} rounded-xl border border-line bg-surface p-6 text-ink backdrop:bg-black/50`}
     >
       <h2 id={`${id}-title`} className="text-lg font-bold">
         {title}

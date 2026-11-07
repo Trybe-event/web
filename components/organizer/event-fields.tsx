@@ -313,7 +313,11 @@ export function EventDetails() {
           />
         )}
       </Field>
-      <Field label="Event image" optional hint="JPEG, PNG or WebP, up to 5 MB.">
+      <Field
+        label="Event image"
+        optional
+        hint="Recommended: 1080 × 1440 pixels (3:4 portrait). JPEG, PNG or WebP, up to 5 MB. Your full image stays visible at its original proportions, with rounded edges and no cropping."
+      >
         {(props) => (
           <Input
             {...props}

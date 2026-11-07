@@ -36,6 +36,10 @@ const element = (tag) =>
   };
 const ui = {
   Card: element("section"),
+  Button: ({ children }) => React.createElement("button", null, children),
+  Dialog: ({ open, children }) =>
+    open ? React.createElement("div", null, children) : null,
+  Alert: element("div"),
   Badge: ({ children }) => React.createElement("span", null, children),
   ButtonLink: element("a"),
   Skeleton: ({ className }) =>
@@ -60,6 +64,18 @@ const lifecycleBadges = compile(
     "@/lib/event-lifecycle": lifecyclePolicy,
   },
 );
+const thumbnail = compile("../components/organizer/event-thumbnail.tsx", {
+  "next/image": {
+    __esModule: true,
+    default: ({ src, alt, className, sizes }) =>
+      React.createElement("img", { src, alt, className, sizes }),
+  },
+});
+const deletion = compile("../components/organizer/delete-draft.tsx", {
+  "@/components/ui": ui,
+  "next/navigation": { useRouter: () => ({ refresh() {} }) },
+  "@/lib/api/client": { api: {}, errorMessage: () => "Request failed" },
+});
 function dashboardHarness({ events = [], points = [], failure = false } = {}) {
   const requests = [];
   const data = compile("../lib/organizer-dashboard.ts", {
@@ -82,6 +98,8 @@ function dashboardHarness({ events = [], points = [], failure = false } = {}) {
     "@/components/ui": ui,
     "@/lib/organizer-dashboard": data,
     "./registration-trend": registrationView,
+    "./event-thumbnail": thumbnail,
+    "./delete-draft": deletion,
     "./event-status-badges": lifecycleBadges,
     "./retry-dashboard": {
       RetryDashboard: () => React.createElement("button", null, "Try again"),
@@ -223,4 +241,33 @@ test("organizer page calls the account guard before rendering dashboard and unav
     }
     assert.equal(dashboardCalls, scenario === "organizer" ? 1 : 0);
   }
+});
+
+test("covers stay cropped in a fixed thumbnail column and only drafts offer deletion", async () => {
+  const harness = dashboardHarness({
+    events: [
+      {
+        id: "draft-one",
+        name: "Draft with cover",
+        status: "draft",
+        image_url: "https://storage.example.test/event.jpg",
+        registrations: 0,
+        starts_at: null,
+      },
+      {
+        id: "published-one",
+        name: "Published event",
+        status: "published",
+        image_url: null,
+        registrations: 1,
+        starts_at: null,
+      },
+    ],
+  });
+  const rendered = await html(await harness.dashboard.OrganizerDashboard());
+  assert.ok(rendered.includes('src="https://storage.example.test/event.jpg"'));
+  assert.ok(rendered.includes('class="object-cover"'));
+  assert.ok(rendered.includes("grid-cols-[5rem_minmax(0,1fr)]"));
+  assert.equal((rendered.match(/Delete draft/g) || []).length, 1);
+  assert.ok(rendered.includes("No event cover"));
 });

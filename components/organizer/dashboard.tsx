@@ -12,6 +12,8 @@ import {
 
 import { RegistrationTrend } from "./registration-trend";
 import { RetryDashboard } from "./retry-dashboard";
+import { EventThumbnail } from "./event-thumbnail";
+import { DeleteDraft } from "./delete-draft";
 
 export function DashboardLoading() {
   return (
@@ -41,53 +43,64 @@ function EventRow({ event }: { event: OrganizerEvent }) {
       ? `/organizer/events/${encodeURIComponent(event.id)}/edit`
       : `/organizer/events/${encodeURIComponent(event.id)}/share`;
   return (
-    <Card className="grid min-w-0 gap-6 md:grid-cols-[minmax(0,1fr)_14rem]">
-      <div className="min-w-0">
-        <div className="mb-3 flex flex-wrap items-center gap-2">
-          <EventStatusBadges event={event} />
+    <Card className="grid min-w-0 grid-cols-[5rem_minmax(0,1fr)] items-start gap-4 md:grid-cols-[7rem_minmax(0,1fr)] md:gap-6">
+      <EventThumbnail imageUrl={event.image_url} name={event.name} />
+      <div className="grid min-w-0 gap-4 md:grid-cols-[minmax(0,1fr)_14rem] md:gap-6">
+        <div className="min-w-0">
+          <div className="mb-3 flex flex-wrap items-center gap-2">
+            <EventStatusBadges event={event} />
+          </div>
+          <h3 className="break-words text-xl font-bold">
+            <Link
+              href={destination}
+              className="inline-flex max-w-full items-start gap-2 rounded-sm hover:underline"
+            >
+              {event.name || "Untitled event"}
+              <ArrowUpRight
+                className="mt-1 size-4 shrink-0"
+                aria-hidden="true"
+              />
+            </Link>
+          </h3>
+          <p className="mt-2 flex items-center gap-2 text-sm text-muted">
+            <CalendarDays className="size-4 shrink-0" aria-hidden="true" />
+            {event.starts_at ? (
+              <time dateTime={event.starts_at}>
+                {new Intl.DateTimeFormat("en", {
+                  dateStyle: "medium",
+                  timeZone: "UTC",
+                }).format(new Date(event.starts_at))}{" "}
+                (UTC)
+              </time>
+            ) : (
+              "Date not set"
+            )}
+          </p>
+          <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
+            <p className="text-sm">
+              <strong className="text-2xl font-bold tabular-nums">
+                {event.registrations.toLocaleString("en")}
+              </strong>{" "}
+              {event.registrations === 1 ? "registration" : "registrations"}
+            </p>
+            {event.status === "draft" && (
+              <DeleteDraft eventId={event.id} name={event.name} />
+            )}
+          </div>
         </div>
-        <h3 className="break-words text-xl font-bold">
-          <Link
-            href={destination}
-            className="inline-flex max-w-full items-start gap-2 rounded-sm hover:underline"
+        <div className="min-w-0 border-t border-line pt-4 md:border-t-0 md:border-l md:pt-0 md:pl-6">
+          <h4 className="mb-2 text-sm font-semibold">Registration trend</h4>
+          <Suspense
+            fallback={
+              <div role="status">
+                <span className="sr-only">Loading registration trend...</span>
+                <Skeleton className="h-20" />
+              </div>
+            }
           >
-            {event.name || "Untitled event"}
-            <ArrowUpRight className="mt-1 size-4 shrink-0" aria-hidden="true" />
-          </Link>
-        </h3>
-        <p className="mt-2 flex items-center gap-2 text-sm text-muted">
-          <CalendarDays className="size-4 shrink-0" aria-hidden="true" />
-          {event.starts_at ? (
-            <time dateTime={event.starts_at}>
-              {new Intl.DateTimeFormat("en", {
-                dateStyle: "medium",
-                timeZone: "UTC",
-              }).format(new Date(event.starts_at))}{" "}
-              (UTC)
-            </time>
-          ) : (
-            "Date not set"
-          )}
-        </p>
-        <p className="mt-4 text-sm">
-          <strong className="text-2xl font-bold tabular-nums">
-            {event.registrations.toLocaleString("en")}
-          </strong>{" "}
-          {event.registrations === 1 ? "registration" : "registrations"}
-        </p>
-      </div>
-      <div className="min-w-0 border-t border-line pt-4 md:border-t-0 md:border-l md:pt-0 md:pl-6">
-        <h4 className="mb-2 text-sm font-semibold">Registration trend</h4>
-        <Suspense
-          fallback={
-            <div role="status">
-              <span className="sr-only">Loading registration trend...</span>
-              <Skeleton className="h-20" />
-            </div>
-          }
-        >
-          <EventRegistrationTrend eventId={event.id} />
-        </Suspense>
+            <EventRegistrationTrend eventId={event.id} />
+          </Suspense>
+        </div>
       </div>
     </Card>
   );

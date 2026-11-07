@@ -242,6 +242,16 @@ paths:
         "400": { $ref: "#/components/responses/Error" }
   /events/{eventId}:
     parameters: [{ $ref: "#/components/parameters/EventId" }]
+    delete:
+      tags: [events]
+      operationId: deleteEventDraft
+      summary: Permanently delete an owned draft and its program; published and ended events cannot be deleted
+      x-account: organizer
+      x-milestone: M2
+      responses:
+        "204": { description: Draft deleted }
+        "404": { $ref: "#/components/responses/Error" }
+        "409": { $ref: "#/components/responses/Error" }
     get:
       tags: [events]
       operationId: getEvent
@@ -340,10 +350,17 @@ paths:
       operationId: createProgramDay
       x-account: organizer
       x-milestone: M2
+      parameters:
+        - in: header
+          name: Idempotency-Key
+          required: false
+          description: Keep the same key and body when retrying a create after a lost response
+          schema: { type: string, minLength: 8, maxLength: 128 }
       requestBody:
         required: true
         content: { application/json: { schema: { $ref: "#/components/schemas/ProgramDayInput" } } }
       responses:
+        "409": { $ref: "#/components/responses/Error" }
         "201":
           description: Created
           content: { application/json: { schema: { $ref: "#/components/schemas/ProgramDay" } } }
@@ -376,10 +393,17 @@ paths:
       operationId: createSession
       x-account: organizer
       x-milestone: M2
+      parameters:
+        - in: header
+          name: Idempotency-Key
+          required: false
+          description: Keep the same key and body when retrying a create after a lost response
+          schema: { type: string, minLength: 8, maxLength: 128 }
       requestBody:
         required: true
         content: { application/json: { schema: { $ref: "#/components/schemas/SessionInput" } } }
       responses:
+        "409": { $ref: "#/components/responses/Error" }
         "201":
           description: Created
           content: { application/json: { schema: { $ref: "#/components/schemas/Session" } } }
@@ -1270,6 +1294,8 @@ components:
         id: { type: string, format: uuid }
         slug: { type: string }
         name: { type: string }
+        organizer_name: { type: string, description: Public host organization name; no personal account fields }
+        registration_closes_at: { type: [string, "null"], format: date-time }
         format: { $ref: "#/components/schemas/EventFormat" }
         timezone: { type: string }
         starts_at: { type: string, format: date-time }
@@ -1292,6 +1318,7 @@ components:
         id: { type: string, format: uuid }
         name: { type: string }
         slug: { type: [string, "null"] }
+        image_url: { type: [string, "null"], description: Short-lived view URL for the event cover }
         status: { $ref: "#/components/schemas/EventStatus" }
         starts_at: { type: [string, "null"], format: date-time }
         registrations: { type: integer }
