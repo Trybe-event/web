@@ -338,3 +338,25 @@ test("disconnect sends one request and accept refreshes the server lists", () =>
     "no connection is built on the client",
   );
 });
+
+test("an accepted connection opens its conversation through the API", () => {
+  // Without this, accepted connections had no way into chat: the API creates a
+  // conversation only when POST /connections/{id}/conversation is called.
+  const tabs = readFileSync(
+    new URL(
+      "../app/attendee/connections/connections-tabs.tsx",
+      import.meta.url,
+    ),
+    "utf8",
+  );
+  assert.match(
+    tabs,
+    /api\.POST\(\s*"\/connections\/\{connectionId\}\/conversation"/,
+    "the Message action opens the conversation on the server",
+  );
+  assert.match(
+    tabs,
+    /router\.push\(`\/attendee\/inbox\/\$\{encodeURIComponent\(data\.id\)\}`\)/,
+    "it goes to the conversation the server returned",
+  );
+});
