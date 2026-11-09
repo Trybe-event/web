@@ -13,6 +13,7 @@ import { withEventParam } from "@/lib/routes";
 import { SignOut } from "./sign-out";
 
 const phoneNumberPattern = /^\+?[0-9 ()-]{6,32}$/;
+const businessPhonePattern = /^\+[1-9][0-9]{7,14}$/;
 
 // One schema per account type: organizers must name their organization (PRD §7);
 // attendees may add a private phone number (PRD §12).
@@ -34,6 +35,18 @@ function accountCompletionSchema(type: AccountType) {
           code: "custom",
           path: ["organization"],
           message: "Enter your organization.",
+        });
+      }
+      if (
+        type === "organizer" &&
+        values.phone !== "" &&
+        !businessPhonePattern.test(values.phone)
+      ) {
+        validationContext.addIssue({
+          code: "custom",
+          path: ["phone"],
+          message:
+            "Enter your business phone in international format, for example +2348031234567.",
         });
       }
       if (
@@ -74,10 +87,14 @@ const accountCompletionRoutes: Record<AccountType, string> = {
 export function CompleteAccount({
   type,
   defaultName,
+  defaultOrganization = "",
+  defaultPhone = "",
   eventSlug,
 }: {
   type: AccountType;
   defaultName: string;
+  defaultOrganization?: string;
+  defaultPhone?: string;
   eventSlug?: string;
 }) {
   const [accountCreationError, setAccountCreationError] = useState("");
@@ -85,8 +102,8 @@ export function CompleteAccount({
     resolver: zodResolver(accountCompletionSchema(type)),
     defaultValues: {
       full_name: defaultName,
-      organization: "",
-      phone: "",
+      organization: defaultOrganization,
+      phone: defaultPhone,
       confirm: false,
     },
   });
@@ -101,6 +118,7 @@ export function CompleteAccount({
               body: {
                 full_name: values.full_name,
                 organization: values.organization,
+                phone: values.phone || null,
               },
               signal: AbortSignal.timeout(15000),
             })
@@ -169,7 +187,7 @@ export function CompleteAccount({
 
       {type === "organizer" ? (
         <>
-          <label htmlFor="organization">Organization</label>
+          <label htmlFor="organization">Registered business name</label>
           <input
             id="organization"
             autoComplete="organization"
@@ -182,6 +200,29 @@ export function CompleteAccount({
           {errors.organization && (
             <p id="organization-error" className="form-error">
               {errors.organization.message}
+            </p>
+          )}
+          <label htmlFor="business-phone">
+            Business phone number <span className="optional">(optional)</span>
+          </label>
+          <input
+            id="business-phone"
+            type="tel"
+            autoComplete="tel"
+            aria-invalid={errors.phone ? true : undefined}
+            aria-describedby={
+              errors.phone
+                ? "business-phone-hint business-phone-error"
+                : "business-phone-hint"
+            }
+            {...accountCompletionForm.register("phone")}
+          />
+          <p id="business-phone-hint" className="field-hint">
+            Private business contact. Not shown on your public event page.
+          </p>
+          {errors.phone && (
+            <p id="business-phone-error" className="form-error">
+              {errors.phone.message}
             </p>
           )}
         </>

@@ -1147,6 +1147,7 @@ components:
       properties:
         full_name: { type: string, minLength: 1, maxLength: 120 }
         organization: { type: string, minLength: 1, maxLength: 160 }
+        phone: { type: [string, "null"], maxLength: 16, pattern: '^\+[1-9][0-9]{7,14}$', description: Optional private business contact in E.164 format. Omitted from account and public event responses. }
     AttendeeSignup:
       type: object
       required: [full_name]

@@ -2,7 +2,7 @@
 
 import { useAuth, useSignIn, useSignUp } from "@clerk/nextjs";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useEffect, useId, useState } from "react";
+import { useEffect, useId, useState, type ReactNode } from "react";
 import { useForm, useWatch } from "react-hook-form";
 import { z } from "zod";
 
@@ -16,11 +16,13 @@ import {
   authenticationErrorDetail,
 } from "@/lib/authentication-errors";
 import { PasswordChecklist } from "./password-checklist";
+import {
+  authenticationCredentialsSchema,
+  organizerSignupDetails,
+} from "@/lib/organizer-signup";
+import { LegalNotice } from "@/components/legal/legal-notice";
+import { EmailConfirmation } from "./email-confirmation";
 
-const signInCredentialsSchema = z.object({
-  email: z.email("Enter a valid email address."),
-  password: z.string().min(1, "Enter your password."),
-});
 const codeSchema = z.object({
   code: z.string().trim().min(1, "Enter your verification code."),
 });
@@ -40,12 +42,18 @@ type AuthFormProps =
   | { type: AccountType; mode: "sign-in" | "sign-up"; eventSlug?: string }
   | { type: "admin"; mode: "sign-in"; eventSlug?: never };
 
-export function AuthForm({ type, mode, eventSlug }: AuthFormProps) {
+export function AuthForm({
+  type,
+  mode,
+  eventSlug,
+  introduction,
+}: AuthFormProps & { introduction?: ReactNode }) {
   const workspaceRoute = workspacePath(type);
-  const credentialsSchema =
-    mode === "sign-up"
-      ? signInCredentialsSchema.extend({ password: newPasswordSchema })
-      : signInCredentialsSchema;
+  const isOrganizerSignup = type === "organizer" && mode === "sign-up";
+  const credentialsSchema = authenticationCredentialsSchema(
+    isOrganizerSignup,
+    mode === "sign-up",
+  );
   const passwordChecklistId = useId();
   const newPasswordChecklistId = useId();
   const { signIn, errors: signInErrors } = useSignIn();
@@ -63,20 +71,32 @@ export function AuthForm({ type, mode, eventSlug }: AuthFormProps) {
   }, [isLoaded]);
   const [authenticationStep, setAuthenticationStep] =
     useState<Step>("credentials");
+  const isOrganizerEmailCheck =
+    type === "organizer" && authenticationStep === "verify-email";
   const [isAuthenticationPending, setAuthenticationPending] = useState(false);
   const [authenticationError, setAuthenticationError] = useState("");
   const [verificationNotice, setVerificationNotice] = useState("");
   const [isPasswordVisible, setPasswordVisible] = useState(false);
   const credentialsForm = useForm<z.infer<typeof credentialsSchema>>({
     resolver: zodResolver(credentialsSchema),
-    defaultValues: { email: "", password: "" },
+    defaultValues: {
+      email: "",
+      password: "",
+      organization: "",
+      first_name: "",
+      last_name: "",
+      phone: "",
+      confirm_password: "",
+    },
   });
   const verificationForm = useForm<z.infer<typeof codeSchema>>({
     resolver: zodResolver(codeSchema),
     defaultValues: { code: "" },
   });
   const passwordRecoveryForm = useForm<{ email: string }>({
-    resolver: zodResolver(credentialsSchema.pick({ email: true })),
+    resolver: zodResolver(
+      z.object({ email: z.email("Enter a valid email address.") }),
+    ),
     defaultValues: { email: "" },
   });
   const newPasswordForm = useForm<{ password: string }>({
@@ -160,6 +180,7 @@ export function AuthForm({ type, mode, eventSlug }: AuthFormProps) {
   }
   return (
     <div className="trybe-auth-form space-y-5">
+      {!isOrganizerEmailCheck && introduction && <div>{introduction}</div>}
       {authenticationError && <Alert>{authenticationError}</Alert>}
       {verificationNotice && <Alert tone="success">{verificationNotice}</Alert>}
       {authenticationStep === "credentials" && (
@@ -173,9 +194,17 @@ export function AuthForm({ type, mode, eventSlug }: AuthFormProps) {
                   await signUp.password({
                     emailAddress: values.email,
                     password: values.password,
+                    ...(isOrganizerSignup
+                      ? {
+                          unsafeMetadata: {
+                            organizer_signup: organizerSignupDetails(values),
+                          },
+                        }
+                      : {}),
                   }),
                 );
                 credentialsForm.resetField("password");
+                credentialsForm.resetField("confirm_password");
                 if (signUp.status === "complete") {
                   await activateAuthenticatedSession(true);
                   return;
@@ -201,6 +230,54 @@ export function AuthForm({ type, mode, eventSlug }: AuthFormProps) {
             }),
           )}
         >
+          {isOrganizerSignup && (
+            <>
+              <Field
+                label="Registered business name"
+                error={credentialsForm.formState.errors.organization?.message}
+              >
+                {(props) => (
+                  <Input
+                    {...props}
+                    {...credentialsForm.register("organization")}
+                    autoComplete="organization"
+                    maxLength={160}
+                    disabled={isAuthenticationPending}
+                  />
+                )}
+              </Field>
+              <div className="grid gap-5 sm:grid-cols-2">
+                <Field
+                  label="Contact first name"
+                  error={credentialsForm.formState.errors.first_name?.message}
+                >
+                  {(props) => (
+                    <Input
+                      {...props}
+                      {...credentialsForm.register("first_name")}
+                      autoComplete="given-name"
+                      maxLength={60}
+                      disabled={isAuthenticationPending}
+                    />
+                  )}
+                </Field>
+                <Field
+                  label="Contact last name"
+                  error={credentialsForm.formState.errors.last_name?.message}
+                >
+                  {(props) => (
+                    <Input
+                      {...props}
+                      {...credentialsForm.register("last_name")}
+                      autoComplete="family-name"
+                      maxLength={60}
+                      disabled={isAuthenticationPending}
+                    />
+                  )}
+                </Field>
+              </div>
+            </>
+          )}
           <Field
             label="Email address"
             error={
@@ -226,6 +303,33 @@ export function AuthForm({ type, mode, eventSlug }: AuthFormProps) {
               />
             )}
           </Field>
+          {isOrganizerSignup && (
+            <Field
+              label="Phone number"
+              hint="You can start with 0. We will format it for you."
+              error={credentialsForm.formState.errors.phone?.message}
+            >
+              {(props) => (
+                <div className="relative">
+                  <span
+                    className="pointer-events-none absolute inset-y-0 left-3 flex items-center border-r border-line pr-3 text-sm text-muted"
+                    aria-hidden="true"
+                  >
+                    +234
+                  </span>
+                  <Input
+                    {...props}
+                    {...credentialsForm.register("phone")}
+                    type="tel"
+                    autoComplete="tel-national"
+                    aria-label="Phone number, Nigeria, country code +234"
+                    className="pl-20"
+                    disabled={isAuthenticationPending}
+                  />
+                </div>
+              )}
+            </Field>
+          )}
           <Field
             label="Password"
             error={
@@ -275,6 +379,22 @@ export function AuthForm({ type, mode, eventSlug }: AuthFormProps) {
               </div>
             )}
           </Field>
+          {isOrganizerSignup && (
+            <Field
+              label="Confirm password"
+              error={credentialsForm.formState.errors.confirm_password?.message}
+            >
+              {(props) => (
+                <Input
+                  {...props}
+                  {...credentialsForm.register("confirm_password")}
+                  type={isPasswordVisible ? "text" : "password"}
+                  autoComplete="new-password"
+                  disabled={isAuthenticationPending}
+                />
+              )}
+            </Field>
+          )}
           {mode === "sign-up" && (
             <PasswordChecklist
               id={passwordChecklistId}
@@ -299,6 +419,7 @@ export function AuthForm({ type, mode, eventSlug }: AuthFormProps) {
             </Button>
           )}
           <div id="clerk-captcha" />
+          {mode === "sign-up" && <LegalNotice />}
           <Button
             type="submit"
             className="primary-button w-full"
@@ -414,13 +535,19 @@ export function AuthForm({ type, mode, eventSlug }: AuthFormProps) {
             }),
           )}
         >
-          <p className="text-sm text-muted">
-            {authenticationStep === "totp"
-              ? "Enter the code from your authenticator app."
-              : authenticationStep === "phone"
-                ? "Enter the verification code sent to your phone."
-                : "Check your email and enter your verification code to continue."}
-          </p>
+          {isOrganizerEmailCheck ? (
+            <EmailConfirmation
+              email={signUp.emailAddress ?? credentialsForm.getValues("email")}
+            />
+          ) : (
+            <p className="text-sm text-muted">
+              {authenticationStep === "totp"
+                ? "Enter the code from your authenticator app."
+                : authenticationStep === "phone"
+                  ? "Enter the verification code sent to your phone."
+                  : "Check your email and enter your verification code to continue."}
+            </p>
+          )}
           <Field
             label="Verification code"
             error={
@@ -451,7 +578,9 @@ export function AuthForm({ type, mode, eventSlug }: AuthFormProps) {
             loading={isAuthenticationPending}
             disabled={!isLoaded}
           >
-            Verify and continue
+            {isOrganizerEmailCheck
+              ? "I’ve confirmed my email"
+              : "Verify and continue"}
           </Button>
           {authenticationStep !== "totp" && (
             <Button
@@ -461,8 +590,33 @@ export function AuthForm({ type, mode, eventSlug }: AuthFormProps) {
                 performAuthenticationAction(resendVerificationCode)
               }
             >
-              Resend code
+              {isOrganizerEmailCheck
+                ? "Resend confirmation email"
+                : "Resend code"}
             </Button>
+          )}
+          {isOrganizerEmailCheck && (
+            <div className="space-y-3 border-t border-line pt-4 text-sm leading-relaxed text-muted">
+              <p>
+                Didn&apos;t receive it? Check your spam folder or confirm that
+                your email address is correct.
+              </p>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="!px-0"
+                disabled={isAuthenticationPending || !isLoaded}
+                onClick={() =>
+                  performAuthenticationAction(async () => {
+                    assertAuthenticationSucceeded(await signUp.reset());
+                    verificationForm.reset();
+                    setAuthenticationStep("credentials");
+                  })
+                }
+              >
+                Change email address
+              </Button>
+            </div>
           )}
         </form>
       )}

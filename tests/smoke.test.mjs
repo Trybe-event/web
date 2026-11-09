@@ -44,13 +44,28 @@ test("sign-in and sign-up render safely without credentials", async () => {
       const r = await get(`/${role}/${mode}`);
       assert.equal(r.status, 200, `/${role}/${mode}`);
       const html = await r.text();
-      assert.ok(
-        html.includes(`${role} workspace`) || html.includes(`${role} account`),
+      // The business-signup introduction differs, but its account label must
+      // remain explicit. Ignore casing and React's text-boundary comments.
+      const visibleText = html.replace(/<!--[\s\S]*?-->/g, "");
+      assert.match(
+        visibleText,
+        new RegExp(`${role} (workspace|account)`, "i"),
         `/${role}/${mode} names its account type`,
       );
       assert.ok(html.includes("Account access is being prepared."));
       assert.match(html, /<button[^>]*disabled/);
     }
+  }
+});
+
+test("Trybe policies are public pages with the approved contact and no external sign-up links", async () => {
+  for (const path of ["/terms", "/privacy"]) {
+    const response = await get(path);
+    assert.equal(response.status, 200, path);
+    const html = await response.text();
+    assert.match(html, /mailto:itighiseemmanuele@gmail.com/);
+    assert.match(html, /Proposed policy/);
+    assert.doesNotMatch(html, /juve\.events/);
   }
 });
 
