@@ -4,6 +4,11 @@ Read [Trybe MVP](trybe-mvp.md) ([PDF](trybe-mvp.pdf)) before every implementatio
 review. It defines the four milestone outcomes, required checks and release gates.
 Follow [CONTRIBUTING.md](../CONTRIBUTING.md) for interpretation and PR requirements.
 
+Read the [Claude handoff for organizer statistics and audits](claude-handoff.md)
+for the current dependency queue, implemented statistics, verification requirements
+and next work. The API repository contains the same handoff; refresh live PR status
+before acting on the dated snapshot.
+
 The v1.1 copies here exactly match the product master in `Trybe-event/marketing/docs`.
 Its future roadmap addendum is introduced by
 [marketing PR #3](https://github.com/Trybe-event/marketing/pull/3); it does not expand
