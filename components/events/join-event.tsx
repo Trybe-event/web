@@ -8,6 +8,15 @@ import { api, errorMessage } from "@/lib/api/client";
 import { routes } from "@/lib/routes";
 import { LegalNotice } from "@/components/legal/legal-notice";
 
+// What an attendee sees when the organizer has not admitted them yet.
+const registrationNotice: Record<string, string> = {
+  pending:
+    "You're registered. The organizer reviews each registration, and you can join the event space once they approve you.",
+  waitlisted:
+    "This event is full, so you're on the waitlist. You'll be admitted automatically if a place frees up.",
+  rejected: "The organizer didn't approve this registration.",
+};
+
 // JoinEvent is the explicit join step (web#7): the attendee presses the button, the
 // API records the membership, and the workspace opens. Joining is idempotent, so a
 // second press is harmless.
@@ -25,6 +34,7 @@ export function JoinEvent({
   const router = useRouter();
   const [joining, setJoining] = useState(false);
   const [failure, setFailure] = useState("");
+  const [waiting, setWaiting] = useState("");
   const pending = useRef(false);
 
   async function join() {
@@ -32,10 +42,18 @@ export function JoinEvent({
     pending.current = true;
     setJoining(true);
     setFailure("");
+    setWaiting("");
     try {
-      const { error, response } = await api.POST("/e/{slug}/join", {
+      const { data, error, response } = await api.POST("/e/{slug}/join", {
         params: { path: { slug } },
       });
+      if (data && data.status !== "active") {
+        setWaiting(
+          registrationNotice[data.status] ??
+            "Your registration is waiting for the organizer.",
+        );
+        return;
+      }
       if (response.ok && !error) {
         router.push(routes.eventWorkspace(slug));
         router.refresh();
@@ -68,6 +86,11 @@ export function JoinEvent({
       >
         {label ?? `Join ${name}`}
       </Button>
+      {waiting && (
+        <p role="status" className="text-sm font-medium">
+          {waiting}
+        </p>
+      )}
       {failure && <Alert>{failure}</Alert>}
     </div>
   );

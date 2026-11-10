@@ -39,13 +39,91 @@ export function OrganizerPayments() {
   );
 }
 
+type Registration = components["schemas"]["OrganizerRegistration"];
+
+const audienceTabs = [
+  ["All people", null],
+  ["Pending", "pending"],
+  ["Approved", "active"],
+  ["Waitlisted", "waitlisted"],
+  ["Rejected", "rejected"],
+] as const;
+
+const statusLabel: Record<Registration["status"], string> = {
+  active: "Approved",
+  pending: "Pending",
+  waitlisted: "Waitlisted",
+  rejected: "Rejected",
+};
+
 export function OrganizerAudience({
-  registrationTotal,
+  initial,
 }: {
-  registrationTotal: number | null;
+  initial: Registration[] | null;
 }) {
-  const [status, setStatus] = useState("All people");
+  const [rows, setRows] = useState(initial);
+  const [tab, setTab] = useState<Registration["status"] | null>(null);
+  const [eventId, setEventId] = useState("");
   const [search, setSearch] = useState("");
+  const [busy, setBusy] = useState("");
+  const [failure, setFailure] = useState("");
+
+  if (rows === null)
+    return (
+      <Alert tone="danger">
+        We couldn&apos;t load your audience right now. Reload the page to try
+        again.
+      </Alert>
+    );
+
+  const events = [
+    ...new Map(rows.map((row) => [row.event_id, row.event_name])),
+  ];
+  const query = search.trim().toLowerCase();
+  const inEvent = rows.filter((row) => !eventId || row.event_id === eventId);
+  const visible = inEvent.filter(
+    (row) =>
+      (!tab || row.status === tab) &&
+      (!query ||
+        row.attendee_name.toLowerCase().includes(query) ||
+        row.event_name.toLowerCase().includes(query)),
+  );
+  const count = (status: Registration["status"] | null) =>
+    inEvent.filter((row) => !status || row.status === status).length;
+
+  async function decide(row: Registration, decision: "approve" | "reject") {
+    setBusy(row.id);
+    setFailure("");
+    try {
+      const { data, error } = await api.POST(
+        "/organizer/registrations/{registrationId}/decision",
+        {
+          params: { path: { registrationId: row.id } },
+          body: { decision },
+        },
+      );
+      if (!data) {
+        setFailure(errorMessage(error));
+        return;
+      }
+      setRows(
+        rows?.map((item) =>
+          item.id === row.id
+            ? {
+                ...item,
+                status: data.status as Registration["status"],
+                decided_at: new Date().toISOString(),
+              }
+            : item,
+        ) ?? rows,
+      );
+    } catch {
+      setFailure("We couldn't save that decision. Try again.");
+    } finally {
+      setBusy("");
+    }
+  }
+
   return (
     <>
       <div className="organizer-list-toolbar">
@@ -54,18 +132,16 @@ export function OrganizerAudience({
           role="group"
           aria-label="Audience status"
         >
-          {["All people", "Pending", "Approved", "Waitlisted", "Rejected"].map(
-            (label) => (
-              <button
-                key={label}
-                type="button"
-                aria-pressed={status === label}
-                onClick={() => setStatus(label)}
-              >
-                {label}
-              </button>
-            ),
-          )}
+          {audienceTabs.map(([label, status]) => (
+            <button
+              key={label}
+              type="button"
+              aria-pressed={tab === status}
+              onClick={() => setTab(status)}
+            >
+              {label} ({count(status)})
+            </button>
+          ))}
         </div>
       </div>
       <div className="organizer-audience-count">
@@ -73,33 +149,93 @@ export function OrganizerAudience({
           <span className="sr-only">Search audience</span>
           <input
             type="search"
-            placeholder="Search name, email or phone"
+            placeholder="Search name or event"
             value={search}
             onChange={(event) => setSearch(event.target.value)}
           />
         </label>
+        {events.length > 1 && (
+          <label>
+            <span className="sr-only">Event</span>
+            <Select
+              value={eventId}
+              onChange={(event) => setEventId(event.target.value)}
+            >
+              <option value="">All events</option>
+              {events.map(([id, name]) => (
+                <option key={id} value={id}>
+                  {name}
+                </option>
+              ))}
+            </Select>
+          </label>
+        )}
         <span>
-          {registrationTotal === null
-            ? "Totals unavailable"
-            : `${registrationTotal.toLocaleString("en")} event registrations`}
+          {visible.length.toLocaleString("en")}{" "}
+          {visible.length === 1 ? "person" : "people"}
         </span>
       </div>
-      <div className="organizer-empty organizer-feature-notice">
-        <Users size={26} aria-hidden="true" />
-        <h2>
-          {status === "All people"
-            ? "Your audience, in one place."
-            : `${status} registrations`}
-        </h2>
-        <p>
-          The audience directory and approval filters are being built.
-          Individual attendee records are not available in this view yet.
-        </p>
-        <p>
-          Event registration totals are live sign-up counts, not unique people
-          or verified attendance.
-        </p>
-      </div>
+      {failure && <Alert tone="danger">{failure}</Alert>}
+      {visible.length === 0 ? (
+        <div className="organizer-empty organizer-feature-notice">
+          <Users size={26} aria-hidden="true" />
+          <h2>
+            {rows.length === 0 ? "No registrations yet." : "No one matches."}
+          </h2>
+          <p>
+            {rows.length === 0
+              ? "People who register for your events appear here."
+              : "Try another status, event or search."}
+          </p>
+        </div>
+      ) : (
+        <ul className="organizer-audience-list">
+          {visible.map((row) => (
+            <li key={row.id}>
+              <span>
+                <strong>{row.attendee_name}</strong>
+                <span className="block text-xs text-muted">
+                  {row.event_name} · Registered{" "}
+                  {new Date(row.registered_at).toLocaleDateString("en-GB", {
+                    dateStyle: "medium",
+                  })}
+                </span>
+              </span>
+              <span className="organizer-audience-actions">
+                <span className="text-xs font-semibold">
+                  {statusLabel[row.status]}
+                </span>
+                {row.status !== "active" && (
+                  <Button
+                    size="sm"
+                    loading={busy === row.id}
+                    disabled={Boolean(busy)}
+                    onClick={() => void decide(row, "approve")}
+                    aria-label={`Approve ${row.attendee_name}`}
+                  >
+                    Approve
+                  </Button>
+                )}
+                {(row.status === "pending" || row.status === "waitlisted") && (
+                  <Button
+                    size="sm"
+                    variant="secondary"
+                    disabled={Boolean(busy)}
+                    onClick={() => void decide(row, "reject")}
+                    aria-label={`Reject ${row.attendee_name}`}
+                  >
+                    Reject
+                  </Button>
+                )}
+              </span>
+            </li>
+          ))}
+        </ul>
+      )}
+      <p className="text-xs text-muted">
+        Only approved people can network and message at your events. Contact
+        details stay private unless attendees share them.
+      </p>
     </>
   );
 }

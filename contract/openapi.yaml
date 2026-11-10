@@ -557,13 +557,14 @@ paths:
     post:
       tags: [registration]
       operationId: joinEvent
-      summary: Explicitly join an event (idempotent)
+      summary: Explicitly register for an event (idempotent). The status says whether the attendee is admitted, pending review or waitlisted.
       x-account: attendee
       x-milestone: M2
       responses:
         "200":
           description: Membership
           content: { application/json: { schema: { $ref: "#/components/schemas/Membership" } } }
+        "403": { $ref: "#/components/responses/Error" }
         "409": { $ref: "#/components/responses/Error" }
   /e/{slug}/leave:
     parameters: [{ $ref: "#/components/parameters/Slug" }]
@@ -574,6 +575,51 @@ paths:
       x-milestone: M2
       responses:
         "204": { description: Left }
+  /organizer/registrations:
+    get:
+      tags: [registration]
+      operationId: listOrganizerRegistrations
+      summary: Registrations across the caller's events (newest 500), or one event's. Name and state only.
+      x-account: organizer
+      x-milestone: M4
+      parameters:
+        - { name: event_id, in: query, required: false, schema: { type: string, format: uuid } }
+      responses:
+        "200":
+          description: Registrations
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [items]
+                properties:
+                  items: { type: array, items: { $ref: "#/components/schemas/OrganizerRegistration" } }
+        "400": { $ref: "#/components/responses/Error" }
+  /organizer/registrations/{registrationId}/decision:
+    parameters:
+      - { name: registrationId, in: path, required: true, schema: { type: string, format: uuid } }
+    post:
+      tags: [registration]
+      operationId: decideRegistration
+      summary: Approve or reject a registration (idempotent). Approval respects capacity.
+      x-account: organizer
+      x-milestone: M4
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [decision]
+              properties:
+                decision: { type: string, enum: [approve, reject] }
+      responses:
+        "200":
+          description: Updated membership
+          content: { application/json: { schema: { $ref: "#/components/schemas/Membership" } } }
+        "400": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+        "409": { $ref: "#/components/responses/Error" }
   /me/events:
     get:
       tags: [registration]
@@ -1319,6 +1365,10 @@ components:
         registration_closes_at: { type: [string, "null"], format: date-time }
         networking_opens_at: { type: [string, "null"], format: date-time }
         networking_closes_at: { type: [string, "null"], format: date-time }
+        category: { type: [string, "null"], description: "One of the fixed categories, e.g. Technology, Music, Business & Professional" }
+        approval_mode: { type: string, enum: [automatic, review], description: review holds every registration as pending until the organizer decides }
+        capacity: { type: [integer, "null"], minimum: 1, maximum: 100000, description: Most admitted attendees; null means no limit }
+        waitlist_enabled: { type: boolean, description: "When full, new registrations wait and are admitted in order as places free up" }
     Event:
       allOf:
         - $ref: "#/components/schemas/EventInput"
@@ -1357,6 +1407,8 @@ components:
         summary: { type: string }
         description: { type: string }
         topics: { type: array, items: { type: string } }
+        category: { type: [string, "null"] }
+        approval_required: { type: boolean, description: Registrations wait for the organizer's approval }
         image_url: { type: [string, "null"] }
         status: { $ref: "#/components/schemas/EventStatus" }
         registration_state: { $ref: "#/components/schemas/WindowState" }
@@ -1430,9 +1482,21 @@ components:
       type: object
       required: [event_id, status, joined_at]
       properties:
+        id: { type: string, format: uuid }
         event_id: { type: string, format: uuid }
-        status: { type: string, enum: [active, left, removed] }
+        status: { type: string, enum: [active, pending, waitlisted, rejected, left, removed], description: "Only active members can network; pending waits for the organizer, waitlisted for a free place" }
         joined_at: { type: string, format: date-time }
+    OrganizerRegistration:
+      type: object
+      required: [id, event_id, event_name, attendee_name, status, registered_at, decided_at]
+      properties:
+        id: { type: string, format: uuid }
+        event_id: { type: string, format: uuid }
+        event_name: { type: string }
+        attendee_name: { type: string }
+        status: { type: string, enum: [active, pending, waitlisted, rejected] }
+        registered_at: { type: string, format: date-time }
+        decided_at: { type: [string, "null"], format: date-time }
     MyEvent:
       type: object
       required: [event, membership]

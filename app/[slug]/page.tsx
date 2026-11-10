@@ -5,6 +5,8 @@ import {
   Globe,
   Building2,
   CalendarClock,
+  Tag,
+  UserCheck,
 } from "lucide-react";
 import Link from "next/link";
 import { EventSharing } from "@/components/events/event-sharing";
@@ -249,6 +251,26 @@ export default async function EventLanding({
                       </span>
                     )}
                   </span>
+                </p>
+              )}
+              {event.category && (
+                <p className="flex items-start gap-2">
+                  <Tag
+                    aria-hidden="true"
+                    size={16}
+                    className="mt-0.5 shrink-0 text-accent-ink"
+                  />
+                  <span>{event.category}</span>
+                </p>
+              )}
+              {event.approval_required && (
+                <p className="flex items-start gap-2">
+                  <UserCheck
+                    aria-hidden="true"
+                    size={16}
+                    className="mt-0.5 shrink-0 text-accent-ink"
+                  />
+                  <span>The organizer approves each registration.</span>
                 </p>
               )}
               {event.registration_closes_at && (

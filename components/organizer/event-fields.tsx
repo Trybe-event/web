@@ -11,7 +11,7 @@ import {
   Textarea,
 } from "@/components/ui";
 import { api, errorMessage } from "@/lib/api/client";
-import type { EventDraft } from "@/lib/event-form";
+import { eventCategories, type EventDraft } from "@/lib/event-form";
 import { eventTimeToISO, localEventTime } from "@/lib/event-time";
 import { useEventEditor } from "./event-editor-context";
 
@@ -310,6 +310,28 @@ export function EventDetails() {
               />
             )}
           />
+        )}
+      </Field>
+      <Field
+        label="Category"
+        optional
+        hint="Helps attendees find your event."
+        error={form.formState.errors.category?.message}
+      >
+        {(props) => (
+          <Select
+            {...props}
+            {...form.register("category", {
+              setValueAs: (value) => value || null,
+            })}
+          >
+            <option value="">Choose a category</option>
+            {eventCategories.map((category) => (
+              <option key={category} value={category}>
+                {category}
+              </option>
+            ))}
+          </Select>
         )}
       </Field>
       <Field

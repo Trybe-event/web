@@ -429,6 +429,12 @@ test("new organizer sections guard the account before accessing event data or re
           return [];
         },
       },
+      "@/lib/api/server": {
+        serverApi: async () => {
+          dataCalls++;
+          return { GET: async () => ({ data: { items: [] } }) };
+        },
+      },
       "@/components/auth/workspace": {},
       "@/components/organizer/workspace-sections": {},
       "@/components/organizer/event-fields": {},
@@ -495,4 +501,72 @@ test("newly saved unnamed drafts get the event workspace and do not masquerade a
   assert.match(view.html(), /Untitled event/);
   assert.match(view.html(), /Draft event/);
   assert.match(view.html(), /aria-label="Event setup"[^>]*aria-current="page"/);
+});
+
+test("audience lists registrations by status and approves through the API", async () => {
+  const calls = [];
+  const rows = [
+    {
+      id: "r1",
+      event_id: "e1",
+      event_name: "Hack Day",
+      attendee_name: "Tomi",
+      status: "pending",
+      registered_at: "2026-11-01T09:00:00Z",
+      decided_at: null,
+    },
+    {
+      id: "r2",
+      event_id: "e1",
+      event_name: "Hack Day",
+      attendee_name: "Seyi",
+      status: "active",
+      registered_at: "2026-11-01T10:00:00Z",
+      decided_at: null,
+    },
+  ];
+  const view = harness(
+    "../components/organizer/workspace-sections.tsx",
+    "OrganizerAudience",
+    { initial: rows },
+    "/organizer/audience",
+    {
+      "@/lib/api/client": {
+        api: {
+          POST: async (path, init) => {
+            calls.push({
+              path,
+              id: init.params.path.registrationId,
+              body: init.body,
+            });
+            return {
+              data: {
+                id: "r1",
+                event_id: "e1",
+                status: "active",
+                joined_at: "x",
+              },
+            };
+          },
+        },
+        errorMessage: () => "failed",
+      },
+    },
+  );
+  assert.match(view.html(), /Pending \(1\)/);
+  assert.match(view.html(), /Approved \(1\)/);
+  assert.doesNotMatch(view.html(), /Approve Seyi/);
+  view
+    .find((node) => node.props?.["aria-label"] === "Approve Tomi")[0]
+    .props.onClick();
+  await new Promise((resolve) => setImmediate(resolve));
+  view.render();
+  assert.deepEqual(JSON.parse(JSON.stringify(calls)), [
+    {
+      path: "/organizer/registrations/{registrationId}/decision",
+      id: "r1",
+      body: { decision: "approve" },
+    },
+  ]);
+  assert.match(view.html(), /Approved \(2\)/);
 });
