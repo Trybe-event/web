@@ -166,9 +166,6 @@ export function OrganizerWorkspaceShell({
                 <ArrowLeft size={16} aria-hidden="true" />
                 <span className="organizer-sidebar-label">All events</span>
               </Link>
-              <span className="organizer-nav-heading organizer-sidebar-label">
-                THIS EVENT
-              </span>
               {eventSections.map(({ label, href, icon: Icon }) => (
                 <Link
                   key={href}
