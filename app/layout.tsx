@@ -24,6 +24,7 @@ const manrope = Manrope({
 export const metadata: Metadata = {
   title: { default: "Trybe", template: "%s · Trybe" },
   description: "Meet the right people at your next event.",
+  icons: { icon: "/favicon.svg", shortcut: "/favicon.svg" },
 };
 
 export const viewport: Viewport = { width: "device-width", initialScale: 1 };
