@@ -8,8 +8,10 @@ import {
   Pin,
   Users,
 } from "lucide-react";
-import { useState } from "react";
-import { Card, Input } from "@/components/ui";
+import { useRouter } from "next/navigation";
+import { useState, type FormEvent } from "react";
+import { Alert, Button, Card, Field, Input } from "@/components/ui";
+import { api, errorMessage, fieldErrors } from "@/lib/api/client";
 import { legalContact } from "@/lib/legal";
 
 export function OrganizerPayments() {
@@ -98,11 +100,110 @@ const settingSections = [
   { label: "Payments & payouts", icon: CreditCard },
 ] as const;
 
-export function OrganizerSettings({
-  businessName,
+export function BusinessProfileForm({
+  organization: savedOrganization,
   ownerName,
 }: {
-  businessName: string;
+  organization: string;
+  ownerName: string;
+}) {
+  const router = useRouter();
+  const [organization, setOrganization] = useState(savedOrganization);
+  const [fullName, setFullName] = useState(ownerName);
+  const [errors, setErrors] = useState<Record<string, string>>({});
+  const [status, setStatus] = useState<
+    { tone: "danger" | "success"; text: string } | undefined
+  >();
+  const [saving, setSaving] = useState(false);
+
+  async function save(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setStatus(undefined);
+    setErrors({});
+    setSaving(true);
+    try {
+      const { data, error, response } = await api.PUT("/me/account", {
+        body: { organization, full_name: fullName },
+      });
+      if (data) {
+        // Show the names as the API cleaned and saved them.
+        setOrganization(data.organization ?? "");
+        setFullName(data.full_name);
+        setStatus({ tone: "success", text: "Business profile saved." });
+        // The sidebar and header read the account on the server.
+        router.refresh();
+      } else if (response.status === 400) {
+        setErrors(fieldErrors(error));
+        setStatus({ tone: "danger", text: "Some fields need attention." });
+      } else {
+        setStatus({ tone: "danger", text: errorMessage(error) });
+      }
+    } catch {
+      setStatus({
+        tone: "danger",
+        text: "We couldn't save your changes. Your details are still here. Try again.",
+      });
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <Card>
+      <h2 className="text-base font-semibold">Business profile</h2>
+      <p className="mt-1 text-xs text-muted">
+        Your business name appears on your event pages.
+      </p>
+      <form onSubmit={(event) => void save(event)} noValidate>
+        <div className="organizer-settings-fields">
+          <Field label="Business name" error={errors.organization}>
+            {(props) => (
+              <Input
+                {...props}
+                value={organization}
+                onChange={(event) => setOrganization(event.target.value)}
+                maxLength={160}
+                autoComplete="organization"
+                required
+              />
+            )}
+          </Field>
+          <Field label="Account type">
+            {(props) => <Input {...props} value="Organizer" readOnly />}
+          </Field>
+          <Field label="Contact name" error={errors.full_name}>
+            {(props) => (
+              <Input
+                {...props}
+                value={fullName}
+                onChange={(event) => setFullName(event.target.value)}
+                maxLength={120}
+                autoComplete="name"
+                required
+              />
+            )}
+          </Field>
+        </div>
+        <div className="mt-5 flex flex-wrap items-center gap-3">
+          <Button type="submit" loading={saving}>
+            Save changes
+          </Button>
+        </div>
+        {status && (
+          <div className="mt-4">
+            <Alert tone={status.tone}>{status.text}</Alert>
+          </div>
+        )}
+      </form>
+    </Card>
+  );
+}
+
+export function OrganizerSettings({
+  organization,
+  ownerName,
+}: {
+  organization: string;
   ownerName: string;
 }) {
   const [section, setSection] = useState<string>("Business");
@@ -123,30 +224,10 @@ export function OrganizerSettings({
       </nav>
       <div className="space-y-5">
         {section === "Business" && (
-          <Card>
-            <h2 className="text-base font-semibold">Business profile</h2>
-            <p className="mt-1 text-xs text-muted">
-              The business details used to create your Trybe account.
-            </p>
-            <div className="organizer-settings-fields">
-              <label>
-                Business name
-                <Input value={businessName} readOnly />
-              </label>
-              <label>
-                Account type
-                <Input value="Organizer" readOnly />
-              </label>
-              <label>
-                Contact name
-                <Input value={ownerName} readOnly />
-              </label>
-            </div>
-            <p className="mt-5 text-xs text-muted">
-              Business profile editing is being built. These details are saved
-              account information.
-            </p>
-          </Card>
+          <BusinessProfileForm
+            organization={organization}
+            ownerName={ownerName}
+          />
         )}
         {section === "Team" && (
           <Card>

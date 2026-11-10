@@ -17,6 +17,9 @@ const ui = {
   Button: element("button"),
   Card: element("section"),
   Input: element("input"),
+  Alert: element("output"),
+  Field: ({ label, error, children }) =>
+    React.createElement("label", null, label, children({ id: label }), error),
   Dialog: ({ open, title, description, children, actions }) =>
     open
       ? React.createElement(
@@ -55,7 +58,13 @@ function walk(node, predicate) {
     ),
   ];
 }
-function harness(file, exportName, props, pathname = "/organizer") {
+function harness(
+  file,
+  exportName,
+  props,
+  pathname = "/organizer",
+  dependencies = {},
+) {
   const states = [];
   let stateIndex = 0;
   const component = compile(file, {
@@ -73,7 +82,11 @@ function harness(file, exportName, props, pathname = "/organizer") {
       },
     },
     "next/link": { default: element("a"), __esModule: true },
-    "next/navigation": { usePathname: () => pathname },
+    "next/navigation": {
+      usePathname: () => pathname,
+      useRouter: () => ({ refresh() {} }),
+    },
+    "@/lib/api/client": {},
     "@/components/ui": ui,
     "@/components/brand-mark": {
       BrandMark: () =>
@@ -86,6 +99,7 @@ function harness(file, exportName, props, pathname = "/organizer") {
       ThemeToggle: () => React.createElement("button", null, "Choose theme"),
     },
     "@/lib/legal": { legalContact: { email: "trybevent@gmail.com" } },
+    ...dependencies,
   })[exportName];
   let tree;
   function render() {
@@ -228,15 +242,15 @@ test("event tabs and search filter only the organizer-provided rows without losi
   assert.match(view.html(), /Draft event/);
 });
 
-test("settings show saved account details and do not pretend unsupported business edits or payments are saved", () => {
+test("settings open on the editable business profile and keep unsupported payments disclosed", () => {
   const view = harness(
     "../components/organizer/workspace-sections.tsx",
     "OrganizerSettings",
-    { businessName: "Gather Studio", ownerName: "Alex Host" },
+    { organization: "Gather Studio", ownerName: "Alex Host" },
   );
-  assert.match(view.html(), /value="Gather Studio"/);
-  assert.match(view.html(), /readOnly=""/);
-  assert.doesNotMatch(view.html(), /Save changes|Saved successfully/);
+  const form = view.find((node) => node.type?.name === "BusinessProfileForm");
+  assert.equal(form[0]?.props.organization, "Gather Studio");
+  assert.equal(form[0]?.props.ownerName, "Alex Host");
   view
     .find(
       (node) =>
@@ -246,6 +260,86 @@ test("settings show saved account details and do not pretend unsupported busines
     .props.onClick();
   view.render();
   assert.match(view.html(), /Payments are coming/);
+  assert.doesNotMatch(view.html(), /Saved successfully/);
+});
+
+function businessForm(result) {
+  const calls = { put: [], refresh: 0 };
+  const view = harness(
+    "../components/organizer/workspace-sections.tsx",
+    "BusinessProfileForm",
+    { organization: "Gather Studio", ownerName: "Alex Host" },
+    "/organizer/settings",
+    {
+      "next/navigation": {
+        useRouter: () => ({ refresh: () => calls.refresh++ }),
+      },
+      "@/lib/api/client": {
+        api: {
+          PUT: async (path, init) => {
+            calls.put.push({ path, body: init.body });
+            return result;
+          },
+        },
+        fieldErrors: (error) => error?.fields ?? {},
+        errorMessage: (error, fallback = "Something went wrong.") =>
+          error?.message ?? fallback,
+      },
+    },
+  );
+  const input = (label) =>
+    view
+      .find((node) => node.props?.label === label)[0]
+      .props.children({ id: label });
+  return {
+    view,
+    calls,
+    type(label, value) {
+      input(label).props.onChange({ target: { value } });
+      view.render();
+    },
+    async submit() {
+      view
+        .find((node) => node.type === "form")[0]
+        .props.onSubmit({ preventDefault() {} });
+      await new Promise((resolve) => setImmediate(resolve));
+      view.render();
+    },
+  };
+}
+
+test("business profile saves the edited names and refreshes the workspace", async () => {
+  const form = businessForm({
+    data: { organization: "New Studio", full_name: "Ada Okafor" },
+    response: { ok: true, status: 200 },
+  });
+  assert.match(form.view.html(), /value="Gather Studio"/);
+  form.type("Business name", " New  Studio ");
+  form.type("Contact name", "Ada Okafor");
+  await form.submit();
+  // The body is built inside the test VM, so compare its JSON across realms.
+  assert.deepEqual(JSON.parse(JSON.stringify(form.calls.put)), [
+    {
+      path: "/me/account",
+      body: { organization: " New  Studio ", full_name: "Ada Okafor" },
+    },
+  ]);
+  assert.equal(form.calls.refresh, 1);
+  assert.match(form.view.html(), /value="New Studio"/);
+  assert.match(form.view.html(), /Business profile saved/);
+});
+
+test("business profile shows API field errors and does not claim a save", async () => {
+  const form = businessForm({
+    error: { code: "invalid", fields: { organization: "Required." } },
+    response: { ok: false, status: 400 },
+  });
+  form.type("Business name", "");
+  await form.submit();
+  assert.equal(form.calls.refresh, 0);
+  assert.match(form.view.html(), /Required\./);
+  assert.match(form.view.html(), /Some fields need attention/);
+  assert.doesNotMatch(form.view.html(), /Business profile saved/);
 });
 
 test("new organizer sections guard the account before accessing event data or rendering settings", async () => {

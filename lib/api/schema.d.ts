@@ -47,7 +47,8 @@ export interface paths {
         };
         /** The caller's bound account, or 404 when no account type is bound yet */
         get: operations["getMyAccount"];
-        put?: never;
+        /** Replace the organizer's business name and contact name (idempotent). Account type and the private phone are not changed. */
+        put: operations["putMyOrganizerAccount"];
         post?: never;
         delete?: never;
         options?: never;
@@ -1036,6 +1037,10 @@ export interface components {
             /** @description Optional private business contact in E.164 format. Omitted from account and public event responses. */
             phone?: string | null;
         };
+        OrganizerAccountInput: {
+            full_name: string;
+            organization: string;
+        };
         AttendeeSignup: {
             full_name: string;
             /** @description Optional and private. Never shared automatically. */
@@ -1433,6 +1438,34 @@ export interface operations {
             };
             401: components["responses"]["Error"];
             404: components["responses"]["Error"];
+        };
+    };
+    putMyOrganizerAccount: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["OrganizerAccountInput"];
+            };
+        };
+        responses: {
+            /** @description Saved account */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Account"];
+                };
+            };
+            400: components["responses"]["Error"];
+            401: components["responses"]["Error"];
+            403: components["responses"]["Error"];
+            409: components["responses"]["Error"];
         };
     };
     bindOrganizer: {

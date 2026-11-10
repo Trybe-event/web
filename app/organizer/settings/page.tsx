@@ -21,7 +21,7 @@ export default async function SettingsPage() {
         </p>
       </section>
       <OrganizerSettings
-        businessName={access.account.organization?.trim() || "Your business"}
+        organization={access.account.organization ?? ""}
         ownerName={access.account.full_name}
       />
     </WorkspaceShell>

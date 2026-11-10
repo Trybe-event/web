@@ -3,6 +3,7 @@ export const CONTRACT_ROUTES: ReadonlyArray<readonly [string, string]> = [
   ["GET", "/healthz"],
   ["GET", "/readyz"],
   ["GET", "/me/account"],
+  ["PUT", "/me/account"],
   ["POST", "/accounts/organizer"],
   ["POST", "/accounts/attendee"],
   ["DELETE", "/me"],

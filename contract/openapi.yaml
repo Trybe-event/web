@@ -77,6 +77,23 @@ paths:
           content: { application/json: { schema: { $ref: "#/components/schemas/Account" } } }
         "401": { $ref: "#/components/responses/Error" }
         "404": { $ref: "#/components/responses/Error" }
+    put:
+      tags: [accounts]
+      operationId: putMyOrganizerAccount
+      summary: Replace the organizer's business name and contact name (idempotent). Account type and the private phone are not changed.
+      x-account: organizer
+      x-milestone: M4
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: "#/components/schemas/OrganizerAccountInput" } } }
+      responses:
+        "200":
+          description: Saved account
+          content: { application/json: { schema: { $ref: "#/components/schemas/Account" } } }
+        "400": { $ref: "#/components/responses/Error" }
+        "401": { $ref: "#/components/responses/Error" }
+        "403": { $ref: "#/components/responses/Error" }
+        "409": { $ref: "#/components/responses/Error" }
   /accounts/organizer:
     post:
       tags: [accounts]
@@ -1148,6 +1165,12 @@ components:
         full_name: { type: string, minLength: 1, maxLength: 120 }
         organization: { type: string, minLength: 1, maxLength: 160 }
         phone: { type: [string, "null"], maxLength: 16, pattern: '^\+[1-9][0-9]{7,14}$', description: Optional private business contact in E.164 format. Omitted from account and public event responses. }
+    OrganizerAccountInput:
+      type: object
+      required: [full_name, organization]
+      properties:
+        full_name: { type: string, minLength: 1, maxLength: 120 }
+        organization: { type: string, minLength: 1, maxLength: 160 }
     AttendeeSignup:
       type: object
       required: [full_name]
