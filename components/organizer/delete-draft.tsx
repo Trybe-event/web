@@ -8,9 +8,11 @@ import { api, errorMessage } from "@/lib/api/client";
 export function DeleteDraft({
   eventId,
   name,
+  returnToEvents = false,
 }: {
   eventId: string;
   name: string;
+  returnToEvents?: boolean;
 }) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
@@ -32,7 +34,10 @@ export function DeleteDraft({
       if (!response.ok && response.status !== 404)
         throw new Error(errorMessage(error));
       setOpen(false);
-      startRefresh(() => router.refresh());
+      startRefresh(() => {
+        if (returnToEvents) router.replace("/organizer");
+        router.refresh();
+      });
     } catch (caught) {
       setFailure(
         caught instanceof Error

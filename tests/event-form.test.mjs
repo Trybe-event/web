@@ -189,3 +189,50 @@ test("draft extraction never sends immutable server event fields back in PATCH",
   for (const key of ["id", "status", "slug", "registration_url"])
     assert.equal(key in values, false);
 });
+
+test("walkthrough steps retain every publication requirement and point errors to their actual draft or published panel", () => {
+  const source = ts.transpileModule(
+    readFileSync(new URL("../lib/event-setup.ts", import.meta.url), "utf8"),
+    { compilerOptions: { module: ts.ModuleKind.CommonJS } },
+  ).outputText;
+  const setup = { exports: {} };
+  vm.runInNewContext(`(function(require,module,exports){${source}\n})`)(
+    () => publicationModule.exports,
+    setup,
+    setup.exports,
+  );
+  const {
+    eventSetupSteps,
+    publishedEventSetupSteps,
+    eventSetupFieldStep,
+    eventSetupStepErrors,
+  } = setup.exports;
+  assert.equal(eventSetupSteps.length, 6);
+  assert.ok(publishedEventSetupSteps.includes("Agenda & lineup"));
+  assert.equal(eventSetupFieldStep("program"), 3);
+  assert.equal(eventSetupFieldStep("program", true), 4);
+  assert.equal(eventSetupFieldStep("networking_closes_at", true), 3);
+  assert.equal(eventSetupFieldStep("visibility"), 2);
+  assert.equal(eventSetupFieldStep("image_key"), 0);
+  for (const published of [false, true]) {
+    const draft = {};
+    const collected = Object.assign(
+      {},
+      ...Array.from({ length: published ? 9 : 6 }, (_, index) =>
+        eventSetupStepErrors(draft, index, published),
+      ),
+    );
+    assert.deepEqual(
+      Object.keys(collected).sort(),
+      Object.keys(publicationErrors(draft)).sort(),
+    );
+    assert.equal(
+      Object.keys(eventSetupStepErrors(draft, 1, published)).length,
+      0,
+    );
+    assert.equal(
+      eventSetupStepErrors(draft, 2, published).visibility,
+      "Complete this field before publishing.",
+    );
+  }
+});

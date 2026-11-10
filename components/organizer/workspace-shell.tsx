@@ -2,6 +2,12 @@
 
 import {
   CalendarDays,
+  ArrowLeft,
+  BarChart3,
+  LayoutDashboard,
+  ListChecks,
+  Megaphone,
+  Eye,
   CreditCard,
   Menu,
   PanelLeftClose,
@@ -24,10 +30,16 @@ import { ThemeToggle } from "@/components/auth/theme-toggle";
 export function OrganizerWorkspaceShell({
   businessName,
   ownerName,
+  event,
   children,
 }: {
   businessName: string;
   ownerName: string;
+  event?: {
+    id: string;
+    name?: string | null;
+    status: "draft" | "published" | "ended";
+  };
   children: ReactNode;
 }) {
   const pathname = usePathname();
@@ -38,19 +50,37 @@ export function OrganizerWorkspaceShell({
   const creatingEvent = pathname === "/organizer/events/new";
   const managingEvent =
     pathname.startsWith("/organizer/events/") && !creatingEvent;
-  const pageTitle = creatingExperience
-    ? "Create experience"
-    : creatingEvent
-      ? "Create event"
-      : managingEvent
-        ? "Manage event"
-        : pathname === "/organizer/audience"
-          ? "Audience"
-          : pathname === "/organizer/payments"
-            ? "Payments"
-            : pathname === "/organizer/settings"
-              ? "Settings"
-              : "My events";
+  const eventRoot = event
+    ? `/organizer/events/${encodeURIComponent(event.id)}`
+    : "";
+  const eventSections = [
+    { label: "Overview", href: eventRoot, icon: LayoutDashboard },
+    { label: "Event setup", href: `${eventRoot}/edit`, icon: ListChecks },
+    { label: "Attendance", href: `${eventRoot}/attendance`, icon: Users },
+    { label: "Reach", href: `${eventRoot}/share`, icon: Megaphone },
+    { label: "Analytics", href: `${eventRoot}/analytics`, icon: BarChart3 },
+    { label: "Preview event", href: `${eventRoot}/preview`, icon: Eye },
+    { label: "Event settings", href: `${eventRoot}/settings`, icon: Settings },
+  ];
+  const pageTitle = event
+    ? eventSections.find((section) => section.href === pathname)?.label ||
+      "Event setup"
+    : creatingExperience
+      ? "Create experience"
+      : creatingEvent
+        ? "Create event"
+        : managingEvent
+          ? "Manage event"
+          : pathname === "/organizer/audience"
+            ? "Audience"
+            : pathname === "/organizer/payments"
+              ? "Payments"
+              : pathname === "/organizer/settings"
+                ? "Settings"
+                : "My events";
+  const workspaceName = event
+    ? event.name?.trim() || "Untitled event"
+    : businessName;
   const ownerInitials = ownerName
     .trim()
     .split(/\s+/)
@@ -106,13 +136,17 @@ export function OrganizerWorkspaceShell({
             {mobileNavigationOpen ? <X size={20} /> : <Menu size={20} />}
           </button>
         </div>
-        <div className="organizer-business" title={businessName}>
+        <div className="organizer-business" title={workspaceName}>
           <span className="organizer-business-monogram" aria-hidden="true">
-            {businessName.trim().charAt(0).toUpperCase()}
+            {workspaceName.charAt(0).toUpperCase()}
           </span>
           <div className="organizer-sidebar-label">
-            <strong>{businessName}</strong>
-            <span>Organizer workspace</span>
+            <strong>{workspaceName}</strong>
+            <span>
+              {event
+                ? `${event.status.charAt(0).toUpperCase()}${event.status.slice(1)} event`
+                : "Organizer workspace"}
+            </span>
           </div>
         </div>
         <nav
@@ -120,59 +154,93 @@ export function OrganizerWorkspaceShell({
           className="organizer-navigation"
           aria-label="Organizer sections"
         >
-          <span className="organizer-nav-heading organizer-sidebar-label">
-            WORKSPACE
-          </span>
-          <Link
-            href="/organizer"
-            className="organizer-nav-item"
-            aria-label="My events"
-            aria-current={pathname === "/organizer" ? "page" : undefined}
-            title="My events"
-            onClick={() => setMobileNavigationOpen(false)}
-          >
-            <CalendarDays size={18} aria-hidden="true" />
-            <span className="organizer-sidebar-label">My events</span>
-          </Link>
-          <Link
-            href="/organizer/audience"
-            className="organizer-nav-item"
-            aria-label="Audience"
-            aria-current={
-              pathname === "/organizer/audience" ? "page" : undefined
-            }
-            title="Audience"
-            onClick={() => setMobileNavigationOpen(false)}
-          >
-            <Users size={18} aria-hidden="true" />
-            <span className="organizer-sidebar-label">Audience</span>
-          </Link>
-          <Link
-            href="/organizer/payments"
-            className="organizer-nav-item"
-            title="Payments"
-            aria-label="Payments"
-            aria-current={
-              pathname === "/organizer/payments" ? "page" : undefined
-            }
-            onClick={() => setMobileNavigationOpen(false)}
-          >
-            <CreditCard size={18} aria-hidden="true" />
-            <span className="organizer-sidebar-label">Payments</span>
-          </Link>
-          <Link
-            href="/organizer/settings"
-            className="organizer-nav-item"
-            title="Settings"
-            aria-label="Settings"
-            aria-current={
-              pathname === "/organizer/settings" ? "page" : undefined
-            }
-            onClick={() => setMobileNavigationOpen(false)}
-          >
-            <Settings size={18} aria-hidden="true" />
-            <span className="organizer-sidebar-label">Settings</span>
-          </Link>
+          {event ? (
+            <>
+              <Link
+                href="/organizer"
+                className="organizer-nav-item organizer-back-link"
+                aria-label="All events"
+                title="All events"
+                onClick={() => setMobileNavigationOpen(false)}
+              >
+                <ArrowLeft size={16} aria-hidden="true" />
+                <span className="organizer-sidebar-label">All events</span>
+              </Link>
+              <span className="organizer-nav-heading organizer-sidebar-label">
+                THIS EVENT
+              </span>
+              {eventSections.map(({ label, href, icon: Icon }) => (
+                <Link
+                  key={href}
+                  href={href}
+                  className="organizer-nav-item"
+                  aria-label={label}
+                  title={label}
+                  aria-current={pathname === href ? "page" : undefined}
+                  onClick={() => setMobileNavigationOpen(false)}
+                >
+                  <Icon size={18} aria-hidden="true" />
+                  <span className="organizer-sidebar-label">{label}</span>
+                </Link>
+              ))}
+            </>
+          ) : (
+            <>
+              <span className="organizer-nav-heading organizer-sidebar-label">
+                WORKSPACE
+              </span>
+              <Link
+                href="/organizer"
+                className="organizer-nav-item"
+                aria-label="My events"
+                aria-current={pathname === "/organizer" ? "page" : undefined}
+                title="My events"
+                onClick={() => setMobileNavigationOpen(false)}
+              >
+                <CalendarDays size={18} aria-hidden="true" />
+                <span className="organizer-sidebar-label">My events</span>
+              </Link>
+              <Link
+                href="/organizer/audience"
+                className="organizer-nav-item"
+                aria-label="Audience"
+                aria-current={
+                  pathname === "/organizer/audience" ? "page" : undefined
+                }
+                title="Audience"
+                onClick={() => setMobileNavigationOpen(false)}
+              >
+                <Users size={18} aria-hidden="true" />
+                <span className="organizer-sidebar-label">Audience</span>
+              </Link>
+              <Link
+                href="/organizer/payments"
+                className="organizer-nav-item"
+                title="Payments"
+                aria-label="Payments"
+                aria-current={
+                  pathname === "/organizer/payments" ? "page" : undefined
+                }
+                onClick={() => setMobileNavigationOpen(false)}
+              >
+                <CreditCard size={18} aria-hidden="true" />
+                <span className="organizer-sidebar-label">Payments</span>
+              </Link>
+              <Link
+                href="/organizer/settings"
+                className="organizer-nav-item"
+                title="Settings"
+                aria-label="Settings"
+                aria-current={
+                  pathname === "/organizer/settings" ? "page" : undefined
+                }
+                onClick={() => setMobileNavigationOpen(false)}
+              >
+                <Settings size={18} aria-hidden="true" />
+                <span className="organizer-sidebar-label">Settings</span>
+              </Link>
+            </>
+          )}
         </nav>
         <div className="organizer-sidebar-bottom">
           <div className="organizer-owner" title={ownerName}>
@@ -192,7 +260,9 @@ export function OrganizerWorkspaceShell({
       <div className="organizer-main">
         <header className="organizer-topbar">
           <div>
-            <span className="organizer-breadcrumb">Workspace</span>
+            <Link href="/organizer" className="organizer-breadcrumb">
+              My events
+            </Link>
             <span className="organizer-topbar-divider" aria-hidden="true">
               /
             </span>

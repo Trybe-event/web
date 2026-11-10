@@ -13,7 +13,7 @@ export default async function NewEventPage() {
         organizerId={access.account.id}
         basics={<EventBasics />}
         details={<EventDetails />}
-        settings={<EventSettings />}
+        settings={<EventSettings reviewOnly />}
       />
     </WorkspaceShell>
   );

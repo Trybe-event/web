@@ -274,3 +274,60 @@ test("new organizer sections guard the account before accessing event data or re
     assert.equal(dataCalls, 0);
   }
 });
+
+test("owned event changes the sidebar, breadcrumb and selected route without losing business owner controls", () => {
+  const root = "/organizer/events/4498a070-f75f-44c8-ab2e-69138d0914b1";
+  const view = harness(
+    "../components/organizer/workspace-shell.tsx",
+    "OrganizerWorkspaceShell",
+    {
+      businessName: "Gather Studio",
+      ownerName: "Alex Host",
+      children: "Event-specific content",
+      event: {
+        id: "4498a070-f75f-44c8-ab2e-69138d0914b1",
+        name: "Builders Summit",
+        status: "published",
+      },
+    },
+    `${root}/analytics`,
+  );
+  const nav = renderToStaticMarkup(view.find((node) => node.type === "nav")[0]);
+  for (const label of [
+    "All events",
+    "Overview",
+    "Event setup",
+    "Attendance",
+    "Reach",
+    "Analytics",
+    "Preview event",
+    "Event settings",
+  ])
+    assert.ok(nav.includes(label), label);
+  assert.ok(nav.includes(`href="${root}/analytics"`));
+  assert.match(nav, /aria-label="Analytics"[^>]*aria-current="page"/);
+  assert.doesNotMatch(nav, /href="\/organizer\/(audience|payments|settings)"/);
+  assert.match(view.html(), /Builders Summit/);
+  assert.match(view.html(), /Published event/);
+  assert.match(view.html(), /Alex Host/);
+  view.click("Collapse sidebar");
+  assert.match(view.html(), /aria-label="Event setup"/);
+  view.click("Open navigation");
+  assert.match(view.html(), /Event-specific content/);
+});
+
+test("newly saved unnamed drafts get the event workspace and do not masquerade as published", () => {
+  const view = harness(
+    "../components/organizer/workspace-shell.tsx",
+    "OrganizerWorkspaceShell",
+    {
+      businessName: "Gather Studio",
+      ownerName: "Alex Host",
+      event: { id: "draft-id", name: "", status: "draft" },
+    },
+    "/organizer/events/draft-id/edit",
+  );
+  assert.match(view.html(), /Untitled event/);
+  assert.match(view.html(), /Draft event/);
+  assert.match(view.html(), /aria-label="Event setup"[^>]*aria-current="page"/);
+});

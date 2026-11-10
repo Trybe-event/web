@@ -24,7 +24,7 @@ export default async function NewExperiencePage() {
         organizerId={access.account.id}
         basics={<EventBasics />}
         details={<EventDetails />}
-        settings={<EventSettings />}
+        settings={<EventSettings reviewOnly />}
       />
     </WorkspaceShell>
   );

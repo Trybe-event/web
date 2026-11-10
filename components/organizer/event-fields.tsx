@@ -13,7 +13,6 @@ import {
 import { api, errorMessage } from "@/lib/api/client";
 import type { EventDraft } from "@/lib/event-form";
 import { eventTimeToISO, localEventTime } from "@/lib/event-time";
-import { ProgramBuilder } from "./program-builder";
 import { useEventEditor } from "./event-editor-context";
 
 export function EventTimeInput({
@@ -348,7 +347,6 @@ export function EventDetails() {
       >
         Remove event image
       </Button>
-      <ProgramBuilder />
     </div>
   );
 }

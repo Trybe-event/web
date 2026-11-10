@@ -22,17 +22,24 @@ export function WorkspaceShell({
   events,
   activeSlug,
   organizerAccount,
+  organizerEvent,
   children,
 }: {
   type: AccountType;
   events?: EventOption[];
   activeSlug?: string;
   organizerAccount?: { full_name: string; organization?: string | null };
+  organizerEvent?: {
+    id: string;
+    name?: string | null;
+    status: "draft" | "published" | "ended";
+  };
   children: ReactNode;
 }) {
   if (type === "organizer") {
     return (
       <OrganizerWorkspaceShell
+        event={organizerEvent}
         businessName={organizerAccount?.organization?.trim() || "Your business"}
         ownerName={organizerAccount?.full_name?.trim() || "Account owner"}
       >
