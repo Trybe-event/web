@@ -3,12 +3,17 @@
 import { SignOutButton } from "@clerk/nextjs";
 import { LogOut } from "lucide-react";
 
-export function SignOut() {
+export function SignOut({ iconOnly = false }: { iconOnly?: boolean }) {
   return (
     <SignOutButton redirectUrl="/">
-      <button type="button" className="secondary-button">
+      <button
+        type="button"
+        className="secondary-button"
+        aria-label="Sign out"
+        title="Sign out"
+      >
         <LogOut size={16} aria-hidden="true" />
-        Sign out
+        {!iconOnly && <span className="sign-out-label">Sign out</span>}
       </button>
     </SignOutButton>
   );

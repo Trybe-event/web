@@ -19,7 +19,7 @@ export function PolicyPage({
   return (
     <div className="min-h-screen bg-paper text-ink">
       <header className="sticky top-0 z-40 border-b border-line bg-paper/80 backdrop-blur-xl">
-        <div className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-5 py-4 sm:px-8">
+        <div className="flex w-full items-center justify-between gap-4 px-5 py-4 sm:px-8">
           <Link href="/" aria-label="Trybe home">
             <Logo />
           </Link>
@@ -43,39 +43,42 @@ export function PolicyPage({
           </nav>
         </div>
       </header>
-      <main className="mx-auto max-w-6xl px-5 py-12 sm:px-8 sm:py-16">
-        <div className="mb-10 max-w-2xl">
-          <p className="text-xs font-semibold uppercase tracking-widest text-muted">
-            Trust at Trybe
-          </p>
-          <h1 className="mt-3 text-3xl font-bold tracking-tight sm:text-4xl">
-            {title}
-          </h1>
-          <p className="mt-4 text-base leading-7 text-muted">{introduction}</p>
-          <p className="mt-4 text-sm text-muted">
-            Proposed policy · Updated {legalContact.updated}
-          </p>
-        </div>
-        <div className="grid items-start gap-10 lg:grid-cols-[15rem_minmax(0,1fr)] lg:gap-16">
-          <nav
-            aria-label="On this page"
-            className="rounded-2xl border border-line bg-surface p-5 lg:sticky lg:top-24"
-          >
-            <p className="mb-3 text-sm font-semibold">On this page</p>
-            <ol className="grid gap-2 text-sm leading-6 text-muted">
-              {sections.map((section, index) => (
-                <li key={section.id}>
-                  <a
-                    href={`#${section.id}`}
-                    className="hover:text-ink hover:underline"
-                  >
-                    {index + 1}. {section.title}
-                  </a>
-                </li>
-              ))}
-            </ol>
-          </nav>
-          <article className="min-w-0 max-w-2xl space-y-9">
+      <main className="w-full px-5 py-12 sm:px-8 sm:py-16">
+        <div className="policy-document mx-auto w-full max-w-4xl">
+          <div className="mb-8">
+            <p className="text-xs font-semibold uppercase tracking-widest text-muted">
+              Trust at Trybe
+            </p>
+            <h1 className="mt-3 text-3xl font-bold tracking-tight sm:text-4xl">
+              {title}
+            </h1>
+            <p className="policy-prose mt-4 text-sm leading-7 text-muted">
+              {introduction}
+            </p>
+            <p className="mt-4 text-sm text-muted">
+              Proposed policy · Updated {legalContact.updated}
+            </p>
+          </div>
+          <details className="mb-10 rounded-xl border border-line bg-surface px-5 py-4">
+            <summary className="cursor-pointer text-sm font-semibold">
+              On this page
+            </summary>
+            <nav aria-label="On this page" className="mt-4">
+              <ol className="grid gap-x-8 gap-y-2 text-sm leading-6 text-muted sm:grid-cols-2">
+                {sections.map((section, index) => (
+                  <li key={section.id}>
+                    <a
+                      href={`#${section.id}`}
+                      className="hover:text-ink hover:underline"
+                    >
+                      {index + 1}. {section.title}
+                    </a>
+                  </li>
+                ))}
+              </ol>
+            </nav>
+          </details>
+          <article className="min-w-0 w-full space-y-9">
             {sections.map((section, index) => (
               <section
                 key={section.id}
@@ -89,7 +92,7 @@ export function PolicyPage({
                 >
                   {index + 1}. {section.title}
                 </h2>
-                <div className="space-y-3 text-base leading-7 text-muted [&_a]:text-ink [&_a]:underline [&_a]:underline-offset-4 [&_li]:pl-1 [&_ul]:list-disc [&_ul]:space-y-2 [&_ul]:pl-5">
+                <div className="policy-prose space-y-3 text-sm leading-7 text-muted [&_a]:text-ink [&_a]:underline [&_a]:underline-offset-4 [&_li]:pl-1 [&_ul]:list-disc [&_ul]:space-y-2 [&_ul]:pl-5">
                   {section.content}
                 </div>
               </section>

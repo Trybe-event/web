@@ -257,7 +257,7 @@ test("organizer email stage shows the submitted address, real code input and rec
     assert.ok(html.includes(text), text);
   assert.doesNotMatch(
     html,
-    /Tell us about your business|juve\.events|itighiseemmanuele@gmail.com/,
+    /Tell us about your business|juve\.events|trybevent@gmail.com/,
   );
   assert.match(html, /autoComplete="one-time-code"/i);
 });
@@ -305,7 +305,7 @@ test("policy pages render the temporary approved contact and disclose draft and 
       "@/lib/legal": legal,
     });
     const html = renderToStaticMarkup(React.createElement(page.default));
-    assert.match(html, /mailto:itighiseemmanuele@gmail.com/);
+    assert.match(html, /mailto:trybevent@gmail.com/);
     assert.match(html, /Proposed policy/);
     assert.match(html, /history/);
     assert.doesNotMatch(html, /juve\.events/);

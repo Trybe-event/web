@@ -60,7 +60,7 @@ export default async function ShareEventPage({
   if (!event || !managedEvent) return <WorkspaceUnavailable type="organizer" />;
 
   return (
-    <WorkspaceShell type="organizer">
+    <WorkspaceShell type="organizer" organizerAccount={access.account}>
       <section className="workspace-welcome">
         <span className="eyebrow">EVENT MANAGEMENT</span>
         <h1>

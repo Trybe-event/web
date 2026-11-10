@@ -1,6 +1,6 @@
 export const legalContact = {
   name: "Trybe",
-  email: "itighiseemmanuele@gmail.com",
-  updated: "9 November 2026",
-  version: "2026-11-09-draft",
+  email: "trybevent@gmail.com",
+  updated: "10 November 2026",
+  version: "2026-11-10-draft",
 } as const;

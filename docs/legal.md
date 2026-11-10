@@ -1,8 +1,8 @@
 # Legal pages and sign-up notices
 
-Proposed policy version: `2026-11-09-draft`. Public routes: `/terms`, `/privacy`.
+Proposed policy version: `2026-11-10-draft`. Public routes: `/terms`, `/privacy`.
 
-The maintainer explicitly approved publishing `itighiseemmanuele@gmail.com` as the temporary public policy/support contact on 9 November 2026. This is intentional public contact information, not an application credential. Replace it with the team's dedicated address later in `lib/legal.ts`; both policy footers and body references use that shared value. The registered operator name, address and production jurisdiction details have not been supplied. Do not invent them or claim legal sign-off; both pages remain labelled proposed policies pending review.
+The maintainer confirmed `trybevent@gmail.com` as Trybe's public policy/support contact on 10 November 2026, replacing the previous personal contact. It is centralized in `lib/legal.ts`; policy body references, footers and authentication support links use that shared value. This is intentional public contact information, not an application credential. Changes to the email-sending account still require matching provider credentials; changing a public contact does not authorize reusing a previous account's SMTP password. The registered operator name, address and production jurisdiction details have not been supplied. Do not invent them or claim legal sign-off; both pages remain labelled proposed policies pending review.
 
 The shared `components/legal/legal-notice.tsx` appears at attendee and organizer sign-up, including embedded event sign-up, and at the explicit join button in both returning-user review and first-time profile preview. Links open separately so the unfinished form is preserved. Joining is still an explicit action; reading a policy or opening an invitation does not create membership. A policy notice is not a versioned acceptance ledger or optional-marketing consent. No additional marketing consent or Clerk `legalAccepted` flag is inferred.
 

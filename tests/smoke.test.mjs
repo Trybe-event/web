@@ -28,6 +28,10 @@ test("all event workspace pages require attendee authentication", async () => {
 
 test("organizer event editing and sharing require organizer sign-in", async () => {
   for (const path of [
+    "/organizer/audience",
+    "/organizer/payments",
+    "/organizer/settings",
+    "/organizer/experiences/new",
     "/organizer/events/new",
     "/organizer/events/11111111-1111-4111-8111-111111111111/edit",
     "/organizer/events/11111111-1111-4111-8111-111111111111/share",
@@ -63,7 +67,7 @@ test("Trybe policies are public pages with the approved contact and no external 
     const response = await get(path);
     assert.equal(response.status, 200, path);
     const html = await response.text();
-    assert.match(html, /mailto:itighiseemmanuele@gmail.com/);
+    assert.match(html, /mailto:trybevent@gmail.com/);
     assert.match(html, /Proposed policy/);
     assert.doesNotMatch(html, /juve\.events/);
   }

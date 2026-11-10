@@ -12,6 +12,7 @@ async function landing({
   member = false,
   preview = "review",
   unavailable = false,
+  missing = false,
   session = "attendee",
   metadata = false,
 } = {}) {
@@ -61,22 +62,24 @@ async function landing({
     "@/components/ui": { ButtonLink: element("a"), Logo: () => "trybe." },
     "@/lib/events": {
       getPublicEvent: async () =>
-        unavailable
-          ? { kind: "unavailable" }
-          : {
-              kind: "found",
-              event: {
-                name: "Trybe gathering",
-                format: "physical",
-                starts_at: "2026-12-01T09:00:00Z",
-                ends_at: "2026-12-01T17:00:00Z",
-                timezone: "Africa/Lagos",
-                registration_state: state,
-                image_url: "https://storage.example/cover.jpg",
-                organizer_name: "Trybe Hosts",
-                registration_closes_at: "2026-11-30T23:00:00Z",
+        missing
+          ? { kind: "not_found" }
+          : unavailable
+            ? { kind: "unavailable" }
+            : {
+                kind: "found",
+                event: {
+                  name: "Trybe gathering",
+                  format: "physical",
+                  starts_at: "2026-12-01T09:00:00Z",
+                  ends_at: "2026-12-01T17:00:00Z",
+                  timezone: "Africa/Lagos",
+                  registration_state: state,
+                  image_url: "https://storage.example/cover.jpg",
+                  organizer_name: "Trybe Hosts",
+                  registration_closes_at: "2026-11-30T23:00:00Z",
+                },
               },
-            },
       hasEventMembership: async () => member,
       getJoinPreview: async () => {
         assert.notEqual(
@@ -154,6 +157,14 @@ async function landing({
   await stream.allReady;
   return new Response(stream).text();
 }
+test("missing event invitations use the 404 boundary while service outages remain retryable", async () => {
+  await assert.rejects(landing({ missing: true }), /not found/);
+  const missingMetadata = await landing({ missing: true, metadata: true });
+  assert.equal(missingMetadata.title, "404 page");
+  assert.equal(missingMetadata.robots.index, false);
+  assert.match(await landing({ unavailable: true }), /unreachable/);
+});
+
 test("registration requires a loaded profile review and open registration", async () => {
   assert.match(await landing(), /Confirm and join/);
   for (const options of [

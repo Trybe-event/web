@@ -18,3 +18,7 @@ when the master changes, and link the corresponding PRs.
 [M1 consolidation](m1-consolidation.md) is historical background, not audit sign-off.
 The [M1](https://github.com/Trybe-event/api/issues/36) and
 [M2](https://github.com/Trybe-event/api/issues/9) gates track remaining evidence.
+
+Read the [10 November implementation and code handoff](implementation-handoff-2026-11-10.md)
+for the delivered onboarding/workspace/branding changes, pending backend work,
+verification boundaries and authorized milestone-to-stable integration sequence.
