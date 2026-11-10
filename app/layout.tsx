@@ -5,6 +5,7 @@ import { DM_Sans, Manrope } from "next/font/google";
 
 import { DevelopmentApiMockProvider } from "@/components/development-api-mock-provider";
 import { authConfigured } from "@/lib/auth-config";
+import { parseThemePreference } from "@/lib/theme";
 
 import "./globals.css";
 
@@ -23,6 +24,7 @@ const manrope = Manrope({
 export const metadata: Metadata = {
   title: { default: "Trybe", template: "%s · Trybe" },
   description: "Meet the right people at your next event.",
+  icons: { icon: "/favicon.svg", shortcut: "/favicon.svg" },
 };
 
 export const viewport: Viewport = { width: "device-width", initialScale: 1 };
@@ -32,7 +34,7 @@ export default async function RootLayout({
 }: Readonly<{ children: React.ReactNode }>) {
   // A saved choice wins; otherwise the theme follows the system (see globals.css).
   const saved = (await cookies()).get("trybe_theme")?.value;
-  const theme = saved === "dark" || saved === "light" ? saved : undefined;
+  const theme = parseThemePreference(saved);
   const page = (
     <html
       lang="en"

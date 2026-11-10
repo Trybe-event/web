@@ -6,6 +6,7 @@ import { useRef, useState } from "react";
 import { Alert, Button } from "@/components/ui";
 import { api, errorMessage } from "@/lib/api/client";
 import { routes } from "@/lib/routes";
+import { LegalNotice } from "@/components/legal/legal-notice";
 
 // JoinEvent is the explicit join step (web#7): the attendee presses the button, the
 // API records the membership, and the workspace opens. Joining is idempotent, so a
@@ -58,6 +59,7 @@ export function JoinEvent({
 
   return (
     <div className="flex flex-col items-start gap-3">
+      <LegalNotice action="join" />
       <Button
         loading={joining}
         disabled={disabled || joining}

@@ -33,12 +33,17 @@ export async function generateMetadata({
   params: Promise<{ slug: string }>;
 }): Promise<Metadata> {
   const { slug } = await params;
+  const missing: Metadata = {
+    title: "404 page",
+    robots: { index: false, follow: false },
+  };
   const unavailable: Metadata = {
     title: "Event invitation",
     robots: { index: false, follow: false },
   };
-  if (!isEventSlug(slug)) return unavailable;
+  if (!isEventSlug(slug)) return missing;
   const result = await getPublicEvent(slug);
+  if (result.kind === "not_found") return missing;
   if (result.kind !== "found") return unavailable;
   const { event } = result;
   const eventUrl = new URL(
@@ -92,12 +97,7 @@ export default async function EventLanding({
 
   const session = await getSession();
   const result = await getPublicEvent(slug);
-  if (result.kind === "not_found")
-    return (
-      <EventLinkState
-        outcome={{ kind: "lookup", httpStatus: 404, code: "not_found" }}
-      />
-    );
+  if (result.kind === "not_found") notFound();
   if (result.kind === "unavailable")
     return <EventLinkState outcome={{ kind: "unreachable" }} />;
   const event = result.event;
@@ -114,7 +114,7 @@ export default async function EventLanding({
   ).href;
 
   return (
-    <main className="mx-auto max-w-7xl px-4 py-6 sm:px-6 sm:py-10">
+    <main className="w-full px-4 py-6 sm:px-6 sm:py-10">
       <header className="sticky top-0 z-40 -mx-4 mb-5 flex items-center justify-between gap-4 border-b border-line/60 bg-paper/75 px-4 py-3 backdrop-blur-xl sm:-mx-6 sm:px-6">
         <Link href="/" aria-label="Trybe home">
           <Logo />

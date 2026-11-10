@@ -1033,6 +1033,8 @@ export interface components {
         OrganizerSignup: {
             full_name: string;
             organization: string;
+            /** @description Optional private business contact in E.164 format. Omitted from account and public event responses. */
+            phone?: string | null;
         };
         AttendeeSignup: {
             full_name: string;

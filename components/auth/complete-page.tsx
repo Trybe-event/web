@@ -8,6 +8,7 @@ import { getSession } from "@/lib/session";
 
 import { AuthShell } from "./auth-shell";
 import { CompleteAccount } from "./complete-account";
+import { organizerSignupDetails } from "@/lib/organizer-signup";
 
 // The event being joined reaches this step through Clerk's redirect as ?event=<slug>
 // (web#7), and is handed on to profile onboarding.
@@ -32,9 +33,13 @@ export async function CompletePage({
     redirect(withEventParam(`${workspacePath(type)}/sign-up`, eventSlug));
   const clerkUser =
     sessionState.kind === "unbound" ? await currentUser() : null;
-  const fullName = [clerkUser?.firstName, clerkUser?.lastName]
-    .filter(Boolean)
-    .join(" ");
+  const businessDetails =
+    type === "organizer"
+      ? organizerSignupDetails(clerkUser?.unsafeMetadata?.organizer_signup)
+      : undefined;
+  const fullName = businessDetails
+    ? `${businessDetails.first_name} ${businessDetails.last_name}`
+    : [clerkUser?.firstName, clerkUser?.lastName].filter(Boolean).join(" ");
   return (
     <AuthShell type={type}>
       <span className="eyebrow">ONE LAST INTRODUCTION</span>
@@ -46,6 +51,8 @@ export async function CompletePage({
         <CompleteAccount
           type={type}
           defaultName={fullName}
+          defaultOrganization={businessDetails?.organization}
+          defaultPhone={businessDetails?.phone}
           eventSlug={eventSlug}
         />
       ) : (
