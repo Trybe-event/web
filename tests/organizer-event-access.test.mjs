@@ -17,16 +17,16 @@ function compile(file, dependencies) {
       },
     },
   ).outputText;
-  const module = { exports: {} };
+  const loadedModule = { exports: {} };
   vm.runInNewContext(`(function(require,module,exports){${source}\n})`, {
     AbortSignal,
     Error,
   })(
     (name) => (name in dependencies ? dependencies[name] : require(name)),
-    module,
-    module.exports,
+    loadedModule,
+    loadedModule.exports,
   );
-  return module.exports;
+  return loadedModule.exports;
 }
 function eventAccess({
   access = { account: { id: "organizer" } },

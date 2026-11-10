@@ -19,7 +19,7 @@ function compile(file, dependencies, globals = {}) {
       },
     },
   ).outputText;
-  const module = { exports: {} };
+  const loadedModule = { exports: {} };
   vm.runInNewContext(`(function(require,module,exports){${javascript}\n})`, {
     Intl,
     Date,
@@ -28,10 +28,10 @@ function compile(file, dependencies, globals = {}) {
     ...globals,
   })(
     (name) => (name in dependencies ? dependencies[name] : require(name)),
-    module,
-    module.exports,
+    loadedModule,
+    loadedModule.exports,
   );
-  return module.exports;
+  return loadedModule.exports;
 }
 const draftModel = compile("../lib/event-form.ts", {});
 const publication = compile("../lib/event-publication.ts", {
