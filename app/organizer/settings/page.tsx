@@ -20,10 +20,7 @@ export default async function SettingsPage() {
           payouts.
         </p>
       </section>
-      <OrganizerSettings
-        organization={access.account.organization ?? ""}
-        ownerName={access.account.full_name}
-      />
+      <OrganizerSettings account={access.account} />
     </WorkspaceShell>
   );
 }

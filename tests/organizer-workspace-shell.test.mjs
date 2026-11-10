@@ -17,6 +17,19 @@ const ui = {
   Button: element("button"),
   Card: element("section"),
   Input: element("input"),
+  Select: element("select"),
+  Textarea: element("textarea"),
+  Switch: ({ label, checked, onChange }) =>
+    React.createElement(
+      "button",
+      {
+        role: "switch",
+        "aria-label": label,
+        "aria-checked": checked,
+        onClick: () => onChange(!checked),
+      },
+      label,
+    ),
   Alert: element("output"),
   Field: ({ label, error, children }) =>
     React.createElement("label", null, label, children({ id: label }), error),
@@ -99,6 +112,9 @@ function harness(
       ThemeToggle: () => React.createElement("button", null, "Choose theme"),
     },
     "@/lib/legal": { legalContact: { email: "trybevent@gmail.com" } },
+    "@/components/organizer/signed-in-devices": {
+      SignedInDevices: () => React.createElement("p", null, "Devices"),
+    },
     ...dependencies,
   })[exportName];
   let tree;
@@ -242,15 +258,34 @@ test("event tabs and search filter only the organizer-provided rows without losi
   assert.match(view.html(), /Draft event/);
 });
 
+const savedAccount = {
+  id: "a1",
+  type: "organizer",
+  full_name: "Alex Host",
+  organization: "Gather Studio",
+  created_at: "2026-11-01T00:00:00Z",
+  business: {
+    support_email: "help@gather.ng",
+    support_phone: null,
+    website: null,
+    city: "Lagos",
+    country_code: "NG",
+    timezone: "Africa/Lagos",
+    about: "",
+    notify_event_updates: true,
+    notify_event_summaries: true,
+  },
+};
+
 test("settings open on the editable business profile and keep unsupported payments disclosed", () => {
   const view = harness(
     "../components/organizer/workspace-sections.tsx",
     "OrganizerSettings",
-    { organization: "Gather Studio", ownerName: "Alex Host" },
+    { account: savedAccount },
   );
   const form = view.find((node) => node.type?.name === "BusinessProfileForm");
-  assert.equal(form[0]?.props.organization, "Gather Studio");
-  assert.equal(form[0]?.props.ownerName, "Alex Host");
+  assert.equal(form[0]?.props.account.organization, "Gather Studio");
+  assert.equal(form[0]?.props.account.full_name, "Alex Host");
   view
     .find(
       (node) =>
@@ -263,12 +298,12 @@ test("settings open on the editable business profile and keep unsupported paymen
   assert.doesNotMatch(view.html(), /Saved successfully/);
 });
 
-function businessForm(result) {
-  const calls = { put: [], refresh: 0 };
+function businessForm(result, exportName = "BusinessProfileForm") {
+  const calls = { put: [], refresh: 0, saved: [] };
   const view = harness(
     "../components/organizer/workspace-sections.tsx",
-    "BusinessProfileForm",
-    { organization: "Gather Studio", ownerName: "Alex Host" },
+    exportName,
+    { account: savedAccount, onSaved: (account) => calls.saved.push(account) },
     "/organizer/settings",
     {
       "next/navigation": {
@@ -308,23 +343,35 @@ function businessForm(result) {
   };
 }
 
-test("business profile saves the edited names and refreshes the workspace", async () => {
+test("business profile saves the whole profile and refreshes the workspace", async () => {
   const form = businessForm({
-    data: { organization: "New Studio", full_name: "Ada Okafor" },
+    data: {
+      ...savedAccount,
+      organization: "New Studio",
+      full_name: "Ada Okafor",
+    },
     response: { ok: true, status: 200 },
   });
   assert.match(form.view.html(), /value="Gather Studio"/);
+  assert.match(form.view.html(), /value="help@gather.ng"/);
   form.type("Business name", " New  Studio ");
   form.type("Contact name", "Ada Okafor");
+  form.type("Website", "https://gather.ng");
   await form.submit();
   // The body is built inside the test VM, so compare its JSON across realms.
   assert.deepEqual(JSON.parse(JSON.stringify(form.calls.put)), [
     {
       path: "/me/account",
-      body: { organization: " New  Studio ", full_name: "Ada Okafor" },
+      body: {
+        ...savedAccount.business,
+        full_name: "Ada Okafor",
+        organization: " New  Studio ",
+        website: "https://gather.ng",
+      },
     },
   ]);
   assert.equal(form.calls.refresh, 1);
+  assert.equal(form.calls.saved.length, 1);
   assert.match(form.view.html(), /value="New Studio"/);
   assert.match(form.view.html(), /Business profile saved/);
 });
@@ -340,6 +387,30 @@ test("business profile shows API field errors and does not claim a save", async 
   assert.match(form.view.html(), /Required\./);
   assert.match(form.view.html(), /Some fields need attention/);
   assert.doesNotMatch(form.view.html(), /Business profile saved/);
+});
+
+test("email switches save with the rest of the profile unchanged", async () => {
+  const form = businessForm(
+    {
+      data: {
+        ...savedAccount,
+        business: { ...savedAccount.business, notify_event_summaries: false },
+      },
+      response: { ok: true, status: 200 },
+    },
+    "NotificationSettings",
+  );
+  form.view
+    .find((node) => node.props?.label === "Event summaries")[0]
+    .props.onChange(false);
+  form.view.render();
+  await form.submit();
+  const body = JSON.parse(JSON.stringify(form.calls.put[0].body));
+  assert.equal(body.notify_event_summaries, false);
+  assert.equal(body.notify_event_updates, true);
+  assert.equal(body.support_email, "help@gather.ng");
+  assert.equal(body.organization, "Gather Studio");
+  assert.match(form.view.html(), /Email preferences saved/);
 });
 
 test("new organizer sections guard the account before accessing event data or rendering settings", async () => {

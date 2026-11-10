@@ -47,7 +47,7 @@ export interface paths {
         };
         /** The caller's bound account, or 404 when no account type is bound yet */
         get: operations["getMyAccount"];
-        /** Replace the organizer's business name and contact name (idempotent). Account type and the private phone are not changed. */
+        /** Replace the organizer's names and business profile (idempotent). Account type and the private signup phone are not changed. */
         put: operations["putMyOrganizerAccount"];
         post?: never;
         delete?: never;
@@ -1030,6 +1030,24 @@ export interface components {
             organization?: string | null;
             /** Format: date-time */
             created_at: string;
+            /** @description Present for organizers only */
+            business?: components["schemas"]["OrganizerBusiness"];
+        };
+        OrganizerBusiness: {
+            /** @description Public on the organizer's event pages */
+            support_email: string | null;
+            /** @description Public on the organizer's event pages; E.164 */
+            support_phone: string | null;
+            website: string | null;
+            city: string | null;
+            country_code: string;
+            /** @description IANA zone used as the default for new events */
+            timezone: string;
+            about: string;
+            /** @description Event created, started, ending and end reminder emails */
+            notify_event_updates: boolean;
+            /** @description Post-event summary email */
+            notify_event_summaries: boolean;
         };
         OrganizerSignup: {
             full_name: string;
@@ -1037,9 +1055,21 @@ export interface components {
             /** @description Optional private business contact in E.164 format. Omitted from account and public event responses. */
             phone?: string | null;
         };
+        /** @description Full replacement. Optional fields left out are cleared or reset to their defaults (country NG, timezone Africa/Lagos, both notifications on). */
         OrganizerAccountInput: {
             full_name: string;
             organization: string;
+            /** Format: email */
+            support_email?: string | null;
+            support_phone?: string | null;
+            /** Format: uri */
+            website?: string | null;
+            city?: string | null;
+            country_code?: string;
+            timezone?: string;
+            about?: string;
+            notify_event_updates?: boolean;
+            notify_event_summaries?: boolean;
         };
         AttendeeSignup: {
             full_name: string;
@@ -1183,6 +1213,12 @@ export interface components {
             name: string;
             /** @description Public host organization name; no personal account fields */
             organizer_name?: string;
+            /** @description Present only when the host published one */
+            organizer_support_email?: string;
+            /** @description Present only when the host published one */
+            organizer_support_phone?: string;
+            /** @description Present only when the host published one */
+            organizer_website?: string;
             /** Format: date-time */
             registration_closes_at?: string | null;
             format: components["schemas"]["EventFormat"];
