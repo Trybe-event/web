@@ -1,0 +1,14 @@
+# Authentication portraits
+
+Two AI-generated editorial scenes support the attendee and organizer authentication layouts. They are illustrative scenes, not photographs of real Trybe members or testimonials. The original broad compositions were reworked into 2:3 portraits at the maintainer's request, preserving all foreground subjects inside the frame and adding soft dark atmosphere at the bottom.
+
+- `attendee-portrait.webp`: three attendees in conversation.
+- `organizer-portrait.webp`: an event host welcoming a guest.
+
+Final files are 2560 × 3840 WebP display exports, using proportional Lanczos resizing from generated 1024 × 1536 portrait sources. They are 4K-height derivatives, not native 4K source detail. The desktop layout uses a full-height panel on the right with proportional `object-fit: cover` and an upper-center focal point. This fills the panel without stretching; its crop varies with the viewport. Text and a deep lower contrast fog are rendered separately in HTML/CSS. Next Image serves appropriately sized variants; mobile uses the focused form layout.
+
+Built-in image generation was used for the scenes and portrait edits. Prompt specifications: natural editorial photography of Black African professionals at a welcoming Lagos event; retain identities, clothing, venue and candid expressions; recompose vertically with breathing room for every subject; subdued charcoal fog in the lower quarter; no text, logos, UI or watermarks. Original landscape variants are preserved in the marketing repository under `public/images/networking/` for later use. No asset references point outside the repository.
+
+Final edit prompt, used once with `attendee` and once with `organizer` as `{role}`:
+
+> Edit this {role} event photograph into a TALL SLIM PORTRAIT composition, 2:3 aspect ratio. This is a precise composition edit for a narrow website side panel, not a redesign. Keep the same people, identities, candid expressions, clothes, lighting, venue and premium natural editorial photographic quality. Pull the camera back/recompose and outpaint as needed so ALL foreground people fit completely side to side, with generous room between the people and both frame edges. Do not crop any heads, faces, shoulders, arms or people out to obtain the narrow format. The figures should occupy the central upper 60 percent of the portrait, seen from at least the knees upward, leaving room above their heads. Extend the venue naturally vertically and leave the lowest 25–30 percent as subdued atmosphere. At the bottom only, introduce a soft natural dark smoky charcoal fog that graduates gently upward behind the place where web text will later sit. The fog must not obscure faces. Keep the upper photo sharp and bright, realistic skin, warm wood and restrained olive details. Output one portrait photograph, 2:3 ratio, high detail, ideal 2560x3840 pixels. No typography, logos, letters, borders, UI or collage. Do not return a horizontal image.

@@ -5,6 +5,7 @@ import type { ReactNode } from "react";
 import { RelevancePrompt } from "@/components/feedback/relevance-prompt";
 import { InboxBadge } from "@/components/messaging/inbox-badge";
 import { Logo } from "@/components/ui";
+import { OrganizerWorkspaceShell } from "@/components/organizer/workspace-shell";
 import { type AccountType, workspacePath } from "@/lib/account";
 
 import type { EventOption } from "@/lib/events";
@@ -20,13 +21,25 @@ export function WorkspaceShell({
   type,
   events,
   activeSlug,
+  organizerAccount,
   children,
 }: {
   type: AccountType;
   events?: EventOption[];
   activeSlug?: string;
+  organizerAccount?: { full_name: string; organization?: string | null };
   children: ReactNode;
 }) {
+  if (type === "organizer") {
+    return (
+      <OrganizerWorkspaceShell
+        businessName={organizerAccount?.organization?.trim() || "Your business"}
+        ownerName={organizerAccount?.full_name?.trim() || "Account owner"}
+      >
+        {children}
+      </OrganizerWorkspaceShell>
+    );
+  }
   return (
     <main className="workspace">
       <header className="workspace-header">
@@ -34,9 +47,7 @@ export function WorkspaceShell({
           <Logo />
         </Link>
         <div>
-          <span className="workspace-badge">
-            {type === "organizer" ? "Organizer" : "Attendee"} workspace
-          </span>
+          <span className="workspace-badge">Attendee workspace</span>
           <ThemeToggle />
           {type === "attendee" && (
             <nav aria-label="Attendee sections">

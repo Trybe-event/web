@@ -12,7 +12,7 @@ export default async function EditEventPage({
   if ("unavailable" in access) return null;
   const { id: eventId } = await params;
   return (
-    <WorkspaceShell type="organizer">
+    <WorkspaceShell type="organizer" organizerAccount={access.account}>
       <h1 className="mt-8 text-3xl font-bold">Set up your event.</h1>
       <EventForm
         organizerId={access.account.id}
