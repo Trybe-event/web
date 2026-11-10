@@ -60,3 +60,12 @@ defines request and response shapes. Surface disagreements before changing behav
 PR bodies must state the issue, meaningful changes, every acceptance criterion, commands and results, dependencies and exact checks still pending. Do not mark browser checks, authenticated integration or an audit complete when they were not run. Keep unfinished work visible rather than replacing it with mock success.
 
 Before handoff, push the actual commits, confirm the PR targets the correct milestone, check GitHub's conflict and CI status, and document merge order. Include the current commit and next action in the ignored `.agent/web-<issue>.md` progress file. Never describe unpushed local work as delivered.
+
+## Stable integration before main
+
+The maintainer has designated `stable` as the shared M1-M4 integration branch.
+Test combined milestone changes there and check CI on the pushed revision. Keep
+`main` unchanged until the maintainer approves promotion after the release gates.
+Retain `stable`, `main` and the four milestone branches. Archive unique unmerged
+work before removing obsolete feature branches. A green build does not replace
+required live authentication, mobile, provider inbox and operational evidence.

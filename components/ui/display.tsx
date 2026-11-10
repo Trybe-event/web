@@ -1,3 +1,4 @@
+import { BrandMark } from "@/components/brand-mark";
 import type { ComponentProps, ReactNode } from "react";
 
 import { cn } from "./cn";
@@ -134,7 +135,7 @@ export function Logo({ className }: { className?: string }) {
       )}
     >
       <span aria-hidden="true" className="text-[1.2em] leading-none">
-        ✳
+        <BrandMark />
       </span>
       <span>
         trybe<span className="text-accent-ink">.</span>

@@ -731,3 +731,23 @@ em {
 .auth-content code {
   font-size: 12px;
 }
+/* The event banner's symbol rolls gently once a minute; the wordmark stays still. */
+.event-banner-brand svg {
+  transform-origin: center;
+  animation: event-brand-roll 60s cubic-bezier(0.22, 0.75, 0.22, 1) infinite;
+}
+@keyframes event-brand-roll {
+  0%,
+  89% {
+    transform: rotate(0deg);
+  }
+  98%,
+  100% {
+    transform: rotate(360deg);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .event-banner-brand svg {
+    animation: none;
+  }
+}

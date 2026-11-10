@@ -20,6 +20,24 @@ async function landing({
       return React.createElement(tag, props, children);
     };
   const dependencies = {
+    "next/image": {
+      default: ({ src, alt, className }) =>
+        React.createElement("img", { src, alt, className }),
+      __esModule: true,
+    },
+    "@/components/events/event-registration": {
+      EventRegistration: ({ slug }) =>
+        React.createElement("div", { "data-event": slug }, "Join the event"),
+    },
+    "@/components/auth/theme-toggle": {
+      ThemeToggle: () => React.createElement("button", null, "Theme"),
+    },
+    "@/components/events/event-sharing": {
+      EventSharing: () => React.createElement("div", null, "Share event"),
+    },
+    "@/lib/event-artwork": {
+      artworkPath: (slug) => `/event-artwork/${slug}?format=og&theme=forest`,
+    },
     "next/link": { default: element("a"), __esModule: true },
     "next/navigation": {
       notFound() {
@@ -40,7 +58,7 @@ async function landing({
           outcome.registrationState ?? outcome.kind,
         ),
     },
-    "@/components/ui": { ButtonLink: element("a") },
+    "@/components/ui": { ButtonLink: element("a"), Logo: () => "trybe." },
     "@/lib/events": {
       getPublicEvent: async () =>
         unavailable
@@ -54,6 +72,9 @@ async function landing({
                 ends_at: "2026-12-01T17:00:00Z",
                 timezone: "Africa/Lagos",
                 registration_state: state,
+                image_url: "https://storage.example/cover.jpg",
+                organizer_name: "Trybe Hosts",
+                registration_closes_at: "2026-11-30T23:00:00Z",
               },
             },
       hasEventMembership: async () => member,
@@ -87,6 +108,26 @@ async function landing({
       }),
     },
   };
+  const hero = { exports: {} };
+  const heroCode = ts.transpileModule(
+    readFileSync(
+      new URL("../components/events/event-hero.tsx", import.meta.url),
+      "utf8",
+    ),
+    {
+      compilerOptions: {
+        module: ts.ModuleKind.CommonJS,
+        jsx: ts.JsxEmit.ReactJSX,
+        esModuleInterop: true,
+      },
+    },
+  ).outputText;
+  vm.runInNewContext(`(function(require,module,exports){${heroCode}\n})`)(
+    (name) => dependencies[name] ?? require(name),
+    hero,
+    hero.exports,
+  );
+  dependencies["@/components/events/event-hero"] = hero.exports;
   const compiled = ts.transpileModule(
     readFileSync(new URL("../app/[slug]/page.tsx", import.meta.url), "utf8"),
     {
@@ -98,11 +139,10 @@ async function landing({
     },
   ).outputText;
   const loaded = { exports: {} };
-  vm.runInNewContext(`(function(require,module,exports){${compiled}\n})`)(
-    (name) => dependencies[name] ?? require(name),
-    loaded,
-    loaded.exports,
-  );
+  vm.runInNewContext(`(function(require,module,exports){${compiled}\n})`, {
+    URL,
+    process: { env: { NEXT_PUBLIC_APP_URL: "https://trybe.example" } },
+  })((name) => dependencies[name] ?? require(name), loaded, loaded.exports);
   if (metadata)
     return loaded.exports.generateMetadata({
       params: Promise.resolve({ slug: "trybe-gathering" }),
@@ -129,9 +169,16 @@ test("registration requires a loaded profile review and open registration", asyn
 test("public landing renders event-local schedule and invitation entry points without profiles", async () => {
   const page = await landing({ session: "signed-out" });
   assert.match(page, /Trybe gathering/);
+  assert.match(page, /src="https:\/\/storage.example\/cover.jpg"/);
   assert.match(page, /10:00/);
   assert.match(page, /18:00/);
-  assert.match(page, /attendee\/sign-up\?event=trybe-gathering/);
+  assert.match(page, /Organized by/);
+  assert.match(page, /Trybe Hosts/);
+  assert.match(page, /Registration closes/);
+  assert.match(page, /object-contain/);
+  assert.match(page, /data-event="trybe-gathering"/);
+  assert.match(page, /id="join-event"/);
+  assert.doesNotMatch(page, /I already have an account/);
   assert.doesNotMatch(page, /Confirm and join/);
   assert.doesNotMatch(
     await landing({ session: "organizer" }),
@@ -146,6 +193,12 @@ test("link metadata identifies only resolved events and never indexes invitation
   const found = await landing({ metadata: true });
   assert.equal(found.openGraph.title, "Trybe gathering");
   assert.equal(found.robots.index, false);
+  assert.equal(found.openGraph.images[0].width, 1200);
+  assert.match(
+    found.openGraph.images[0].url,
+    /^https:\/\/trybe\.example\/event-artwork\//,
+  );
+  assert.equal(found.twitter.card, "summary_large_image");
   const failed = await landing({ metadata: true, unavailable: true });
   assert.equal(failed.title, "Event invitation");
   assert.equal(failed.openGraph, undefined);

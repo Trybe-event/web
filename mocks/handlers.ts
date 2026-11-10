@@ -503,6 +503,17 @@ export const apiMockHandlers = [
     () => new HttpResponse(null, { status: 204 }),
   ),
 
+  http.post("/api/connections/:connectionId/conversation", ({ params }) => {
+    const conversation = conversations.find(
+      (candidate) => candidate.connection_id === params.connectionId,
+    );
+    return conversation
+      ? HttpResponse.json(conversation)
+      : HttpResponse.json(
+          { code: "forbidden", message: "You are not connected." },
+          { status: 403 },
+        );
+  }),
   http.get("/api/conversations", () =>
     HttpResponse.json({ items: conversations }),
   ),

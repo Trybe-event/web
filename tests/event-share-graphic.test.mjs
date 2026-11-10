@@ -16,7 +16,7 @@ const source = ts.transpileModule(
   },
 ).outputText;
 const loaded = { exports: {} };
-vm.runInNewContext(`(function(require,module,exports){${source}\n})`)(
+vm.runInNewContext(`(function(require,module,exports){${source}\n})`, { URL })(
   require,
   loaded,
   loaded.exports,
@@ -120,4 +120,14 @@ test("unavailable canvas export reports failure rather than a blank success", ()
       ),
     /unavailable/,
   );
+});
+
+test("short invitations include the readable six-character code", () => {
+  const output = canvasHarness();
+  drawEventShareGraphic(
+    output.canvas,
+    "DevFest",
+    "https://trybe.events/jyka2k",
+  );
+  assert.ok(output.texts.some((text) => text.value === "Event code: JYKA2K"));
 });

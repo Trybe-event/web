@@ -67,6 +67,14 @@ export function drawEventShareGraphic(
   );
   context.font = "500 40px 'DM Sans', ui-sans-serif, system-ui, sans-serif";
   context.fillText("Scan the code to register", padding, titleBottom + 24);
+  const eventCode = new URL(url).pathname.slice(1);
+  if (/^[a-z0-9]{6}$/.test(eventCode)) {
+    context.fillText(
+      `Event code: ${eventCode.toUpperCase()}`,
+      padding,
+      titleBottom + 72,
+    );
+  }
   for (let row = 0; row < qr.modules.size; row++) {
     for (let column = 0; column < qr.modules.size; column++) {
       if (qr.modules.get(row, column)) {

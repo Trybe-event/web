@@ -45,6 +45,10 @@ function filenameFor(event: ShareEvent, ext: string) {
 function Panel({ event }: { event: ShareEvent }) {
   const url = event.registration_url;
   const published = Boolean(event.slug && url);
+  const eventCode =
+    event.slug && /^[a-z0-9]{6}$/.test(event.slug)
+      ? event.slug.toUpperCase()
+      : null;
 
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [drawError, setDrawError] = useState<string | null>(null);
@@ -140,6 +144,28 @@ function Panel({ event }: { event: ShareEvent }) {
   return (
     <div className="flex flex-col items-start gap-4">
       <div className="w-full max-w-80 rounded-xl border border-line bg-surface p-5">
+        {eventCode && (
+          <div className="mb-4">
+            <p className="text-sm font-semibold">Event code</p>
+            <p className="mt-1 font-mono text-2xl font-bold tracking-widest">
+              {eventCode}
+            </p>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={async () => {
+                try {
+                  await navigator.clipboard.writeText(eventCode);
+                  toast("Event code copied.");
+                } catch {
+                  toast("Select the event code to copy it.");
+                }
+              }}
+            >
+              Copy code
+            </Button>
+          </div>
+        )}
         <p className="text-sm font-semibold">Registration link</p>
         <p className="mt-2 break-all text-sm text-muted">{url}</p>
         <canvas
@@ -163,7 +189,8 @@ function Panel({ event }: { event: ShareEvent }) {
         </Button>
       </div>
       <p className="text-sm text-muted">
-        The link and QR are permanent. Editing the event never changes them.
+        Use this current link and download a fresh QR before sharing. Editing
+        the event does not change its current invitation.
       </p>
     </div>
   );

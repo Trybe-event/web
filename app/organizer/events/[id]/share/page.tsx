@@ -70,7 +70,9 @@ export default async function ShareEventPage({
         <p>
           {event.status === "published"
             ? "Send the link or the QR graphic: both open your registration page."
-            : "This event is still a draft. Publish it to get its permanent link."}
+            : event.status === "ended"
+              ? "This event has ended. Its invitation still shows the event, but registration is closed."
+              : "This event is still a draft. Publish it to get its permanent link."}
         </p>
       </section>
       <EventLifecycle

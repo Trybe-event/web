@@ -7,6 +7,7 @@ import {
   useState,
   type KeyboardEvent,
 } from "react";
+import { useRouter } from "next/navigation";
 
 import {
   Alert,
@@ -85,7 +86,9 @@ export function ConnectionsTabs() {
   const [notice, setNotice] = useState<Notice | null>(null);
   const [retry, setRetry] = useState<Retry | null>(null);
   const [confirming, setConfirming] = useState<Connection | null>(null);
+  const [openingId, setOpeningId] = useState<string | null>(null);
   const mutationPending = useRef(false);
+  const router = useRouter();
   const tabRefs = useRef<Partial<Record<Tab, HTMLButtonElement | null>>>({});
 
   const requestList = useCallback(
@@ -260,6 +263,38 @@ export function ConnectionsTabs() {
     }
   }
 
+  // A conversation exists only once someone opens it (POST
+  // /connections/{id}/conversation); the server returns the existing one on repeat.
+  async function openConversation(connection: Connection) {
+    if (openingId) return;
+    setOpeningId(connection.id);
+    setNotice(null);
+    setRetry(null);
+    try {
+      const { data, error } = await api.POST(
+        "/connections/{connectionId}/conversation",
+        { params: { path: { connectionId: connection.id } } },
+      );
+      if (data) {
+        router.push(`/attendee/inbox/${encodeURIComponent(data.id)}`);
+        return;
+      }
+      setNotice({
+        tone: "danger",
+        message: errorMessage(
+          error,
+          `We couldn't open your conversation with ${connection.other.full_name}. Try again.`,
+        ),
+      });
+    } catch {
+      setNotice({
+        tone: "danger",
+        message: `We couldn't open your conversation with ${connection.other.full_name}. Try again.`,
+      });
+    }
+    setOpeningId(null);
+  }
+
   function runRetry() {
     if (!retry) return;
     if (retry.kind === "request") void act(retry.request, retry.action);
@@ -395,6 +430,8 @@ export function ConnectionsTabs() {
                       slugByEventId.get(connection.origin_event_id),
                       connection.other.attendee_id,
                     )}
+                    opening={openingId === connection.id}
+                    onMessage={() => void openConversation(connection)}
                     onDisconnect={() => setConfirming(connection)}
                   />
                 ))
@@ -502,10 +539,14 @@ function RequestCard({
 function ConnectionCard({
   connection,
   href,
+  opening,
+  onMessage,
   onDisconnect,
 }: {
   connection: Connection;
   href: string | null;
+  opening: boolean;
+  onMessage: () => void;
   onDisconnect: () => void;
 }) {
   const profile = sharedProfile(connection.other);
@@ -531,6 +572,14 @@ function ConnectionCard({
         <Badge tone="success">Connected</Badge>
       </div>
       <div className="flex flex-wrap gap-3">
+        <Button
+          size="sm"
+          loading={opening}
+          onClick={onMessage}
+          aria-label={`Message ${profile.full_name}`}
+        >
+          Message
+        </Button>
         {href && (
           <ButtonLink href={href} variant="secondary" size="sm">
             View profile

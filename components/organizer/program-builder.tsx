@@ -25,9 +25,10 @@ import { useEventEditor } from "./event-editor-context";
 import { EventTimeInput } from "./event-fields";
 
 type Editor =
-  | { kind: "day"; day?: Schemas["ProgramDay"] }
+  | { kind: "day"; day?: Schemas["ProgramDay"]; creationKey?: string }
   | {
       kind: "session";
+      creationKey?: string;
       day: Schemas["ProgramDay"];
       session?: Schemas["Session"];
     };
@@ -339,7 +340,13 @@ export function ProgramBuilder() {
           <Button
             size="sm"
             disabled={busy || !hasSchedule}
-            onClick={() => setEditor({ kind: "session", day })}
+            onClick={() =>
+              setEditor({
+                kind: "session",
+                day,
+                creationKey: crypto.randomUUID(),
+              })
+            }
           >
             Add session
           </Button>
@@ -349,7 +356,9 @@ export function ProgramBuilder() {
         <Button
           variant="secondary"
           disabled={busy || !hasSchedule}
-          onClick={() => setEditor({ kind: "day" })}
+          onClick={() =>
+            setEditor({ kind: "day", creationKey: crypto.randomUUID() })
+          }
         >
           Add program day
         </Button>
@@ -373,7 +382,10 @@ export function ProgramBuilder() {
                       body,
                     })
                   : api.POST("/events/{eventId}/program/days", {
-                      params: { path: { eventId: event.id } },
+                      params: {
+                        path: { eventId: event.id },
+                        header: { "Idempotency-Key": editor.creationKey },
+                      },
                       body,
                     }),
               )
@@ -408,6 +420,7 @@ export function ProgramBuilder() {
                       {
                         params: {
                           path: { eventId: event.id, dayId: editor.day.id },
+                          header: { "Idempotency-Key": editor.creationKey },
                         },
                         body,
                       },
