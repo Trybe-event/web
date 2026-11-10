@@ -216,6 +216,38 @@ export default async function EventLanding({
                   />
                   <span>
                     Organized by <strong>{event.organizer_name}</strong>
+                    {(event.organizer_support_email ||
+                      event.organizer_support_phone ||
+                      event.organizer_website) && (
+                      <span className="mt-1 flex flex-wrap gap-x-3 gap-y-1 text-sm">
+                        {event.organizer_support_email && (
+                          <a
+                            className="underline"
+                            href={`mailto:${event.organizer_support_email}`}
+                          >
+                            {event.organizer_support_email}
+                          </a>
+                        )}
+                        {event.organizer_support_phone && (
+                          <a
+                            className="underline"
+                            href={`tel:${event.organizer_support_phone}`}
+                          >
+                            {event.organizer_support_phone}
+                          </a>
+                        )}
+                        {event.organizer_website && (
+                          <a
+                            className="underline"
+                            href={event.organizer_website}
+                            target="_blank"
+                            rel="noopener noreferrer nofollow"
+                          >
+                            Website
+                          </a>
+                        )}
+                      </span>
+                    )}
                   </span>
                 </p>
               )}
