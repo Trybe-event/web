@@ -81,9 +81,10 @@ test("only the contract's account-not-found response permits onboarding", async 
     lookup: { response: { status: 404 }, error: { code: "not_found" } },
   });
   assert.equal((await missingAccount.session.getSession()).kind, "unbound");
+  // The attendee route already chose the type, so onboarding finishes that type.
   await assert.rejects(
     missingAccount.session.requireAccount("attendee"),
-    /redirect:\/account\/setup/,
+    /redirect:\/attendee\/complete/,
   );
   for (const lookup of [
     { response: { status: 404 } },

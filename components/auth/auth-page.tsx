@@ -27,8 +27,10 @@ export async function AuthPage({
         ? routes.eventLanding(eventSlug)
         : workspacePath(sessionState.account.type),
     );
+  // The person already chose attendee or organizer by opening this page, so a new
+  // sign-in goes straight to that type's completion step, never back to the chooser.
   if (sessionState.kind === "unbound")
-    redirect(withEventParam("/account/setup", eventSlug));
+    redirect(withEventParam(`${workspacePath(type)}/complete`, eventSlug));
   const isSignUp = mode === "sign-up";
   const isBusinessSignup = isSignUp && type === "organizer";
   const workspaceRoute = workspacePath(type);
