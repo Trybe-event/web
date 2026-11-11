@@ -17,6 +17,8 @@ const {
   authenticationErrorDetail,
   assertAuthenticationSucceeded,
   AuthenticationActionError,
+  signInFailure,
+  SIGN_IN_FAILED,
 } = await import(
   `data:text/javascript;base64,${Buffer.from(javascript).toString("base64")}`
 );
@@ -105,5 +107,28 @@ test("developer exception messages and metadata are not shown", () => {
       errors: [{ code: "unknown_error", meta: { secret: "not for display" } }],
     }).message,
     "We couldn't complete that step. Please try again.",
+  );
+});
+
+test("sign-in failures never reveal whether the email exists or which part was wrong", () => {
+  for (const code of [
+    "form_identifier_not_found",
+    "form_password_incorrect",
+    "form_param_format_invalid",
+    "strategy_for_user_invalid",
+    "form_identifier_something_new",
+  ]) {
+    const detail = authenticationErrorDetail({
+      errors: [{ code, longMessage: `Clerk says: ${code}` }],
+    });
+    assert.equal(signInFailure(detail).message, SIGN_IN_FAILED, code);
+  }
+  assert.equal(SIGN_IN_FAILED, "Incorrect email or password.");
+  // Unknown failures are hidden too; only the rate limit keeps its own advice.
+  assert.equal(signInFailure({ message: "boom" }).message, SIGN_IN_FAILED);
+  assert.match(
+    signInFailure({ message: "Too many attempts.", code: "too_many_requests" })
+      .message,
+    /Too many attempts/,
   );
 });
