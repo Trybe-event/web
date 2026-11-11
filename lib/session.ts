@@ -52,7 +52,7 @@ export async function getSession(): Promise<SessionState> {
 
 /**
  * requireAccount lets a page render only for the given account type. Signed-out
- * visitors go to that type's sign-in, sessions without an account type go to setup,
+ * visitors go to that type's sign-in, sessions without an account type finish that type,
  * and the other account type goes back to its own workspace.
  */
 export async function requireAccount(
@@ -66,7 +66,9 @@ export async function requireAccount(
     sessionState.kind === "signed-out"
   )
     redirect(`${workspacePath(type)}/sign-in`);
-  if (sessionState.kind === "unbound") redirect("/account/setup");
+  // The route already names the account type, so finish setting up that type.
+  if (sessionState.kind === "unbound")
+    redirect(`${workspacePath(type)}/complete`);
   if (sessionState.kind === "unavailable") return { unavailable: true };
   if (sessionState.account.type !== type)
     redirect(workspacePath(sessionState.account.type));
