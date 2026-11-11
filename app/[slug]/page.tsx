@@ -5,6 +5,8 @@ import {
   Globe,
   Building2,
   CalendarClock,
+  Tag,
+  UserCheck,
 } from "lucide-react";
 import Link from "next/link";
 import { EventSharing } from "@/components/events/event-sharing";
@@ -24,6 +26,7 @@ import {
   hasEventMembership,
   type JoinPreviewResult,
 } from "@/lib/events";
+import type { Schemas } from "@/lib/api/client";
 import { isEventSlug, routes, withEventParam } from "@/lib/routes";
 import { getSession } from "@/lib/session";
 
@@ -33,12 +36,17 @@ export async function generateMetadata({
   params: Promise<{ slug: string }>;
 }): Promise<Metadata> {
   const { slug } = await params;
+  const missing: Metadata = {
+    title: "404 page",
+    robots: { index: false, follow: false },
+  };
   const unavailable: Metadata = {
     title: "Event invitation",
     robots: { index: false, follow: false },
   };
-  if (!isEventSlug(slug)) return unavailable;
+  if (!isEventSlug(slug)) return missing;
   const result = await getPublicEvent(slug);
+  if (result.kind === "not_found") return missing;
   if (result.kind !== "found") return unavailable;
   const { event } = result;
   const eventUrl = new URL(
@@ -92,12 +100,7 @@ export default async function EventLanding({
 
   const session = await getSession();
   const result = await getPublicEvent(slug);
-  if (result.kind === "not_found")
-    return (
-      <EventLinkState
-        outcome={{ kind: "lookup", httpStatus: 404, code: "not_found" }}
-      />
-    );
+  if (result.kind === "not_found") notFound();
   if (result.kind === "unavailable")
     return <EventLinkState outcome={{ kind: "unreachable" }} />;
   const event = result.event;
@@ -114,7 +117,7 @@ export default async function EventLanding({
   ).href;
 
   return (
-    <main className="mx-auto max-w-7xl px-4 py-6 sm:px-6 sm:py-10">
+    <main className="w-full px-4 py-6 sm:px-6 sm:py-10">
       <header className="sticky top-0 z-40 -mx-4 mb-5 flex items-center justify-between gap-4 border-b border-line/60 bg-paper/75 px-4 py-3 backdrop-blur-xl sm:-mx-6 sm:px-6">
         <Link href="/" aria-label="Trybe home">
           <Logo />
@@ -216,7 +219,59 @@ export default async function EventLanding({
                   />
                   <span>
                     Organized by <strong>{event.organizer_name}</strong>
+                    {(event.organizer_support_email ||
+                      event.organizer_support_phone ||
+                      event.organizer_website) && (
+                      <span className="mt-1 flex flex-wrap gap-x-3 gap-y-1 text-sm">
+                        {event.organizer_support_email && (
+                          <a
+                            className="underline"
+                            href={`mailto:${event.organizer_support_email}`}
+                          >
+                            {event.organizer_support_email}
+                          </a>
+                        )}
+                        {event.organizer_support_phone && (
+                          <a
+                            className="underline"
+                            href={`tel:${event.organizer_support_phone}`}
+                          >
+                            {event.organizer_support_phone}
+                          </a>
+                        )}
+                        {event.organizer_website && (
+                          <a
+                            className="underline"
+                            href={event.organizer_website}
+                            target="_blank"
+                            rel="noopener noreferrer nofollow"
+                          >
+                            Website
+                          </a>
+                        )}
+                      </span>
+                    )}
                   </span>
+                </p>
+              )}
+              {event.category && (
+                <p className="flex items-start gap-2">
+                  <Tag
+                    aria-hidden="true"
+                    size={16}
+                    className="mt-0.5 shrink-0 text-accent-ink"
+                  />
+                  <span>{event.category}</span>
+                </p>
+              )}
+              {event.approval_required && (
+                <p className="flex items-start gap-2">
+                  <UserCheck
+                    aria-hidden="true"
+                    size={16}
+                    className="mt-0.5 shrink-0 text-accent-ink"
+                  />
+                  <span>The organizer approves each registration.</span>
                 </p>
               )}
               {event.registration_closes_at && (
@@ -273,6 +328,7 @@ export default async function EventLanding({
             sessionKind={session.kind}
             preview={preview}
             registrationState={event.registration_state}
+            questions={event.registration_questions ?? []}
           />
         </aside>
       </div>
@@ -292,6 +348,7 @@ function EventAction({
   sessionKind,
   preview,
   registrationState,
+  questions,
 }: {
   slug: string;
   name: string;
@@ -300,6 +357,7 @@ function EventAction({
   sessionKind: string;
   preview: JoinPreviewResult | null;
   registrationState: "not_open" | "open" | "closed";
+  questions: Schemas["RegistrationQuestion"][];
 }) {
   if (attendee && member === null)
     return <EventLinkState outcome={{ kind: "unreachable" }} />;
@@ -334,7 +392,12 @@ function EventAction({
   if (attendee && preview?.kind === "review")
     return (
       <div className="mt-8 flex flex-col gap-6">
-        <JoinReview slug={slug} name={name} preview={preview.preview} />
+        <JoinReview
+          slug={slug}
+          name={name}
+          preview={preview.preview}
+          questions={questions}
+        />
       </div>
     );
 

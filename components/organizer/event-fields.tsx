@@ -11,9 +11,8 @@ import {
   Textarea,
 } from "@/components/ui";
 import { api, errorMessage } from "@/lib/api/client";
-import type { EventDraft } from "@/lib/event-form";
+import { eventCategories, type EventDraft } from "@/lib/event-form";
 import { eventTimeToISO, localEventTime } from "@/lib/event-time";
-import { ProgramBuilder } from "./program-builder";
 import { useEventEditor } from "./event-editor-context";
 
 export function EventTimeInput({
@@ -314,6 +313,28 @@ export function EventDetails() {
         )}
       </Field>
       <Field
+        label="Category"
+        optional
+        hint="Helps attendees find your event."
+        error={form.formState.errors.category?.message}
+      >
+        {(props) => (
+          <Select
+            {...props}
+            {...form.register("category", {
+              setValueAs: (value) => value || null,
+            })}
+          >
+            <option value="">Choose a category</option>
+            {eventCategories.map((category) => (
+              <option key={category} value={category}>
+                {category}
+              </option>
+            ))}
+          </Select>
+        )}
+      </Field>
+      <Field
         label="Event image"
         optional
         hint="Recommended: 1080 × 1440 pixels (3:4 portrait). JPEG, PNG or WebP, up to 5 MB. Your full image stays visible at its original proportions, with rounded edges and no cropping."
@@ -348,7 +369,6 @@ export function EventDetails() {
       >
         Remove event image
       </Button>
-      <ProgramBuilder />
     </div>
   );
 }

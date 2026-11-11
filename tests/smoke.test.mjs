@@ -28,6 +28,10 @@ test("all event workspace pages require attendee authentication", async () => {
 
 test("organizer event editing and sharing require organizer sign-in", async () => {
   for (const path of [
+    "/organizer/audience",
+    "/organizer/payments",
+    "/organizer/settings",
+    "/organizer/experiences/new",
     "/organizer/events/new",
     "/organizer/events/11111111-1111-4111-8111-111111111111/edit",
     "/organizer/events/11111111-1111-4111-8111-111111111111/share",
@@ -44,13 +48,44 @@ test("sign-in and sign-up render safely without credentials", async () => {
       const r = await get(`/${role}/${mode}`);
       assert.equal(r.status, 200, `/${role}/${mode}`);
       const html = await r.text();
-      assert.ok(
-        html.includes(`${role} workspace`) || html.includes(`${role} account`),
+      // The business-signup introduction differs, but its account label must
+      // remain explicit. Ignore casing and React's text-boundary comments.
+      const visibleText = html.replace(/<!--[\s\S]*?-->/g, "");
+      assert.match(
+        visibleText,
+        new RegExp(`${role} (workspace|account)`, "i"),
         `/${role}/${mode} names its account type`,
       );
       assert.ok(html.includes("Account access is being prepared."));
       assert.match(html, /<button[^>]*disabled/);
+      // Sign-up shows the Terms and Privacy agreement as a checkbox above the button.
+      const agreement = visibleText.indexOf("By creating an account");
+      if (mode === "sign-up") {
+        assert.match(html, /type="checkbox"/, `/${role}/${mode} agreement box`);
+        assert.ok(
+          agreement > -1 &&
+            agreement < visibleText.indexOf("Create account</button>"),
+          `/${role}/${mode} agreement comes before Create account`,
+        );
+      } else {
+        assert.equal(
+          agreement,
+          -1,
+          `/${role}/${mode} has no sign-up agreement`,
+        );
+      }
     }
+  }
+});
+
+test("Trybe policies are public pages with the approved contact and no external sign-up links", async () => {
+  for (const path of ["/terms", "/privacy"]) {
+    const response = await get(path);
+    assert.equal(response.status, 200, path);
+    const html = await response.text();
+    assert.match(html, /mailto:trybevent@gmail.com/);
+    assert.match(html, /Proposed policy/);
+    assert.doesNotMatch(html, /juve\.events/);
   }
 });
 

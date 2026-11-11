@@ -100,6 +100,7 @@ function dashboardHarness({ events = [], points = [], failure = false } = {}) {
     "./registration-trend": registrationView,
     "./event-thumbnail": thumbnail,
     "./delete-draft": deletion,
+    "./event-list": compile("../components/organizer/event-list.tsx"),
     "./event-status-badges": lifecycleBadges,
     "./retry-dashboard": {
       RetryDashboard: () => React.createElement("button", null, "Try again"),
@@ -114,7 +115,7 @@ async function html(element) {
   return new Response(stream).text();
 }
 
-test("dashboard shows real event totals, all statuses and accessible trend values without contacts", async () => {
+test("dashboard shows all event statuses without aggregate metrics, trend queries or private contacts", async () => {
   const fixture = ["draft", "published", "ended"].map((status, index) => ({
     id: `event-${index}`,
     name: `${status} gathering`,
@@ -131,33 +132,29 @@ test("dashboard shows real event totals, all statuses and accessible trend value
     ],
   });
   const rendered = await html(await harness.dashboard.OrganizerDashboard());
-  for (const label of [
-    "Draft",
-    "Published",
-    "Ended",
-    "Total registrations",
-    "2026-10-15: 2",
-    "2026-10-16: 4",
-    "not verified attendance",
-  ])
+  for (const label of ["Draft", "Published", "Ended"])
     assert.ok(rendered.includes(label), label);
-  assert.match(rendered, />6<\/dd>/);
+  assert.doesNotMatch(
+    rendered,
+    /Total registrations|Registration trend|Daily registrations|not verified attendance/,
+  );
   assert.ok(!rendered.includes("hidden@example.test"));
   assert.ok(rendered.includes("/organizer/events/event-0/edit"));
-  assert.ok(rendered.includes("/organizer/events/event-1/share"));
+  assert.ok(rendered.includes('href="/organizer/events/event-1"'));
+  assert.ok(rendered.includes('href="/organizer/events/event-2"'));
   assert.equal(
     harness.requests.filter((request) =>
       request.path.includes("registrations/trend"),
     ).length,
-    3,
+    0,
   );
 });
 
 test("empty and failed requests remain distinct, without fabricated zero totals on failure", async () => {
   const empty = dashboardHarness();
   const emptyHtml = await html(await empty.dashboard.OrganizerDashboard());
-  assert.ok(emptyHtml.includes("Create your first event"));
-  assert.ok(emptyHtml.includes("/organizer/events/new"));
+  assert.ok(emptyHtml.includes("No events found"));
+  assert.ok(emptyHtml.includes("Upcoming"));
   assert.equal(empty.requests.length, 1);
   const failure = dashboardHarness({ failure: true });
   const failureHtml = await html(await failure.dashboard.OrganizerDashboard());
@@ -216,7 +213,8 @@ test("organizer page calls the account guard before rendering dashboard and unav
         },
       },
       "@/components/auth/workspace": {
-        WorkspaceShell: element("main"),
+        WorkspaceShell: ({ children }) =>
+          React.createElement("main", null, children),
         WorkspaceUnavailable: () =>
           React.createElement("p", null, "Unavailable"),
       },
@@ -235,7 +233,7 @@ test("organizer page calls the account guard before rendering dashboard and unav
       const rendered = await html(await page.default());
       assert.ok(
         rendered.includes(
-          scenario === "organizer" ? "Free demo access" : "Unavailable",
+          scenario === "organizer" ? "Dashboard" : "Unavailable",
         ),
       );
     }

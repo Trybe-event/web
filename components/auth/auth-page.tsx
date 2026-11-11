@@ -7,6 +7,7 @@ import { getSession } from "@/lib/session";
 
 import { AuthForm } from "./auth-form";
 import { AuthShell } from "./auth-shell";
+import { TermsConsent } from "@/components/legal/legal-notice";
 
 // An attendee arriving from an event keeps that event through sign-in and sign-up
 // (web#7, web#8): the slug travels in the query and Clerk's redirect carries it on.
@@ -29,22 +30,48 @@ export async function AuthPage({
   if (sessionState.kind === "unbound")
     redirect(withEventParam("/account/setup", eventSlug));
   const isSignUp = mode === "sign-up";
+  const isBusinessSignup = isSignUp && type === "organizer";
   const workspaceRoute = workspacePath(type);
-  return (
-    <AuthShell type={type}>
+  const introduction = (
+    <>
       <span className="eyebrow">
         {type === "organizer" ? "ORGANIZER" : "ATTENDEE"} ACCOUNT
       </span>
       <h2>
-        {isSignUp ? "Make room for possibility." : "Good to see you again."}
+        {isBusinessSignup
+          ? "Tell us about your business"
+          : isSignUp
+            ? "Make room for possibility."
+            : "Good to see you again."}
       </h2>
       <p className="auth-intro">
-        {isSignUp
-          ? `Create your ${type} account and get started.`
-          : `Sign in to your ${type} workspace.`}
+        {isBusinessSignup
+          ? "Use the registered business details associated with your business."
+          : isSignUp
+            ? `Create your ${type} account and get started.`
+            : `Sign in to your ${type} workspace.`}
       </p>
+    </>
+  );
+  return (
+    <AuthShell type={type}>
+      {sessionState.kind !== "signed-out" && introduction}
       {sessionState.kind === "unconfigured" ? (
         <div className="auth-unavailable">
+          {isBusinessSignup &&
+            [
+              "Registered business name",
+              "Contact first name",
+              "Contact last name",
+              "Phone number",
+            ].map((label) => (
+              <div key={label}>
+                <label htmlFor={`preview-${label.replaceAll(" ", "-")}`}>
+                  {label}
+                </label>
+                <input id={`preview-${label.replaceAll(" ", "-")}`} disabled />
+              </div>
+            ))}
           <label htmlFor="preview-email">Email address</label>
           <input
             id="preview-email"
@@ -59,6 +86,7 @@ export async function AuthPage({
             disabled
             placeholder="Enter your password"
           />
+          {isSignUp && <TermsConsent checked={false} />}
           <button type="button" className="primary-button" disabled>
             {isSignUp ? "Create account" : "Sign in"}
           </button>
@@ -81,7 +109,12 @@ export async function AuthPage({
           </Link>
         </div>
       ) : (
-        <AuthForm type={type} mode={mode} eventSlug={eventSlug} />
+        <AuthForm
+          type={type}
+          mode={mode}
+          eventSlug={eventSlug}
+          introduction={introduction}
+        />
       )}
       <p className="auth-alternative">
         {isSignUp ? "Already have an account?" : "New to Trybe?"}{" "}

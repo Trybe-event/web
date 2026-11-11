@@ -1,15 +1,14 @@
 import type { Metadata } from "next";
 
 import {
-  WorkspaceHome,
   WorkspaceUnavailable,
   WorkspaceShell,
 } from "@/components/auth/workspace";
-import { DiscoverEvents } from "@/components/events/discover-events";
 import { EventCodeEntry } from "@/components/events/event-code-entry";
 import { Alert, ButtonLink, Card } from "@/components/ui";
 import { serverApi } from "@/lib/api/server";
-import { loadMyEvents } from "@/lib/events";
+import { loadAttendeeEventSnapshot } from "@/lib/attendee-events";
+import { AttendeeMyEvents } from "@/components/attendee/my-events";
 import { requireAccount } from "@/lib/session";
 
 export const metadata: Metadata = { title: "Attendee workspace" };
@@ -28,11 +27,11 @@ export default async function AttendeeHome() {
   const accountAccess = await requireAccount("attendee");
   if ("unavailable" in accountAccess)
     return <WorkspaceUnavailable type="attendee" />;
-  const [profileExists, events] = await Promise.all([
+  const [profileExists, eventSnapshot] = await Promise.all([
     hasProfile(),
-    loadMyEvents(),
+    loadAttendeeEventSnapshot(),
   ]);
-  if (events === null || profileExists === null)
+  if (eventSnapshot === null || profileExists === null)
     return (
       <WorkspaceShell type="attendee">
         <Alert>
@@ -43,48 +42,43 @@ export default async function AttendeeHome() {
         </Alert>
       </WorkspaceShell>
     );
-  const attendsEvents = events.length > 0;
-  const firstName = accountAccess.account.full_name.split(" ")[0] ?? "there";
+  const events = eventSnapshot.items;
+  const activeEvents = events
+    .filter((item) => item.membership.status === "active")
+    .map((item) => ({ slug: item.event.slug, name: item.event.name }));
   return (
-    <WorkspaceHome
+    <WorkspaceShell
       type="attendee"
-      firstName={firstName}
-      events={events}
-      card={
-        profileExists === false
-          ? {
-              title: "Introduce yourself.",
-              body: "Create the profile you'll bring to every event. Your contact details stay private until you choose to share them.",
-              href: "/attendee/profile/edit?onboarding=1",
-              cta: "Create your profile",
-            }
-          : {
-              title: "Your profile is ready.",
-              body: attendsEvents
-                ? "Pick an event above to open its workspace, or review what people at your events will see."
-                : "You haven't joined an event yet. Enter an event's link or code, or pick one of the upcoming events below.",
-              href: attendsEvents
-                ? "/attendee/profile/preview"
-                : "/attendee/profile",
-              cta: attendsEvents ? "Review your profile" : "View your profile",
-            }
-      }
-      privacy={{
-        body: "Your contact details stay private by default. You choose what to share with event members and with connections.",
-        status:
-          profileExists === false
-            ? "Profile setup comes next"
-            : "Privacy settings available",
-      }}
+      attendeeAccount={accountAccess.account}
+      events={activeEvents}
     >
-      <div className="mt-8 flex flex-col gap-8">
-        <Card>
-          <EventCodeEntry />
-        </Card>
-        <DiscoverEvents
-          joinedSlugs={new Set(events.map((event) => event.slug))}
-        />
-      </div>
-    </WorkspaceHome>
+      <header className="attendee-page-heading attendee-page-heading-row">
+        <div>
+          <span className="attendee-kicker">
+            YOUR PEOPLE. YOUR NEXT CHAPTER.
+          </span>
+          <h1>My events</h1>
+          <p>Make the most of every room you�re part of.</p>
+        </div>
+        <ButtonLink href="/attendee/discover" variant="secondary">
+          Discover events
+        </ButtonLink>
+      </header>
+      {!profileExists && (
+        <div className="attendee-onboarding-callout">
+          <div>
+            <strong>Let people get to know you.</strong>
+            <p>Set up your reusable profile before joining the conversation.</p>
+          </div>
+          <ButtonLink href="/attendee/profile/edit?onboarding=1">
+            Create your profile
+          </ButtonLink>
+        </div>
+      )}
+      <Card className="mb-6">
+        <EventCodeEntry />
+      </Card>
+      <AttendeeMyEvents items={events} now={eventSnapshot.readAt} />
+    </WorkspaceShell>
   );
 }

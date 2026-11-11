@@ -37,7 +37,7 @@ export function InboxBadge() {
   return (
     <Link
       href="/attendee/inbox"
-      className="text-sm font-medium text-muted hover:text-paper"
+      className="text-sm font-medium text-muted hover:text-ink"
     >
       Inbox
       {count && (

@@ -1,7 +1,8 @@
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
+import Image from "next/image";
 import {
   useCallback,
   useEffect,
@@ -15,7 +16,18 @@ import {
   useWatch,
   type FieldPath,
 } from "react-hook-form";
-import { eventFieldStage, eventStageErrors } from "@/lib/event-publication";
+import {
+  eventSetupSteps,
+  publishedEventSetupSteps,
+  eventSetupFieldStep as eventFieldStage,
+  eventSetupStepErrors as eventStageErrors,
+} from "@/lib/event-setup";
+import {
+  EventRegistrationSettings,
+  EventExperienceSettings,
+  EventPagePreview,
+  EventTicketNotice,
+} from "./event-setup-panels";
 import { Alert, Button, Card, Field, Input, Skeleton } from "@/components/ui";
 import { api, errorMessage, fieldErrors, type Schemas } from "@/lib/api/client";
 import {
@@ -23,9 +35,9 @@ import {
   eventDraftValues,
   type EventDraft,
 } from "@/lib/event-form";
+import { ProgramBuilder } from "./program-builder";
 import { EventEditorContext } from "./event-editor-context";
 
-const STAGES = ["Event basics", "Details and program", "Settings"];
 export function EventForm({
   eventId,
   organizerId,
@@ -40,6 +52,8 @@ export function EventForm({
   settings?: ReactNode;
 }) {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const requestedStep = useRef(searchParams.get("step"));
   const form = useForm<EventDraft>({
     resolver: zodResolver(eventDraftSchema),
     defaultValues: {},
@@ -53,6 +67,11 @@ export function EventForm({
   const advancingLock = useRef(false);
   const [event, setEvent] = useState<Schemas["Event"]>();
   const [activeStage, setActiveStage] = useState(0);
+  const published = Boolean(event && event.status !== "draft");
+  const STAGES = published ? publishedEventSetupSteps : eventSetupSteps;
+  const fieldStep = (name: string) => eventFieldStage(name, published);
+  const stageErrors = (values: EventDraft, stage: number) =>
+    eventStageErrors(values, stage, published);
   const [status, setStatus] = useState("Loading draft...");
   const [failure, setFailure] = useState<string>();
   const [attempt, setAttempt] = useState(0);
@@ -107,6 +126,17 @@ export function EventForm({
         if (cancelled) return;
         currentEvent.current = result.data;
         setEvent(result.data);
+        setActiveStage(
+          requestedStep.current === "experience"
+            ? result.data.status === "draft"
+              ? 3
+              : 4
+            : requestedStep.current === "page"
+              ? result.data.status === "draft"
+                ? 4
+                : 7
+              : 0,
+        );
         form.reset(eventDraftValues(result.data));
         revision.current = savedRevision.current = 0;
         loaded.current = true;
@@ -131,7 +161,7 @@ export function EventForm({
       loaded.current = false;
       clearTimeout(timer.current);
     };
-  }, [eventId, organizerId, attempt, form, router]);
+  }, [eventId, organizerId, attempt, form, router, requestedStep]);
 
   async function save(): Promise<boolean> {
     if (saving.current) return saving.current;
@@ -159,6 +189,7 @@ export function EventForm({
             throw new Error(errorMessage(error));
           }
           savedRevision.current = snapshot;
+          if (currentEvent.current.name !== data.name) router.refresh();
           currentEvent.current = data;
           setEvent(data);
         } catch (error) {
@@ -209,44 +240,28 @@ export function EventForm({
       clearTimeout(timer.current);
     };
   }, [form]);
-  useEffect(() => {
-    const observer = new IntersectionObserver(
-      (entries) => {
-        const visible = entries
-          .filter((entry) => entry.isIntersecting)
-          .sort(
-            (first, second) =>
-              first.boundingClientRect.top - second.boundingClientRect.top,
-          )[0];
-        if (visible)
-          setActiveStage(Number((visible.target as HTMLElement).dataset.stage));
-      },
-      { rootMargin: "-15% 0px -55% 0px" },
-    );
-    sections.current.forEach((section) => {
-      if (section) observer.observe(section);
-    });
-    return () => observer.disconnect();
-  }, [event]);
   function navigate(stage: number) {
     setActiveStage(stage);
-    sections.current[stage]?.scrollIntoView({
-      behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches
-        ? "instant"
-        : "smooth",
+    requestAnimationFrame(() => {
+      sections.current[stage]?.scrollIntoView({
+        block: "start",
+        behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches
+          ? "instant"
+          : "smooth",
+      });
+      sections.current[stage]
+        ?.querySelector<HTMLElement>("h2")
+        ?.focus({ preventScroll: true });
     });
-    sections.current[stage]
-      ?.querySelector<HTMLElement>("h2")
-      ?.focus({ preventScroll: true });
   }
   function reportErrors(errors: Record<string, string>) {
     for (const [name, message] of Object.entries(errors))
       form.setError(name as FieldPath<EventDraft>, { message });
     const first = Object.keys(errors).sort(
-      (left, right) => eventFieldStage(left) - eventFieldStage(right),
+      (left, right) => fieldStep(left) - fieldStep(right),
     )[0];
     if (!first) return;
-    const stage = eventFieldStage(first);
+    const stage = fieldStep(first);
     setProgressFailure({
       stage,
       message:
@@ -260,7 +275,7 @@ export function EventForm({
     const errors = Object.assign(
       {},
       ...Array.from({ length: stage }, (_, index) =>
-        eventStageErrors(form.getValues(), index),
+        stageErrors(form.getValues(), index),
       ),
     );
     if (Object.keys(errors).length) {
@@ -268,15 +283,18 @@ export function EventForm({
       return;
     }
     if (
-      stage >= 2 &&
+      stage > 0 &&
       (busySections.has("program") || busySections.has("image"))
     ) {
+      const blockedStep = busySections.has("program")
+        ? fieldStep("program")
+        : 0;
       setProgressFailure({
-        stage: 1,
+        stage: blockedStep,
         message:
           "Save or cancel your program edits, and finish loading or uploading, before continuing.",
       });
-      navigate(1);
+      navigate(blockedStep);
       return;
     }
     advancingLock.current = true;
@@ -316,134 +334,197 @@ export function EventForm({
       value={{ event, save, busySections, setSectionBusy, reportErrors }}
     >
       <FormProvider {...form}>
-        <form
-          noValidate
-          onSubmit={(submitEvent) => {
-            submitEvent.preventDefault();
-            void save();
-          }}
-          className="mt-6 space-y-6"
-        >
-          <fieldset
-            disabled={busySections.has("publication")}
-            className="min-w-0 space-y-6"
+        <div className="organizer-editor-layout">
+          <form
+            noValidate
+            onSubmit={(submitEvent) => {
+              submitEvent.preventDefault();
+              void save();
+            }}
+            className="mt-6 min-w-0 space-y-6"
           >
-            <nav
-              aria-label="Event setup stages"
-              className="sticky top-0 z-10 flex flex-wrap gap-2 border-b border-line bg-paper py-3"
+            <fieldset
+              disabled={busySections.has("publication")}
+              className="min-w-0 space-y-6"
             >
-              {STAGES.map((label, index) => (
+              <nav
+                aria-label="Event setup stages"
+                className="organizer-setup-stages organizer-wizard-steps"
+              >
+                {STAGES.map((label, index) => (
+                  <Button
+                    key={label}
+                    variant="secondary"
+                    aria-current={activeStage === index ? "step" : undefined}
+                    disabled={advancing}
+                    onClick={() =>
+                      index > activeStage
+                        ? void advance(index)
+                        : navigate(index)
+                    }
+                  >
+                    {!published && (
+                      <span className="organizer-step-number">{index + 1}</span>
+                    )}{" "}
+                    {label}
+                  </Button>
+                ))}
+              </nav>
+              <div className="flex flex-wrap items-center gap-3">
+                <p role="status" className="text-sm text-muted">
+                  {status}
+                </p>
                 <Button
-                  key={label}
-                  variant={activeStage === index ? "primary" : "secondary"}
-                  aria-current={activeStage === index ? "step" : undefined}
-                  disabled={advancing}
-                  onClick={() =>
-                    index > activeStage ? void advance(index) : navigate(index)
-                  }
-                >
-                  {index + 1}. {label}
-                </Button>
-              ))}
-            </nav>
-            <div className="flex flex-wrap items-center gap-3">
-              <p role="status" className="text-sm text-muted">
-                {status}
-              </p>
-              <Button
-                size="sm"
-                variant="secondary"
-                onClick={() => {
-                  void save();
-                }}
-              >
-                Save now
-              </Button>
-              <span className="text-xs text-muted">
-                {event.status === "draft"
-                  ? "Draft. Only you can see it."
-                  : "Editing this event keeps its existing link and QR."}
-              </span>
-            </div>
-            {failure && <Alert>{failure}</Alert>}
-            {STAGES.map((title, index) => (
-              <Card
-                key={title}
-
-                className="min-h-[35vh] scroll-mt-28"
-              >
-                <div
-                  ref={(section) => {
-                    sections.current[index] = section;
+                  size="sm"
+                  variant="secondary"
+                  onClick={() => {
+                    void save();
                   }}
-                  data-stage={index}
-                  className="scroll-mt-28"
                 >
-                  <h2 tabIndex={-1} className="mb-5 text-xl font-bold">
-                    {title}
-                  </h2>
-                  {progressFailure?.stage === index && (
-                    <Alert>{progressFailure.message}</Alert>
-                  )}
-                  {index === 0
-                    ? (basics ?? (
-                        <Field
-                          label="Event name"
-                          error={form.formState.errors.name?.message}
-                        >
-                          {(props) => (
-                            <Input {...props} {...form.register("name")} />
-                          )}
-                        </Field>
-                      ))
-                    : index === 1
-                      ? details
-                      : settings}
-                </div>
-                <div className="mt-6 flex gap-3">
-                  {index > 0 && (
-                    <Button
-                      variant="secondary"
-                      onClick={() => navigate(index - 1)}
-                    >
-                      Back
-                    </Button>
-                  )}
-                  {index < 2 && (
-                    <Button
-                      loading={advancing}
-                      disabled={
-                        Object.keys(eventStageErrors(liveValues, index))
-                          .length > 0 ||
-                        (index === 1 &&
-                          (busySections.has("program") ||
-                            busySections.has("image")))
-                      }
-                      onClick={() => void advance(index + 1)}
-                    >
-                      Save and continue
-                    </Button>
-                  )}
-                </div>
-                {index < 2 &&
-                  Object.keys(eventStageErrors(liveValues, index)).length >
-                    0 && (
-                    <p className="mt-2 text-sm text-muted">
-                      Complete the required fields in this section to continue.
-                    </p>
-                  )}
-                {index === 1 &&
-                  (busySections.has("program") ||
+                  Save now
+                </Button>
+                <span className="text-xs text-muted">
+                  {event.status === "draft"
+                    ? "Draft. Only you can see it."
+                    : "Editing this event keeps its existing link and QR."}
+                </span>
+              </div>
+              {failure && <Alert>{failure}</Alert>}
+              {STAGES.map((title, index) => (
+                <Card
+                  key={title}
+
+                  className="organizer-setup-panel"
+                  hidden={activeStage !== index}
+                >
+                  <div
+                    ref={(section) => {
+                      sections.current[index] = section;
+                    }}
+                    data-stage={index}
+                    className="scroll-mt-28"
+                  >
+                    <h2 tabIndex={-1} className="mb-5 text-xl font-bold">
+                      {title}
+                    </h2>
+                    {progressFailure?.stage === index && (
+                      <Alert>{progressFailure.message}</Alert>
+                    )}
+                    {title === "Event details" ? (
+                      <div className="space-y-6">
+                        {basics ?? (
+                          <Field
+                            label="Event name"
+                            error={form.formState.errors.name?.message}
+                          >
+                            {(props) => (
+                              <Input {...props} {...form.register("name")} />
+                            )}
+                          </Field>
+                        )}
+                        {details}
+                      </div>
+                    ) : title === "Tickets" ? (
+                      <EventTicketNotice />
+                    ) : title === "Registration" ? (
+                      <EventRegistrationSettings />
+                    ) : title === "Experience" ? (
+                      <EventExperienceSettings includeProgram={!published} />
+                    ) : title === "Agenda & lineup" ? (
+                      <ProgramBuilder />
+                    ) : title === "Sponsors" || title === "Polls" ? (
+                      <div className="organizer-upcoming-feature">
+                        <div>
+                          <strong>{title} are being built</strong>
+                          <p>This feature is not active in the trial.</p>
+                        </div>
+                      </div>
+                    ) : title === "Page" ? (
+                      <EventPagePreview event={event} values={liveValues} />
+                    ) : (
+                      settings
+                    )}
+                  </div>
+                  <div className="mt-6 flex gap-3">
+                    {index > 0 && (
+                      <Button
+                        variant="secondary"
+                        onClick={() => navigate(index - 1)}
+                      >
+                        Back
+                      </Button>
+                    )}
+                    {index < STAGES.length - 1 && (
+                      <Button
+                        loading={advancing}
+                        disabled={
+                          Object.keys(stageErrors(liveValues, index)).length >
+                            0 ||
+                          busySections.has("program") ||
+                          busySections.has("image")
+                        }
+                        onClick={() => void advance(index + 1)}
+                      >
+                        Save and continue
+                      </Button>
+                    )}
+                  </div>
+                  {index < STAGES.length - 1 &&
+                    Object.keys(stageErrors(liveValues, index)).length > 0 && (
+                      <p className="mt-2 text-sm text-muted">
+                        Complete the required fields in this section to
+                        continue.
+                      </p>
+                    )}
+                  {(busySections.has("program") ||
                     busySections.has("image")) && (
                     <p className="mt-2 text-sm text-muted">
                       Save or cancel open program edits, and wait for the
                       program or image upload to finish before continuing.
                     </p>
                   )}
-              </Card>
-            ))}
-          </fieldset>
-        </form>
+                </Card>
+              ))}
+            </fieldset>
+          </form>
+          <aside className="organizer-event-preview" aria-label="Event preview">
+            <div className="organizer-event-preview-image">
+              {event.image_url ? (
+                <Image
+                  src={event.image_url}
+                  alt="Your event cover"
+                  width={600}
+                  height={800}
+                  unoptimized
+                  className="h-auto w-full object-contain"
+                />
+              ) : (
+                <span>Your event cover</span>
+              )}
+            </div>
+            <div className="p-4">
+              <span className="text-xs text-muted">
+                {event.status === "draft"
+                  ? "Draft"
+                  : event.status === "published"
+                    ? "Published"
+                    : "Ended"}
+              </span>
+              <h2 className="mt-2 text-base font-semibold">
+                {liveValues.name || "Your event"}
+              </h2>
+              <p className="mt-2 text-xs text-muted">
+                {liveValues.venue_name ||
+                  (liveValues.format === "virtual"
+                    ? "Virtual event"
+                    : "Add a venue to your event")}
+              </p>
+              <p className="mt-5 text-xs text-muted">
+                Publish your event to share its registration page.
+              </p>
+            </div>
+          </aside>
+        </div>
       </FormProvider>
     </EventEditorContext>
   );

@@ -12,7 +12,10 @@ export default async function ProfileLayout({
   const g = await requireAccount("attendee");
   return (
     <ToastProvider>
-      <WorkspaceShell type="attendee">
+      <WorkspaceShell
+        type="attendee"
+        attendeeAccount={"unavailable" in g ? undefined : g.account}
+      >
         {"unavailable" in g ? (
           <UnavailableNotice href="/attendee/profile" />
         ) : (
