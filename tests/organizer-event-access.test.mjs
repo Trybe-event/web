@@ -139,6 +139,8 @@ test("event pages do not load statistics or program before ownership is confirme
           loadRegistrationTrend: fetchData,
         },
         "@/components/organizer/event-overview": {},
+        "@/components/organizer/workspace-sections": {},
+        "@/lib/api/server": {},
         "@/components/organizer/registration-trend": {},
         "@/components/organizer/retry-dashboard": {},
         "@/components/organizer/event-lifecycle": {},

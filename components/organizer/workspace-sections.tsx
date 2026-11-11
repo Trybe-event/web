@@ -9,7 +9,7 @@ import {
   Users,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { SignedInDevices } from "@/components/organizer/signed-in-devices";
 import {
   Alert,
@@ -58,10 +58,14 @@ const statusLabel: Record<Registration["status"], string> = {
 
 export function OrganizerAudience({
   initial,
+  scopeEventId,
 }: {
   initial: Registration[] | null;
+  scopeEventId?: string;
 }) {
   const [rows, setRows] = useState(initial);
+  const decisionPending = useRef(false);
+  const audienceRouter = useRouter();
   const [tab, setTab] = useState<Registration["status"] | null>(null);
   const [eventId, setEventId] = useState("");
   const [search, setSearch] = useState("");
@@ -80,7 +84,11 @@ export function OrganizerAudience({
     ...new Map(rows.map((row) => [row.event_id, row.event_name])),
   ];
   const query = search.trim().toLowerCase();
-  const inEvent = rows.filter((row) => !eventId || row.event_id === eventId);
+  const inEvent = rows.filter(
+    (row) =>
+      (!scopeEventId || row.event_id === scopeEventId) &&
+      (!eventId || row.event_id === eventId),
+  );
   const visible = inEvent.filter(
     (row) =>
       (!tab || row.status === tab) &&
@@ -92,6 +100,9 @@ export function OrganizerAudience({
     inEvent.filter((row) => !status || row.status === status).length;
 
   async function decide(row: Registration, decision: "approve" | "reject") {
+    if (decisionPending.current) return;
+    decisionPending.current = true;
+    let decisionSaved = false;
     setBusy(row.id);
     setFailure("");
     try {
@@ -100,26 +111,43 @@ export function OrganizerAudience({
         {
           params: { path: { registrationId: row.id } },
           body: { decision },
+          signal: AbortSignal.timeout(15000),
         },
       );
       if (!data) {
         setFailure(errorMessage(error));
         return;
       }
+      decisionSaved = true;
       setRows(
-        rows?.map((item) =>
-          item.id === row.id
-            ? {
-                ...item,
-                status: data.status as Registration["status"],
-                decided_at: new Date().toISOString(),
-              }
-            : item,
-        ) ?? rows,
+        (current) =>
+          current?.map((item) =>
+            item.id === row.id
+              ? { ...item, status: data.status as Registration["status"] }
+              : item,
+          ) ?? null,
       );
+      // Approval may admit another person from the waitlist; reload the server's
+      // complete result rather than guessing which other registrations changed.
+      const refreshed = await api.GET("/organizer/registrations", {
+        params: { query: scopeEventId ? { event_id: scopeEventId } : {} },
+        signal: AbortSignal.timeout(15000),
+      });
+      if (refreshed.response.ok && refreshed.data) {
+        setRows(refreshed.data.items);
+        audienceRouter.refresh();
+      } else
+        setFailure(
+          "The decision was saved, but the latest list could not be loaded. Reload the page before making another decision.",
+        );
     } catch {
-      setFailure("We couldn't save that decision. Try again.");
+      setFailure(
+        decisionSaved
+          ? "The decision was saved, but the latest list could not be loaded. Reload the page before making another decision."
+          : "We couldn't save that decision. Try again.",
+      );
     } finally {
+      decisionPending.current = false;
       setBusy("");
     }
   }
@@ -154,7 +182,7 @@ export function OrganizerAudience({
             onChange={(event) => setSearch(event.target.value)}
           />
         </label>
-        {events.length > 1 && (
+        {!scopeEventId && events.length > 1 && (
           <label>
             <span className="sr-only">Event</span>
             <Select
