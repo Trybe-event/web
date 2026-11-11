@@ -194,9 +194,9 @@ export function OrganizerAudience({
             <li key={row.id}>
               <span>
                 <strong>{row.attendee_name}</strong>
-                {row.answers.length > 0 && (
+                {(row.answers ?? []).length > 0 && (
                   <dl className="mt-1 text-xs">
-                    {row.answers.map((answer) => (
+                    {(row.answers ?? []).map((answer) => (
                       <div key={answer.question}>
                         <dt className="inline font-semibold">
                           {answer.question}:
