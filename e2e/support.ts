@@ -34,9 +34,19 @@ export function seededEmail(key: string) {
   return `${key}+clerk_test@example.com`;
 }
 
+// Clerk development instances throttle several sign-ins in a row from one
+// machine, failing with an empty message, so a sign-in is retried after a pause.
 export async function signIn(page: Page, key: string) {
-  await page.goto("/");
-  await clerk.signIn({ page, emailAddress: seededEmail(key) });
+  for (let attempt = 1; ; attempt++) {
+    try {
+      await page.goto("/");
+      await clerk.signIn({ page, emailAddress: seededEmail(key) });
+      return;
+    } catch (error) {
+      if (attempt === 3) throw error;
+      await page.waitForTimeout(5_000 * attempt);
+    }
+  }
 }
 
 type ApiResult = { status: number; body: Record<string, unknown> | null };
@@ -46,7 +56,7 @@ type ApiResult = { status: number; body: Record<string, unknown> | null };
 // a test is checking.
 export async function api(
   page: Page,
-  method: "GET" | "POST" | "PATCH" | "DELETE",
+  method: "GET" | "POST" | "PUT" | "PATCH" | "DELETE",
   path: string,
   body?: unknown,
   headers?: Record<string, string>,

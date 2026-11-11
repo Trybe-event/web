@@ -33,6 +33,18 @@ test.beforeAll(async ({ browser }) => {
   await api(attendeeA, "DELETE", `/blocks/${attendeeBId}`);
   await api(attendeeB, "DELETE", `/blocks/${attendeeAId}`);
   for (const page of [attendeeA, attendeeB]) {
+    const outgoing = await api(
+      page,
+      "GET",
+      "/me/connection-requests?direction=outgoing",
+    );
+    for (const request of (outgoing.body?.items ?? []) as {
+      id: string;
+      other: { attendee_id: string };
+    }[]) {
+      if ([attendeeAId, attendeeBId].includes(request.other.attendee_id))
+        await api(page, "POST", `/connection-requests/${request.id}/cancel`);
+    }
     const connections = await api(page, "GET", "/me/connections");
     for (const connection of (connections.body?.items ?? []) as {
       id: string;
@@ -110,9 +122,22 @@ test("attendee A discovers B in the event directory and asks to connect", async 
 });
 
 test("attendee B accepts and opens the conversation", async () => {
+  // Incoming requests and accepted connections live on separate pages.
+  await attendeeB.goto("/attendee/requests");
+  const request = attendeeB
+    .locator("article, li, div")
+    .filter({ hasText: names.zainab })
+    .filter({ has: attendeeB.getByRole("button", { name: "Accept" }) })
+    .last();
+  // The card leaves as soon as Accept is pressed; wait for the server to agree.
+  const accepted = attendeeB.waitForResponse(
+    (response) =>
+      /\/connection-requests\/[^/]+\/accept$/.test(response.url()) &&
+      response.request().method() === "POST",
+  );
+  await request.getByRole("button", { name: "Accept" }).click();
+  expect((await accepted).status()).toBe(200);
   await attendeeB.goto("/attendee/connections");
-  await attendeeB.getByRole("button", { name: "Accept" }).first().click();
-  await attendeeB.getByRole("tab", { name: /Connected/ }).click();
   await attendeeB
     .getByRole("button", { name: `Message ${names.zainab}` })
     .click();
