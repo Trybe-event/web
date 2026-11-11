@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useFormContext } from "react-hook-form";
-import { Alert, Button, Card, Field, Input, Select } from "@/components/ui";
+import { Alert, Button, Card, Field, Select } from "@/components/ui";
 import { api, errorMessage, fieldErrors, type Schemas } from "@/lib/api/client";
 import { eventDraftValues, type EventDraft } from "@/lib/event-form";
 import {
@@ -184,57 +184,6 @@ export function EventSettings({
             events stay out of public discovery. Anyone with a private
             registration link can forward it; the link is not an invitation-only
             access control.
-          </p>
-          <div className="grid gap-5 md:grid-cols-2">
-            <Field
-              label="Registration approval"
-              error={form.formState.errors.approval_mode?.message}
-            >
-              {(props) => (
-                <Select {...props} {...form.register("approval_mode")}>
-                  <option value="automatic">Automatic</option>
-                  <option value="review">Review each registration</option>
-                </Select>
-              )}
-            </Field>
-            <Field
-              label="Capacity"
-              optional
-              hint="Most people you will admit. Leave empty for no limit."
-              error={form.formState.errors.capacity?.message}
-            >
-              {(props) => (
-                <Input
-                  {...props}
-                  type="number"
-                  inputMode="numeric"
-                  min={1}
-                  max={100000}
-                  {...form.register("capacity", {
-                    setValueAs: (value) =>
-                      value === "" || value == null ? null : Number(value),
-                  })}
-                />
-              )}
-            </Field>
-          </div>
-          <label className="flex items-start gap-3 text-sm">
-            <input
-              type="checkbox"
-              className="mt-1"
-              {...form.register("waitlist_enabled")}
-            />
-            <span>
-              <strong>Waitlist when full</strong>
-              <span className="block text-muted">
-                When capacity is reached, new registrations wait and are
-                admitted in order as places free up.
-              </span>
-            </span>
-          </label>
-          <p className="text-sm text-muted">
-            With review on, every registration waits for you on the Audience
-            page. Only admitted people can network and message.
           </p>
           <div className="grid gap-5 md:grid-cols-2">
             <DraftTimeField

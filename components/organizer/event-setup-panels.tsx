@@ -2,7 +2,7 @@
 
 import { useFormContext } from "react-hook-form";
 import { LockKeyhole, Ticket, Check } from "lucide-react";
-import { Field, Select } from "@/components/ui";
+import { Field, Input, Select } from "@/components/ui";
 import { EventHero } from "@/components/events/event-hero";
 import type { Schemas } from "@/lib/api/client";
 import type { EventDraft } from "@/lib/event-form";
@@ -72,6 +72,57 @@ export function EventRegistrationSettings() {
       <p className="text-sm text-muted">
         Leave either boundary empty to keep that boundary unrestricted.
       </p>
+      <div className="grid gap-5 md:grid-cols-2">
+        <Field
+          label="Registration approval"
+          error={form.formState.errors.approval_mode?.message}
+        >
+          {(props) => (
+            <Select {...props} {...form.register("approval_mode")}>
+              <option value="automatic">Automatic</option>
+              <option value="review">Review each registration</option>
+            </Select>
+          )}
+        </Field>
+        <Field
+          label="Capacity"
+          optional
+          hint="Most people you will admit. Leave empty for no limit."
+          error={form.formState.errors.capacity?.message}
+        >
+          {(props) => (
+            <Input
+              {...props}
+              type="number"
+              inputMode="numeric"
+              min={1}
+              max={100000}
+              {...form.register("capacity", {
+                setValueAs: (value) =>
+                  value === "" || value == null ? null : Number(value),
+              })}
+            />
+          )}
+        </Field>
+      </div>
+      <label className="flex items-start gap-3 text-sm">
+        <input
+          type="checkbox"
+          className="mt-1"
+          {...form.register("waitlist_enabled")}
+        />
+        <span>
+          <strong>Waitlist when full</strong>
+          <span className="block text-muted">
+            When capacity is reached, new registrations wait and are admitted in
+            order as places free up.
+          </span>
+        </span>
+      </label>
+      <p className="text-sm text-muted">
+        With review on, every registration waits for you on the Audience page.
+        Only admitted people can network and message.
+      </p>
       <div className="organizer-registration-fields">
         <h3>What attendees provide</h3>
         <p>
@@ -93,8 +144,8 @@ export function EventRegistrationSettings() {
           </div>
         </dl>
         <p>
-          Approval queues, waitlists and custom questions are being built.
-          Contact visibility remains under each attendee’s control.
+          Custom registration questions are being built. Contact visibility
+          remains under each attendee’s control.
         </p>
       </div>
     </div>
