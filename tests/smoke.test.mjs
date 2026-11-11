@@ -58,6 +58,22 @@ test("sign-in and sign-up render safely without credentials", async () => {
       );
       assert.ok(html.includes("Account access is being prepared."));
       assert.match(html, /<button[^>]*disabled/);
+      // Sign-up shows the Terms and Privacy agreement as a checkbox above the button.
+      const agreement = visibleText.indexOf("By creating an account");
+      if (mode === "sign-up") {
+        assert.match(html, /type="checkbox"/, `/${role}/${mode} agreement box`);
+        assert.ok(
+          agreement > -1 &&
+            agreement < visibleText.indexOf("Create account</button>"),
+          `/${role}/${mode} agreement comes before Create account`,
+        );
+      } else {
+        assert.equal(
+          agreement,
+          -1,
+          `/${role}/${mode} has no sign-up agreement`,
+        );
+      }
     }
   }
 });
