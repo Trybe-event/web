@@ -12,7 +12,10 @@ export default async function NotificationsLayout({
   const access = await requireAccount("attendee");
   return (
     <ToastProvider>
-      <WorkspaceShell type="attendee">
+      <WorkspaceShell
+        type="attendee"
+        attendeeAccount={"unavailable" in access ? undefined : access.account}
+      >
         {"unavailable" in access ? (
           <UnavailableNotice href="/attendee/notifications" />
         ) : (

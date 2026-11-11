@@ -70,7 +70,15 @@ const EMPTY_SLUGS = new Map<string, string>();
 // The lists come straight from the API: GET /me/connection-requests (incoming and
 // outgoing) and GET /me/connections. The page never derives a connection from a
 // request id — accepting refetches the accepted list, which only the server fills.
-export function ConnectionsTabs() {
+export function ConnectionsTabs({
+  mode = "all",
+}: { mode?: "all" | "connections" | "requests" } = {}) {
+  const visibleTabOrder: readonly Tab[] =
+    mode === "connections"
+      ? ["connected"]
+      : mode === "requests"
+        ? ["incoming", "outgoing"]
+        : TAB_ORDER;
   const [loading, setLoading] = useState(true);
   const [loadFailure, setLoadFailure] = useState<string | null>(null);
   const [incoming, setIncoming] = useState<Request[]>([]);
@@ -78,7 +86,9 @@ export function ConnectionsTabs() {
   const [connected, setConnected] = useState<Connection[]>([]);
   const [slugByEventId, setSlugByEventId] =
     useState<Map<string, string>>(EMPTY_SLUGS);
-  const [tab, setTab] = useState<Tab>("incoming");
+  const [tab, setTab] = useState<Tab>(
+    mode === "connections" ? "connected" : "incoming",
+  );
   const [actingId, setActingId] = useState<string | null>(null);
   const [actingAction, setActingAction] = useState<ConnectionAction | null>(
     null,
@@ -309,15 +319,18 @@ export function ConnectionsTabs() {
   // Arrow keys move between tabs, Home and End jump to the ends: the pattern a
   // tablist is expected to follow when it is reached by keyboard.
   function onTabKeyDown(event: KeyboardEvent<HTMLDivElement>) {
-    const current = TAB_ORDER.indexOf(tab);
-    const last = TAB_ORDER.length - 1;
+    const current = visibleTabOrder.indexOf(tab);
+    const last = visibleTabOrder.length - 1;
     let next: Tab | undefined;
     if (event.key === "ArrowRight")
-      next = TAB_ORDER[(current + 1) % TAB_ORDER.length];
+      next = visibleTabOrder[(current + 1) % visibleTabOrder.length];
     else if (event.key === "ArrowLeft")
-      next = TAB_ORDER[(current - 1 + TAB_ORDER.length) % TAB_ORDER.length];
-    else if (event.key === "Home") next = TAB_ORDER[0];
-    else if (event.key === "End") next = TAB_ORDER[last];
+      next =
+        visibleTabOrder[
+          (current - 1 + visibleTabOrder.length) % visibleTabOrder.length
+        ];
+    else if (event.key === "Home") next = visibleTabOrder[0];
+    else if (event.key === "End") next = visibleTabOrder[last];
     if (!next) return;
     event.preventDefault();
     selectTab(next);
@@ -332,8 +345,20 @@ export function ConnectionsTabs() {
   const requests: Record<RequestList, Request[]> = { incoming, outgoing };
 
   return (
-    <div className="mx-auto w-full max-w-2xl px-4 py-8">
-      <h1 className="text-3xl font-bold">Your connections</h1>
+    <div
+      className={
+        mode === "all"
+          ? "mx-auto w-full max-w-2xl px-4 py-8"
+          : "attendee-network-list"
+      }
+    >
+      {mode === "all" ? (
+        <h1 className="text-3xl font-bold">Your connections</h1>
+      ) : (
+        <h2 className="attendee-list-heading">
+          {mode === "connections" ? "Connections" : "Connection requests"}
+        </h2>
+      )}
       <p className="mt-2 text-muted">
         Answer requests from people at your events, or see who you&apos;re
         already connected with.
@@ -380,40 +405,47 @@ export function ConnectionsTabs() {
         </div>
       ) : loadFailure ? null : (
         <>
-          <div
-            role="tablist"
-            aria-label="Connections"
-            onKeyDown={onTabKeyDown}
-            className="mt-8 flex flex-wrap gap-2"
-          >
-            {TAB_ORDER.map((candidate) => (
-              <button
-                key={candidate}
-                type="button"
-                role="tab"
-                id={tabId(candidate)}
-                aria-selected={tab === candidate}
-                aria-controls={tabPanelId(candidate)}
-                tabIndex={tab === candidate ? 0 : -1}
-                ref={(element) => {
-                  tabRefs.current[candidate] = element;
-                }}
-                onClick={() => setTab(candidate)}
-                className={`min-h-11 rounded-full border px-4 text-sm font-semibold ${
-                  tab === candidate
-                    ? "border-ink bg-ink text-paper"
-                    : "border-line bg-surface text-ink hover:bg-paper"
-                }`}
-              >
-                {tabLabel(candidate, counts[candidate])}
-              </button>
-            ))}
-          </div>
+          {visibleTabOrder.length > 1 && (
+            <div
+              role="tablist"
+              aria-label="Connections"
+              onKeyDown={onTabKeyDown}
+              className="mt-8 flex flex-wrap gap-2"
+            >
+              {visibleTabOrder.map((candidate) => (
+                <button
+                  key={candidate}
+                  type="button"
+                  role="tab"
+                  id={tabId(candidate)}
+                  aria-selected={tab === candidate}
+                  aria-controls={tabPanelId(candidate)}
+                  tabIndex={tab === candidate ? 0 : -1}
+                  ref={(element) => {
+                    tabRefs.current[candidate] = element;
+                  }}
+                  onClick={() => setTab(candidate)}
+                  className={`min-h-11 rounded-full border px-4 text-sm font-semibold ${
+                    tab === candidate
+                      ? "border-ink bg-ink text-paper"
+                      : "border-line bg-surface text-ink hover:bg-paper"
+                  }`}
+                >
+                  {tabLabel(candidate, counts[candidate])}
+                </button>
+              ))}
+            </div>
+          )}
 
           <section
             role="tabpanel"
             id={tabPanelId(tab)}
-            aria-labelledby={tabId(tab)}
+            aria-labelledby={
+              visibleTabOrder.length > 1 ? tabId(tab) : undefined
+            }
+            aria-label={
+              visibleTabOrder.length === 1 ? "Connections" : undefined
+            }
             className="mt-6 flex flex-col gap-3"
           >
             {tab === "connected" ? (
