@@ -39,6 +39,20 @@ const anchor = {
     React.createElement("a", props, children),
 };
 function shell(pathname, props = {}) {
+  const { AttendeeAccountIdentity } = compile(
+    "../components/attendee/account-identity.tsx",
+    {
+      "next/link": anchor,
+      "next/navigation": { usePathname: () => pathname },
+      "@/components/ui": {
+        Avatar: ({ name }) => React.createElement("span", null, name.charAt(0)),
+      },
+      "@/lib/api/client": { api: {} },
+      "@/components/auth/sign-out": {
+        SignOut: () => React.createElement("button", null, "Sign out"),
+      },
+    },
+  );
   const { AttendeeWorkspaceShell } = compile(
     "../components/attendee/workspace-shell.tsx",
     {
@@ -48,9 +62,7 @@ function shell(pathname, props = {}) {
       "@/lib/attendee-navigation": navigation,
       "@/components/ui": { Logo: () => "trybe." },
       "@/components/brand-mark": { BrandMark: () => "mark" },
-      "@/components/auth/sign-out": {
-        SignOut: () => React.createElement("button", null, "Sign out"),
-      },
+      "./account-identity": { AttendeeAccountIdentity },
       "@/components/auth/theme-toggle": {
         ThemeToggle: () => React.createElement("button", null, "Theme"),
       },
@@ -96,6 +108,8 @@ test("desktop and mobile expose Discover, My events, Network and Profile without
   assert.match(html, /attendee-desktop-navigation/);
   assert.match(html, /href="\/attendee\/connections"[^>]*aria-current="page"/);
   assert.match(html, /Alex Attendee/);
+  assert.match(html, /<strong[^>]*>Alex<\/strong>/);
+  assert.doesNotMatch(html, /<strong[^>]*>Alex Attendee<\/strong>/);
   assert.match(html, /Privacy &amp; visibility/);
   assert.match(html, /Permitted page content/);
   assert.doesNotMatch(html, /href="\/organizer|Switch role/);
