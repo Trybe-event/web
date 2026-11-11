@@ -116,3 +116,37 @@ Audience directory/approval data, business-profile editing, team invitations, pe
 Authentication, authorization, visibility rules, database schema, API contracts and email-provider work were not changed. The maintainer’s screen review is still required; the browser audit reached the signed-out organizer form and did not establish an authenticated visual pass. Keep these related changes together for review and verify the final pushed commit before claiming CI or release gates passed.
 
 Brand update, 10 November: preserve the approved swept eight-spoke mark and its stroke thickness, with no green inserts/dots in the gaps. The web/marketing SVG components and mail source asset share the same geometry; the static email PNG has been regenerated with the existing brand-green color and a new cache version. Workspace logos use a gentle 4.8-second rotation in a 60-second CSS cycle, with motion disabled under prefers-reduced-motion. Do not reintroduce decorative gap shapes or replace the wordmark while strengthening the business logic. Mail delivery/provider logic was not changed and no email was sent for this visual update.
+
+## Consolidated stable release candidate (11 November 2026)
+
+This section supersedes the older presentation-only limitations above for the changes listed here. The stable baseline was web `8bb5ad0` when this review began. Later local commits had not been pushed, so changing Vercel to stable alone could not include the new workspaces. Main is not a release target for this increment.
+
+### Completed web integration
+
+- Organizer business settings now save through the account API, including explicitly public support contacts and event email preferences. Private signup contacts remain separate. Device management uses the authenticated provider integration.
+- Selecting or creating an event opens the event-specific sidebar: Overview, Event setup, Attendance, Reach, Analytics, Preview event and Event settings. The redundant THIS EVENT caption is removed. Business navigation remains outside the selected event.
+- Draft setup uses Event details, Tickets, Registration, Experience, Page and Review. Published events expose management tabs including Agenda & lineup. Serialized saves, retry-safe draft creation, image guidance, real days/sessions/speakers, publication review and six-character invitations remain intact.
+- Registration approval, capacity and waitlist controls live in the visible Registration step. Event Attendance uses the owner-authorized, event-scoped registration list and approval decisions. It shows sign-ups and admission states, not physical attendance. A decision refreshes the list because admitting one person can change the waitlist; repeated submissions are locked while pending.
+- Attendee navigation groups Discover, My events, Network and Profile. Desktop has a collapsible sidebar; mobile has four bottom navigation items and event controls above event content. Connections, Messages and Requests have separate Network views. Profile editing, preview, visibility and account actions retain the existing API behavior.
+- My events uses real registrations, filters and event images. Pending/waitlisted registrations open their invitation status; they cannot enter the member-only event workspace. Accepted connections and messages retain networking-closure behavior.
+- Discover explicitly says In progress, as requested by the maintainer. Do not merge public-discovery PRs as a dependency of this release. Paid ticketing, physical check-in, sponsors and polls remain disclosed future capabilities.
+
+### API and migration prerequisites
+
+Contract review is separate in API PR #117. Its implementation companion adds organizer profile updates, event category and admission settings, owner registration listing/decisions and preference-aware email scheduling. Apply the normal migrations to the verified deployment database before deploying the matching API: `20261111090000_organizer_business_profile.sql` and `20261111100000_event_category_and_registration_review.sql`. Do not reset a shared database or run destructive tests against it. CI uses disposable PostgreSQL for integration, latency and restore checks. Keep the existing stable job-runner configuration and current email activation choices.
+
+The web contract mirror and generated routes/types must match this API. Review contract, API implementation/migrations and web in that order. Merged Git branches do not prove that the deployed API/database were upgraded. Check the actual runtime before production promotion.
+
+### Vercel verification
+
+At review time `https://trybe-event.vercel.app` still returned the older auth headings and no portrait images, while stable source already contained the new portrait layout and business signup. A successful GitHub Vercel status alone does not establish which deployment the production domain serves. No Vercel setting, production credential or domain was changed during this audit.
+
+In the trybe-event Vercel project, confirm the repository is Trybe-event/web, then Settings > Environments > Production > Branch Tracking = stable. On Deployments, verify the deployment's branch, commit and environment; the production domain must point to the deployment marked Current. A preview URL is not the production alias. After the dependency PRs and runtime migrations are ready, deploy/promote the correct stable revision and check both `/attendee/sign-in` and `/organizer/sign-up` for the portrait and business form. Keep API credentials server-only and preserve Clerk instance-key consistency.
+
+References: https://vercel.com/docs/git and https://vercel.com/docs/deployments/promoting-a-deployment.
+
+### Work reserved for Claude and remaining evidence
+
+Claude is separately implementing Q&A, announcements, registration questions/answers, related organizer/attendee screens and their migration/deployment path. This release does not claim those features or overwrite that work. Merge later additions through their own reviewed contract and compatible API/web PRs.
+
+Production build, generated-client verification, lint/format/bundle checks, regression tests and GitHub CI are recorded in the release PR body at the tested revision. Browser automation timed out during the earlier attendee visual audit; phone, keyboard, authenticated admission and production-alias checks must not be marked passed from unit tests or CI alone. This is a release candidate, not a completed MVP gate or main-promotion authorization.

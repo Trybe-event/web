@@ -55,11 +55,9 @@ function compile(file, dependencies = {}) {
     },
   }).outputText;
   const loaded = { exports: {} };
-  vm.runInNewContext(`(function(require,module,exports){${javascript}\n})`)(
-    (name) => dependencies[name] ?? require(name),
-    loaded,
-    loaded.exports,
-  );
+  vm.runInNewContext(`(function(require,module,exports){${javascript}\n})`, {
+    AbortSignal,
+  })((name) => dependencies[name] ?? require(name), loaded, loaded.exports);
   return loaded.exports;
 }
 function walk(node, predicate) {
@@ -83,13 +81,19 @@ function harness(
   const component = compile(file, {
     react: {
       ...React,
+      useRef(initial) {
+        const index = stateIndex++;
+        if (!(index in states)) states[index] = { current: initial };
+        return states[index];
+      },
       useState(initial) {
         const index = stateIndex++;
         if (!(index in states)) states[index] = initial;
         return [
           states[index],
           (value) => {
-            states[index] = value;
+            states[index] =
+              typeof value === "function" ? value(states[index]) : value;
           },
         ];
       },
@@ -535,6 +539,14 @@ test("audience lists registrations by status and approves through the API", asyn
     {
       "@/lib/api/client": {
         api: {
+          GET: async () => ({
+            response: { ok: true },
+            data: {
+              items: rows.map((row) =>
+                row.id === "r1" ? { ...row, status: "active" } : row,
+              ),
+            },
+          }),
           POST: async (path, init) => {
             calls.push({
               path,

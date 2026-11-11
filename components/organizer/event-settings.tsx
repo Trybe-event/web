@@ -13,6 +13,7 @@ import {
 import { localEventTime } from "@/lib/event-time";
 import { useEventEditor } from "./event-editor-context";
 import { DraftTimeField } from "./event-fields";
+import { RegistrationPolicyFields } from "./event-setup-panels";
 
 type Review = { event: Schemas["Event"]; program: Schemas["Program"] };
 const labels: Record<keyof EventDraft, string> = {
@@ -185,6 +186,7 @@ export function EventSettings({
             registration link can forward it; the link is not an invitation-only
             access control.
           </p>
+          <RegistrationPolicyFields />
           <div className="grid gap-5 md:grid-cols-2">
             <DraftTimeField
               name="registration_opens_at"

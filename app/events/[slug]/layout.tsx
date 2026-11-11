@@ -19,8 +19,13 @@ export default async function EventWorkspaceLayout({
   if (workspace.kind === "unavailable")
     return <WorkspaceUnavailable type="attendee" />;
   return (
-    <WorkspaceShell type="attendee" events={workspace.events} activeSlug={slug}>
-      <div className="mt-3 flex min-w-0 flex-col gap-4 pb-6 md:mt-6 md:flex-row md:gap-6 md:pb-8">
+    <WorkspaceShell
+      type="attendee"
+      attendeeAccount={workspace.account}
+      events={workspace.events}
+      activeSlug={slug}
+    >
+      <div className="attendee-event-workspace">
         <EventWorkspaceNavigation
           slug={slug}
           networkingClosed={workspace.event.networking_state === "closed"}

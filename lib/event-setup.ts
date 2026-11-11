@@ -25,7 +25,13 @@ export const publishedEventSetupSteps = [
 export function eventSetupFieldStep(field: string, published = false): number {
   if (published && field === "program") return 4;
   if (field === "program" || field.startsWith("networking_")) return 3;
-  if (field === "visibility" || field.startsWith("registration_")) return 2;
+  if (
+    ["visibility", "approval_mode", "capacity", "waitlist_enabled"].includes(
+      field,
+    ) ||
+    field.startsWith("registration_")
+  )
+    return 2;
   return 0;
 }
 

@@ -30,8 +30,7 @@ export function EventTicketNotice() {
         <div>
           <strong>Ticket sales are being built</strong>
           <p>
-            Paid tickets, capacity limits, discounts and payouts will appear
-            here when available.
+            Paid tickets, discounts and payouts will appear here when available.
           </p>
         </div>
       </div>
@@ -60,6 +59,7 @@ export function EventRegistrationSettings() {
         Public events may appear in discovery. Private events stay out of public
         listings. Anyone with an invitation link can forward it.
       </p>
+      <RegistrationPolicyFields />
       <div className="grid gap-5 md:grid-cols-2">
         <DraftTimeField
           name="registration_opens_at"
@@ -74,57 +74,6 @@ export function EventRegistrationSettings() {
       </div>
       <p className="text-sm text-muted">
         Leave either boundary empty to keep that boundary unrestricted.
-      </p>
-      <div className="grid gap-5 md:grid-cols-2">
-        <Field
-          label="Registration approval"
-          error={form.formState.errors.approval_mode?.message}
-        >
-          {(props) => (
-            <Select {...props} {...form.register("approval_mode")}>
-              <option value="automatic">Automatic</option>
-              <option value="review">Review each registration</option>
-            </Select>
-          )}
-        </Field>
-        <Field
-          label="Capacity"
-          optional
-          hint="Most people you will admit. Leave empty for no limit."
-          error={form.formState.errors.capacity?.message}
-        >
-          {(props) => (
-            <Input
-              {...props}
-              type="number"
-              inputMode="numeric"
-              min={1}
-              max={100000}
-              {...form.register("capacity", {
-                setValueAs: (value) =>
-                  value === "" || value == null ? null : Number(value),
-              })}
-            />
-          )}
-        </Field>
-      </div>
-      <label className="flex items-start gap-3 text-sm">
-        <input
-          type="checkbox"
-          className="mt-1"
-          {...form.register("waitlist_enabled")}
-        />
-        <span>
-          <strong>Waitlist when full</strong>
-          <span className="block text-muted">
-            When capacity is reached, new registrations wait and are admitted in
-            order as places free up.
-          </span>
-        </span>
-      </label>
-      <p className="text-sm text-muted">
-        With review on, every registration waits for you on the Audience page.
-        Only admitted people can network and message.
       </p>
       <div className="organizer-registration-fields">
         <h3>What attendees provide</h3>
@@ -243,5 +192,64 @@ export function EventPagePreview({
         </p>
       </div>
     </div>
+  );
+}
+
+export function RegistrationPolicyFields() {
+  const form = useFormContext<EventDraft>();
+  return (
+    <>
+      <div className="grid gap-5 md:grid-cols-2">
+        <Field
+          label="Registration approval"
+          error={form.formState.errors.approval_mode?.message}
+        >
+          {(props) => (
+            <Select {...props} {...form.register("approval_mode")}>
+              <option value="automatic">Automatic</option>
+              <option value="review">Review each registration</option>
+            </Select>
+          )}
+        </Field>
+        <Field
+          label="Capacity"
+          optional
+          hint="Most people you will admit. Leave empty for no limit."
+          error={form.formState.errors.capacity?.message}
+        >
+          {(props) => (
+            <Input
+              {...props}
+              type="number"
+              inputMode="numeric"
+              min={1}
+              max={100000}
+              {...form.register("capacity", {
+                setValueAs: (value) =>
+                  value === "" || value == null ? null : Number(value),
+              })}
+            />
+          )}
+        </Field>
+      </div>
+      <label className="flex items-start gap-3 text-sm">
+        <input
+          type="checkbox"
+          className="mt-1"
+          {...form.register("waitlist_enabled")}
+        />
+        <span>
+          <strong>Waitlist when full</strong>
+          <span className="block text-muted">
+            When capacity is reached, new registrations wait and are admitted in
+            order as places free up.
+          </span>
+        </span>
+      </label>
+      <p className="text-sm text-muted">
+        With review on, every registration waits for you on the Audience page.
+        Only admitted people can network and message.
+      </p>
+    </>
   );
 }
