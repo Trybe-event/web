@@ -20,7 +20,7 @@ import {
   authenticationCredentialsSchema,
   organizerSignupDetails,
 } from "@/lib/organizer-signup";
-import { LegalNotice } from "@/components/legal/legal-notice";
+import { TermsConsent } from "@/components/legal/legal-notice";
 import { EmailConfirmation } from "./email-confirmation";
 
 const codeSchema = z.object({
@@ -74,6 +74,8 @@ export function AuthForm({
   const isOrganizerEmailCheck =
     type === "organizer" && authenticationStep === "verify-email";
   const [isAuthenticationPending, setAuthenticationPending] = useState(false);
+  const [termsAccepted, setTermsAccepted] = useState(false);
+  const [termsError, setTermsError] = useState("");
   const [authenticationError, setAuthenticationError] = useState("");
   const [verificationNotice, setVerificationNotice] = useState("");
   const [isPasswordVisible, setPasswordVisible] = useState(false);
@@ -187,48 +189,57 @@ export function AuthForm({
         <form
           className="space-y-5"
           noValidate
-          onSubmit={credentialsForm.handleSubmit((values) =>
-            performAuthenticationAction(async () => {
-              if (mode === "sign-up") {
-                assertAuthenticationSucceeded(
-                  await signUp.password({
-                    emailAddress: values.email,
-                    password: values.password,
-                    ...(isOrganizerSignup
-                      ? {
-                          unsafeMetadata: {
-                            organizer_signup: organizerSignupDetails(values),
-                          },
-                        }
-                      : {}),
-                  }),
-                );
-                credentialsForm.resetField("password");
-                credentialsForm.resetField("confirm_password");
-                if (signUp.status === "complete") {
-                  await activateAuthenticatedSession(true);
-                  return;
-                }
-                if (!signUp.unverifiedFields.includes("email_address"))
-                  throw new Error(
-                    "Additional account information is required. Please contact support.",
+          onSubmit={(event) => {
+            if (mode === "sign-up" && !termsAccepted) {
+              event.preventDefault();
+              setTermsError(
+                "Tick the box to agree to the Terms and Privacy Policy before creating your account.",
+              );
+              return;
+            }
+            return credentialsForm.handleSubmit((values) =>
+              performAuthenticationAction(async () => {
+                if (mode === "sign-up") {
+                  assertAuthenticationSucceeded(
+                    await signUp.password({
+                      emailAddress: values.email,
+                      password: values.password,
+                      ...(isOrganizerSignup
+                        ? {
+                            unsafeMetadata: {
+                              organizer_signup: organizerSignupDetails(values),
+                            },
+                          }
+                        : {}),
+                    }),
                   );
-                setAuthenticationStep("verify-email");
-                assertAuthenticationSucceeded(
-                  await signUp.verifications.sendEmailCode(),
-                );
-              } else {
-                assertAuthenticationSucceeded(
-                  await signIn.password({
-                    emailAddress: values.email,
-                    password: values.password,
-                  }),
-                );
-                credentialsForm.resetField("password");
-                await continueSignIn();
-              }
-            }),
-          )}
+                  credentialsForm.resetField("password");
+                  credentialsForm.resetField("confirm_password");
+                  if (signUp.status === "complete") {
+                    await activateAuthenticatedSession(true);
+                    return;
+                  }
+                  if (!signUp.unverifiedFields.includes("email_address"))
+                    throw new Error(
+                      "Additional account information is required. Please contact support.",
+                    );
+                  setAuthenticationStep("verify-email");
+                  assertAuthenticationSucceeded(
+                    await signUp.verifications.sendEmailCode(),
+                  );
+                } else {
+                  assertAuthenticationSucceeded(
+                    await signIn.password({
+                      emailAddress: values.email,
+                      password: values.password,
+                    }),
+                  );
+                  credentialsForm.resetField("password");
+                  await continueSignIn();
+                }
+              }),
+            )(event);
+          }}
         >
           {isOrganizerSignup && (
             <>
@@ -419,12 +430,21 @@ export function AuthForm({
             </Button>
           )}
           <div id="clerk-captcha" />
-          {mode === "sign-up" && <LegalNotice />}
+          {mode === "sign-up" && (
+            <TermsConsent
+              checked={termsAccepted}
+              onChange={(checked) => {
+                setTermsAccepted(checked);
+                if (checked) setTermsError("");
+              }}
+              error={termsError}
+            />
+          )}
           <Button
             type="submit"
             className="primary-button w-full"
             loading={isAuthenticationPending}
-            disabled={!isLoaded}
+            disabled={!isLoaded || (mode === "sign-up" && !termsAccepted)}
           >
             {mode === "sign-up" ? "Create account" : "Sign in"}
           </Button>

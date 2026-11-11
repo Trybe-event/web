@@ -148,9 +148,12 @@ const link = {
     React.createElement("a", props, children),
   __esModule: true,
 };
-const { LegalNotice } = compile("../components/legal/legal-notice.tsx", {
-  "next/link": link,
-});
+const { LegalNotice, TermsConsent } = compile(
+  "../components/legal/legal-notice.tsx",
+  {
+    "next/link": link,
+  },
+);
 
 test("signup and joining link only to Trybe policies and preserve the current form", () => {
   for (const action of ["signup", "join"]) {
@@ -202,7 +205,7 @@ const authDependencies = {
       React.createElement("p", null, "Password requirements"),
   },
   "@/lib/organizer-signup": policy,
-  "@/components/legal/legal-notice": { LegalNotice },
+  "@/components/legal/legal-notice": { LegalNotice, TermsConsent },
   "./email-confirmation": compile("../components/auth/email-confirmation.tsx"),
 };
 const { AuthForm } = compile(
@@ -269,6 +272,18 @@ test("only organizer signup collects business details; both signup types show th
     );
     assert.match(signup, /href="\/terms"/);
     assert.match(signup, /href="\/privacy"/);
+    // The agreement is a required checkbox, and the account can't be created until it is ticked.
+    assert.match(signup, /type="checkbox"[^>]*required=""/);
+    assert.match(signup, /By creating an account/);
+    assert.match(
+      signup,
+      /<button[^>]*type="submit"[^>]*disabled=""[^>]*>Create account/,
+    );
+    assert.ok(
+      signup.indexOf("By creating an account") <
+        signup.indexOf("Create account</button>"),
+      "the agreement comes before the button",
+    );
     for (const label of [
       "Registered business name",
       "Contact first name",
