@@ -194,6 +194,18 @@ export function OrganizerAudience({
             <li key={row.id}>
               <span>
                 <strong>{row.attendee_name}</strong>
+                {row.answers.length > 0 && (
+                  <dl className="mt-1 text-xs">
+                    {row.answers.map((answer) => (
+                      <div key={answer.question}>
+                        <dt className="inline font-semibold">
+                          {answer.question}:
+                        </dt>{" "}
+                        <dd className="inline">{answer.value.join(", ")}</dd>
+                      </div>
+                    ))}
+                  </dl>
+                )}
                 <span className="block text-xs text-muted">
                   {row.event_name} · Registered{" "}
                   {new Date(row.registered_at).toLocaleDateString("en-GB", {

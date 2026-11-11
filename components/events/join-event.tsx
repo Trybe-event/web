@@ -4,7 +4,8 @@ import { useRouter } from "next/navigation";
 import { useRef, useState } from "react";
 
 import { Alert, Button } from "@/components/ui";
-import { api, errorMessage } from "@/lib/api/client";
+import { RegistrationAnswers } from "@/components/engagement";
+import { api, errorMessage, fieldErrors, type Schemas } from "@/lib/api/client";
 import { routes } from "@/lib/routes";
 import { LegalNotice } from "@/components/legal/legal-notice";
 
@@ -25,16 +26,20 @@ export function JoinEvent({
   name,
   label,
   disabled = false,
+  questions = [],
 }: {
   slug: string;
   name: string;
   label?: string;
   disabled?: boolean;
+  questions?: Schemas["RegistrationQuestion"][];
 }) {
   const router = useRouter();
   const [joining, setJoining] = useState(false);
   const [failure, setFailure] = useState("");
   const [waiting, setWaiting] = useState("");
+  const [answers, setAnswers] = useState<Record<string, string | string[]>>({});
+  const [answerErrors, setAnswerErrors] = useState<Record<string, string>>({});
   const pending = useRef(false);
 
   async function join() {
@@ -43,10 +48,21 @@ export function JoinEvent({
     setJoining(true);
     setFailure("");
     setWaiting("");
+    setAnswerErrors({});
     try {
       const { data, error, response } = await api.POST("/e/{slug}/join", {
         params: { path: { slug } },
+        ...(questions.length ? { body: { answers } } : {}),
       });
+      if (response.status === 400) {
+        setAnswerErrors(fieldErrors(error));
+        setFailure(
+          questions.length
+            ? "Answer the highlighted registration questions."
+            : "This event asks a few registration questions. Open the event page to answer them.",
+        );
+        return;
+      }
       if (data && data.status !== "active") {
         setWaiting(
           registrationNotice[data.status] ??
@@ -77,6 +93,12 @@ export function JoinEvent({
 
   return (
     <div className="flex flex-col items-start gap-3">
+      <RegistrationAnswers
+        questions={questions}
+        values={answers}
+        errors={answerErrors}
+        onChange={setAnswers}
+      />
       <LegalNotice action="join" />
       <Button
         loading={joining}

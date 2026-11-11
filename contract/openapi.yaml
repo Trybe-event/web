@@ -25,6 +25,7 @@ tags:
   - name: profiles
   - name: uploads
   - name: events
+  - name: engagement
   - name: program
   - name: registration
   - name: organizer
@@ -560,10 +561,22 @@ paths:
       summary: Explicitly register for an event (idempotent). The status says whether the attendee is admitted, pending review or waitlisted.
       x-account: attendee
       x-milestone: M2
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                answers:
+                  type: object
+                  description: Registration question id to a text answer, or a list of choices for multi questions. Checked only for a new registration.
+                  additionalProperties: { oneOf: [{ type: string }, { type: array, items: { type: string } }] }
       responses:
         "200":
           description: Membership
           content: { application/json: { schema: { $ref: "#/components/schemas/Membership" } } }
+        "400": { $ref: "#/components/responses/Error" }
         "403": { $ref: "#/components/responses/Error" }
         "409": { $ref: "#/components/responses/Error" }
   /e/{slug}/leave:
@@ -575,6 +588,201 @@ paths:
       x-milestone: M2
       responses:
         "204": { description: Left }
+  /events/{eventId}/questions:
+    parameters: [{ $ref: "#/components/parameters/EventId" }]
+    get:
+      tags: [engagement]
+      operationId: listEventQuestions
+      summary: Published questions and the caller's own pending ones (admitted members only)
+      x-account: attendee
+      x-milestone: M4
+      responses:
+        "200":
+          description: Questions
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [items]
+                properties:
+                  items: { type: array, items: { $ref: "#/components/schemas/EventQuestion" } }
+        "403": { $ref: "#/components/responses/Error" }
+    post:
+      tags: [engagement]
+      operationId: askEventQuestion
+      summary: Ask a question; it waits for the organizer's review
+      x-account: attendee
+      x-milestone: M4
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { type: object, required: [body], properties: { body: { type: string, minLength: 1, maxLength: 500 } } }
+      responses:
+        "201":
+          description: Question
+          content: { application/json: { schema: { $ref: "#/components/schemas/EventQuestion" } } }
+        "400": { $ref: "#/components/responses/Error" }
+        "403": { $ref: "#/components/responses/Error" }
+  /events/{eventId}/announcements:
+    parameters: [{ $ref: "#/components/parameters/EventId" }]
+    get:
+      tags: [engagement]
+      operationId: listEventAnnouncements
+      summary: The organizer's announcements (admitted members only)
+      x-account: attendee
+      x-milestone: M4
+      responses:
+        "200":
+          description: Announcements
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [items]
+                properties:
+                  items: { type: array, items: { $ref: "#/components/schemas/Announcement" } }
+        "403": { $ref: "#/components/responses/Error" }
+  /organizer/events/{eventId}/questions:
+    parameters: [{ $ref: "#/components/parameters/EventId" }]
+    get:
+      tags: [engagement]
+      operationId: listOrganizerQuestions
+      summary: Every question on the organizer's event, with the asker's name
+      x-account: organizer
+      x-milestone: M4
+      responses:
+        "200":
+          description: Questions
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [items]
+                properties:
+                  items: { type: array, items: { $ref: "#/components/schemas/EventQuestion" } }
+        "404": { $ref: "#/components/responses/Error" }
+  /organizer/questions/{questionId}:
+    parameters:
+      - { name: questionId, in: path, required: true, schema: { type: string, format: uuid } }
+    post:
+      tags: [engagement]
+      operationId: moderateQuestion
+      summary: Set a question's status and answer (idempotent)
+      x-account: organizer
+      x-milestone: M4
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [status]
+              properties:
+                status: { type: string, enum: [pending, published, hidden] }
+                answer: { type: [string, "null"], maxLength: 2000 }
+      responses:
+        "200":
+          description: Question
+          content: { application/json: { schema: { $ref: "#/components/schemas/EventQuestion" } } }
+        "400": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+  /organizer/events/{eventId}/announcements:
+    parameters: [{ $ref: "#/components/parameters/EventId" }]
+    get:
+      tags: [engagement]
+      operationId: listOrganizerAnnouncements
+      x-account: organizer
+      x-milestone: M4
+      responses:
+        "200":
+          description: Announcements
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [items]
+                properties:
+                  items: { type: array, items: { $ref: "#/components/schemas/Announcement" } }
+        "404": { $ref: "#/components/responses/Error" }
+    post:
+      tags: [engagement]
+      operationId: postAnnouncement
+      summary: Post an update to admitted members; each gets an organizer_update notification
+      x-account: organizer
+      x-milestone: M4
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [title, body]
+              properties:
+                title: { type: string, minLength: 1, maxLength: 180 }
+                body: { type: string, minLength: 1, maxLength: 5000 }
+      responses:
+        "201":
+          description: Announcement
+          content: { application/json: { schema: { $ref: "#/components/schemas/Announcement" } } }
+        "400": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+  /organizer/events/{eventId}/registration-questions:
+    parameters: [{ $ref: "#/components/parameters/EventId" }]
+    get:
+      tags: [registration]
+      operationId: listRegistrationQuestions
+      x-account: organizer
+      x-milestone: M4
+      responses:
+        "200":
+          description: Questions in order
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [items]
+                properties:
+                  items: { type: array, items: { $ref: "#/components/schemas/RegistrationQuestion" } }
+        "404": { $ref: "#/components/responses/Error" }
+    put:
+      tags: [registration]
+      operationId: putRegistrationQuestions
+      summary: Replace the question list. Send a question's id to keep it and its answers; omitted questions are deleted with their answers.
+      x-account: organizer
+      x-milestone: M4
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [items]
+              properties:
+                items:
+                  type: array
+                  maxItems: 20
+                  items:
+                    type: object
+                    required: [label, kind, required]
+                    properties:
+                      id: { type: string, format: uuid }
+                      label: { type: string, minLength: 1, maxLength: 200 }
+                      kind: { type: string, enum: [short, long, select, multi] }
+                      options: { type: array, items: { type: string, maxLength: 100 }, maxItems: 30 }
+                      required: { type: boolean }
+      responses:
+        "200":
+          description: Saved questions
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [items]
+                properties:
+                  items: { type: array, items: { $ref: "#/components/schemas/RegistrationQuestion" } }
+        "400": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
   /organizer/registrations:
     get:
       tags: [registration]
@@ -1409,6 +1617,7 @@ components:
         topics: { type: array, items: { type: string } }
         category: { type: [string, "null"] }
         approval_required: { type: boolean, description: Registrations wait for the organizer's approval }
+        registration_questions: { type: array, items: { $ref: "#/components/schemas/RegistrationQuestion" } }
         image_url: { type: [string, "null"] }
         status: { $ref: "#/components/schemas/EventStatus" }
         registration_state: { $ref: "#/components/schemas/WindowState" }
@@ -1488,7 +1697,7 @@ components:
         joined_at: { type: string, format: date-time }
     OrganizerRegistration:
       type: object
-      required: [id, event_id, event_name, attendee_name, status, registered_at, decided_at]
+      required: [id, event_id, event_name, attendee_name, status, registered_at, decided_at, answers]
       properties:
         id: { type: string, format: uuid }
         event_id: { type: string, format: uuid }
@@ -1497,6 +1706,44 @@ components:
         status: { type: string, enum: [active, pending, waitlisted, rejected] }
         registered_at: { type: string, format: date-time }
         decided_at: { type: [string, "null"], format: date-time }
+        answers:
+          type: array
+          description: The attendee's answers to the event's registration questions
+          items:
+            type: object
+            required: [question, value]
+            properties:
+              question: { type: string }
+              value: { type: array, items: { type: string } }
+    RegistrationQuestion:
+      type: object
+      required: [id, label, kind, options, required]
+      properties:
+        id: { type: string, format: uuid }
+        label: { type: string }
+        kind: { type: string, enum: [short, long, select, multi] }
+        options: { type: array, items: { type: string } }
+        required: { type: boolean }
+    EventQuestion:
+      type: object
+      required: [id, body, status, answer, answered_at, created_at]
+      properties:
+        id: { type: string, format: uuid }
+        body: { type: string }
+        status: { type: string, enum: [pending, published, hidden] }
+        answer: { type: [string, "null"] }
+        answered_at: { type: [string, "null"], format: date-time }
+        created_at: { type: string, format: date-time }
+        mine: { type: boolean, description: "Members only: the caller asked it. Askers are never named to other members." }
+        author_name: { type: string, description: Organizer view only }
+    Announcement:
+      type: object
+      required: [id, title, body, created_at]
+      properties:
+        id: { type: string, format: uuid }
+        title: { type: string }
+        body: { type: string }
+        created_at: { type: string, format: date-time }
     MyEvent:
       type: object
       required: [event, membership]

@@ -2,6 +2,7 @@ import Link from "next/link";
 
 import { PreviewCard } from "@/app/attendee/profile/preview/profile-preview";
 import { Badge } from "@/components/ui";
+import type { Schemas } from "@/lib/api/client";
 import type { JoinPreview } from "@/lib/events";
 import { withEventParam } from "@/lib/routes";
 
@@ -17,10 +18,12 @@ export function JoinReview({
   slug,
   name,
   preview,
+  questions = [],
 }: {
   slug: string;
   name: string;
   preview: JoinPreview;
+  questions?: Schemas["RegistrationQuestion"][];
 }) {
   return (
     <section className="join-review" aria-labelledby="join-review-title">
@@ -39,7 +42,12 @@ export function JoinReview({
         are not shown here and never leave your account.
       </p>
       <div className="mt-6 flex flex-wrap items-center gap-3">
-        <JoinEvent slug={slug} name={name} label="Confirm and join" />
+        <JoinEvent
+          slug={slug}
+          name={name}
+          label="Confirm and join"
+          questions={questions}
+        />
         <Link
           className="text-sm font-semibold"
           href={withEventParam("/attendee/profile/edit", slug)}
