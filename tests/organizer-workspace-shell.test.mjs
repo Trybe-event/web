@@ -517,6 +517,7 @@ test("audience lists registrations by status and approves through the API", asyn
       attendee_name: "Tomi",
       status: "pending",
       registered_at: "2026-11-01T09:00:00Z",
+      answers: [{ question: "Company", value: ["Acme"] }],
       decided_at: null,
     },
     {
@@ -526,6 +527,7 @@ test("audience lists registrations by status and approves through the API", asyn
       attendee_name: "Seyi",
       status: "active",
       registered_at: "2026-11-01T10:00:00Z",
+      answers: [],
       decided_at: null,
     },
   ];
@@ -581,4 +583,6 @@ test("audience lists registrations by status and approves through the API", asyn
     },
   ]);
   assert.match(view.html(), /Approved \(2\)/);
+  // Registration answers are shown to the organizer beside the person.
+  assert.match(view.html(), /Company:<\/dt> <dd class="inline">Acme<\/dd>/);
 });

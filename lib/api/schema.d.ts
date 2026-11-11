@@ -501,6 +501,121 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/events/{eventId}/questions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                eventId: components["parameters"]["EventId"];
+            };
+            cookie?: never;
+        };
+        /** Published questions and the caller's own pending ones (admitted members only) */
+        get: operations["listEventQuestions"];
+        put?: never;
+        /** Ask a question; it waits for the organizer's review */
+        post: operations["askEventQuestion"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/events/{eventId}/announcements": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                eventId: components["parameters"]["EventId"];
+            };
+            cookie?: never;
+        };
+        /** The organizer's announcements (admitted members only) */
+        get: operations["listEventAnnouncements"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/organizer/events/{eventId}/questions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                eventId: components["parameters"]["EventId"];
+            };
+            cookie?: never;
+        };
+        /** Every question on the organizer's event, with the asker's name */
+        get: operations["listOrganizerQuestions"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/organizer/questions/{questionId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                questionId: string;
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Set a question's status and answer (idempotent) */
+        post: operations["moderateQuestion"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/organizer/events/{eventId}/announcements": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                eventId: components["parameters"]["EventId"];
+            };
+            cookie?: never;
+        };
+        get: operations["listOrganizerAnnouncements"];
+        put?: never;
+        /** Post an update to admitted members; each gets an organizer_update notification */
+        post: operations["postAnnouncement"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/organizer/events/{eventId}/registration-questions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                eventId: components["parameters"]["EventId"];
+            };
+            cookie?: never;
+        };
+        get: operations["listRegistrationQuestions"];
+        /** Replace the question list. Send a question's id to keep it and its answers; omitted questions are deleted with their answers. */
+        put: operations["putRegistrationQuestions"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/organizer/registrations": {
         parameters: {
             query?: never;
@@ -1283,6 +1398,7 @@ export interface components {
             category?: string | null;
             /** @description Registrations wait for the organizer's approval */
             approval_required?: boolean;
+            registration_questions?: components["schemas"]["RegistrationQuestion"][];
             image_url?: string | null;
             status: components["schemas"]["EventStatus"];
             registration_state: components["schemas"]["WindowState"];
@@ -1368,6 +1484,44 @@ export interface components {
             registered_at: string;
             /** Format: date-time */
             decided_at: string | null;
+            /** @description The attendee's answers to the event's registration questions */
+            answers: {
+                question: string;
+                value: string[];
+            }[];
+        };
+        RegistrationQuestion: {
+            /** Format: uuid */
+            id: string;
+            label: string;
+            /** @enum {string} */
+            kind: "short" | "long" | "select" | "multi";
+            options: string[];
+            required: boolean;
+        };
+        EventQuestion: {
+            /** Format: uuid */
+            id: string;
+            body: string;
+            /** @enum {string} */
+            status: "pending" | "published" | "hidden";
+            answer: string | null;
+            /** Format: date-time */
+            answered_at: string | null;
+            /** Format: date-time */
+            created_at: string;
+            /** @description Members only: the caller asked it. Askers are never named to other members. */
+            mine?: boolean;
+            /** @description Organizer view only */
+            author_name?: string;
+        };
+        Announcement: {
+            /** Format: uuid */
+            id: string;
+            title: string;
+            body: string;
+            /** Format: date-time */
+            created_at: string;
         };
         MyEvent: {
             event: components["schemas"]["PublicEvent"];
@@ -2330,7 +2484,16 @@ export interface operations {
             };
             cookie?: never;
         };
-        requestBody?: never;
+        requestBody?: {
+            content: {
+                "application/json": {
+                    /** @description Registration question id to a text answer, or a list of choices for multi questions. Checked only for a new registration. */
+                    answers?: {
+                        [key: string]: string | string[];
+                    };
+                };
+            };
+        };
         responses: {
             /** @description Membership */
             200: {
@@ -2341,6 +2504,7 @@ export interface operations {
                     "application/json": components["schemas"]["Membership"];
                 };
             };
+            400: components["responses"]["Error"];
             403: components["responses"]["Error"];
             409: components["responses"]["Error"];
         };
@@ -2363,6 +2527,264 @@ export interface operations {
                 };
                 content?: never;
             };
+        };
+    };
+    listEventQuestions: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                eventId: components["parameters"]["EventId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Questions */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        items: components["schemas"]["EventQuestion"][];
+                    };
+                };
+            };
+            403: components["responses"]["Error"];
+        };
+    };
+    askEventQuestion: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                eventId: components["parameters"]["EventId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    body: string;
+                };
+            };
+        };
+        responses: {
+            /** @description Question */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EventQuestion"];
+                };
+            };
+            400: components["responses"]["Error"];
+            403: components["responses"]["Error"];
+        };
+    };
+    listEventAnnouncements: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                eventId: components["parameters"]["EventId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Announcements */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        items: components["schemas"]["Announcement"][];
+                    };
+                };
+            };
+            403: components["responses"]["Error"];
+        };
+    };
+    listOrganizerQuestions: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                eventId: components["parameters"]["EventId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Questions */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        items: components["schemas"]["EventQuestion"][];
+                    };
+                };
+            };
+            404: components["responses"]["Error"];
+        };
+    };
+    moderateQuestion: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                questionId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** @enum {string} */
+                    status: "pending" | "published" | "hidden";
+                    answer?: string | null;
+                };
+            };
+        };
+        responses: {
+            /** @description Question */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EventQuestion"];
+                };
+            };
+            400: components["responses"]["Error"];
+            404: components["responses"]["Error"];
+        };
+    };
+    listOrganizerAnnouncements: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                eventId: components["parameters"]["EventId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Announcements */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        items: components["schemas"]["Announcement"][];
+                    };
+                };
+            };
+            404: components["responses"]["Error"];
+        };
+    };
+    postAnnouncement: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                eventId: components["parameters"]["EventId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    title: string;
+                    body: string;
+                };
+            };
+        };
+        responses: {
+            /** @description Announcement */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Announcement"];
+                };
+            };
+            400: components["responses"]["Error"];
+            404: components["responses"]["Error"];
+        };
+    };
+    listRegistrationQuestions: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                eventId: components["parameters"]["EventId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Questions in order */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        items: components["schemas"]["RegistrationQuestion"][];
+                    };
+                };
+            };
+            404: components["responses"]["Error"];
+        };
+    };
+    putRegistrationQuestions: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                eventId: components["parameters"]["EventId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    items: {
+                        /** Format: uuid */
+                        id?: string;
+                        label: string;
+                        /** @enum {string} */
+                        kind: "short" | "long" | "select" | "multi";
+                        options?: string[];
+                        required: boolean;
+                    }[];
+                };
+            };
+        };
+        responses: {
+            /** @description Saved questions */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        items: components["schemas"]["RegistrationQuestion"][];
+                    };
+                };
+            };
+            400: components["responses"]["Error"];
+            404: components["responses"]["Error"];
         };
     };
     listOrganizerRegistrations: {

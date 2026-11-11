@@ -26,6 +26,7 @@ import {
   hasEventMembership,
   type JoinPreviewResult,
 } from "@/lib/events";
+import type { Schemas } from "@/lib/api/client";
 import { isEventSlug, routes, withEventParam } from "@/lib/routes";
 import { getSession } from "@/lib/session";
 
@@ -327,6 +328,7 @@ export default async function EventLanding({
             sessionKind={session.kind}
             preview={preview}
             registrationState={event.registration_state}
+            questions={event.registration_questions ?? []}
           />
         </aside>
       </div>
@@ -346,6 +348,7 @@ function EventAction({
   sessionKind,
   preview,
   registrationState,
+  questions,
 }: {
   slug: string;
   name: string;
@@ -354,6 +357,7 @@ function EventAction({
   sessionKind: string;
   preview: JoinPreviewResult | null;
   registrationState: "not_open" | "open" | "closed";
+  questions: Schemas["RegistrationQuestion"][];
 }) {
   if (attendee && member === null)
     return <EventLinkState outcome={{ kind: "unreachable" }} />;
@@ -388,7 +392,12 @@ function EventAction({
   if (attendee && preview?.kind === "review")
     return (
       <div className="mt-8 flex flex-col gap-6">
-        <JoinReview slug={slug} name={name} preview={preview.preview} />
+        <JoinReview
+          slug={slug}
+          name={name}
+          preview={preview.preview}
+          questions={questions}
+        />
       </div>
     );
 

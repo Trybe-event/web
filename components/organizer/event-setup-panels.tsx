@@ -6,6 +6,8 @@ import { Field, Input, Select } from "@/components/ui";
 import { EventHero } from "@/components/events/event-hero";
 import type { Schemas } from "@/lib/api/client";
 import type { EventDraft } from "@/lib/event-form";
+import { RegistrationQuestionsEditor } from "@/components/engagement";
+import { useEventEditor } from "./event-editor-context";
 import { DraftTimeField } from "./event-fields";
 import { ProgramBuilder } from "./program-builder";
 
@@ -38,6 +40,7 @@ export function EventTicketNotice() {
 
 export function EventRegistrationSettings() {
   const form = useFormContext<EventDraft>();
+  const { event } = useEventEditor();
   return (
     <div className="space-y-6">
       <Field
@@ -92,10 +95,11 @@ export function EventRegistrationSettings() {
             <dd>Required profile</dd>
           </div>
         </dl>
-        <p>
-          Custom questions are being built. Contact visibility remains under
-          each attendee’s control.
-        </p>
+        <p>Contact visibility remains under each attendee’s control.</p>
+      </div>
+      <div className="space-y-3">
+        <h3 className="text-lg font-bold">Registration questions</h3>
+        <RegistrationQuestionsEditor eventId={event.id} />
       </div>
     </div>
   );
