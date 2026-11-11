@@ -3,11 +3,21 @@
 import { useAuth, useSignIn, useSignUp } from "@clerk/nextjs";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useEffect, useId, useState, type ReactNode } from "react";
-import { useForm, useWatch } from "react-hook-form";
+import { Controller, useForm, useWatch } from "react-hook-form";
 import { z } from "zod";
 
 import { workspacePath, type AccountType } from "@/lib/account";
-import { Alert, Button, Field, Input } from "@/components/ui";
+import {
+  Alert,
+  Button,
+  Field,
+  Input,
+  VerificationCodeInput,
+} from "@/components/ui";
+import {
+  isCompleteVerificationCode,
+  verificationCodeSchema,
+} from "@/lib/verification-code";
 import { authenticationDestination, signInStep } from "@/lib/auth-flow";
 import { newPasswordSchema } from "@/lib/password-policy";
 import {
@@ -25,9 +35,6 @@ import {
 import { TermsConsent } from "@/components/legal/legal-notice";
 import { EmailConfirmation } from "./email-confirmation";
 
-const codeSchema = z.object({
-  code: z.string().trim().min(1, "Enter your verification code."),
-});
 type Step =
   | "credentials"
   | "recovery"
@@ -111,8 +118,8 @@ export function AuthForm({
       confirm_password: "",
     },
   });
-  const verificationForm = useForm<z.infer<typeof codeSchema>>({
-    resolver: zodResolver(codeSchema),
+  const verificationForm = useForm<z.infer<typeof verificationCodeSchema>>({
+    resolver: zodResolver(verificationCodeSchema),
     defaultValues: { code: "" },
   });
   const passwordRecoveryForm = useForm<{ email: string }>({
@@ -132,6 +139,10 @@ export function AuthForm({
   const resetPassword = useWatch({
     control: newPasswordForm.control,
     name: "password",
+  });
+  const verificationCode = useWatch({
+    control: verificationForm.control,
+    name: "code",
   });
   async function performAuthenticationAction(action: () => Promise<void>) {
     setAuthenticationPending(true);
@@ -611,12 +622,16 @@ export function AuthForm({
             }
           >
             {(props) => (
-              <Input
-                {...props}
-                {...verificationForm.register("code")}
-                autoComplete="one-time-code"
-                inputMode="numeric"
-                disabled={isAuthenticationPending}
+              <Controller
+                name="code"
+                control={verificationForm.control}
+                render={({ field }) => (
+                  <VerificationCodeInput
+                    {...props}
+                    {...field}
+                    disabled={isAuthenticationPending}
+                  />
+                )}
               />
             )}
           </Field>
@@ -624,7 +639,9 @@ export function AuthForm({
             type="submit"
             className="primary-button w-full"
             loading={isAuthenticationPending}
-            disabled={!isLoaded}
+            disabled={
+              !isLoaded || !isCompleteVerificationCode(verificationCode)
+            }
           >
             {isOrganizerEmailCheck
               ? "I’ve confirmed my email"

@@ -182,9 +182,18 @@ test("policy routes cannot be interpreted as invitation destinations", () => {
 const { Field, Input } = compile("../components/ui/field.tsx", {
   "./cn": { cn: (...values) => values.filter(Boolean).join(" ") },
 });
+const verificationPolicy = compile("../lib/verification-code.ts");
+const { VerificationCodeInput } = compile(
+  "../components/ui/verification-code-input.tsx",
+  {
+    "@/lib/verification-code": verificationPolicy,
+    "./field": { Input },
+  },
+);
 const ui = {
   Field,
   Input,
+  VerificationCodeInput,
   Alert: ({ children }) => React.createElement("div", null, children),
   Button: ({ children, type, disabled, onClick }) =>
     React.createElement("button", { type, disabled, onClick }, children),
@@ -199,6 +208,7 @@ const authDependencies = {
   "@/components/ui": ui,
   "@/lib/auth-flow": compile("../lib/auth-flow.ts"),
   "@/lib/password-policy": compile("../lib/password-policy.ts"),
+  "@/lib/verification-code": verificationPolicy,
   "@/lib/authentication-errors": compile("../lib/authentication-errors.ts"),
   "./password-checklist": {
     PasswordChecklist: () =>
@@ -263,6 +273,45 @@ test("organizer email stage shows the submitted address, real code input and rec
     /Tell us about your business|juve\.events|trybevent@gmail.com/,
   );
   assert.match(html, /autoComplete="one-time-code"/i);
+  assert.equal((html.match(/aria-label="Digit [1-6] of 6"/g) ?? []).length, 6);
+});
+
+test("both account types share six numeric boxes for every code verification step", () => {
+  for (const type of ["attendee", "organizer"]) {
+    for (const step of [
+      "verify-email",
+      "reset-code",
+      "email",
+      "phone",
+      "totp",
+    ]) {
+      let stateIndex = 0;
+      const { AuthForm: VerificationForm } = compile(
+        "../components/auth/auth-form.tsx",
+        {
+          ...authDependencies,
+          react: {
+            ...React,
+            useEffect: () => {},
+            useState: (initial) => [
+              stateIndex++ === 1 ? step : initial,
+              () => {},
+            ],
+          },
+        },
+      );
+      const html = renderToStaticMarkup(
+        React.createElement(VerificationForm, { type, mode: "sign-up" }),
+      );
+      assert.equal(
+        (html.match(/aria-label="Digit [1-6] of 6"/g) ?? []).length,
+        6,
+        `${type} ${step}`,
+      );
+      assert.equal((html.match(/inputMode="numeric"/gi) ?? []).length, 6);
+      assert.match(html, /<button[^>]*type="submit"[^>]*disabled=""/);
+    }
+  }
 });
 
 test("only organizer signup collects business details; both signup types show the policy notice", () => {
