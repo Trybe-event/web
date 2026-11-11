@@ -28,6 +28,11 @@ import {
 import { api, errorMessage, fieldErrors, type Schemas } from "@/lib/api/client";
 import { routes, withEventParam } from "@/lib/routes";
 import {
+  hasLinkScheme,
+  isWebsiteLink,
+  normalizeProfileLink,
+} from "@/lib/profile-link";
+import {
   MAX_PROFILE_PHOTO_SOURCE_BYTES,
   PROFILE_PHOTO_TYPES,
   optimizeProfilePhoto,
@@ -61,15 +66,23 @@ const schema = z
     interests: tagList,
     links: z
       .array(
-        z.object({
-          kind: z.enum(
-            LINK_KINDS as [Schemas["LinkKind"], ...Schemas["LinkKind"][]],
-          ),
-          value: z.string().trim().min(1, "Required.").max(300, "Too long."),
-          visibility: z.enum(
-            VISIBILITIES as [Schemas["Visibility"], ...Schemas["Visibility"][]],
-          ),
-        }),
+        z
+          .object({
+            kind: z.enum(
+              LINK_KINDS as [Schemas["LinkKind"], ...Schemas["LinkKind"][]],
+            ),
+            value: z.string().trim().min(1, "Required.").max(300, "Too long."),
+            visibility: z.enum(
+              VISIBILITIES as [
+                Schemas["Visibility"],
+                ...Schemas["Visibility"][],
+              ],
+            ),
+          })
+          .transform((link) => ({
+            ...link,
+            value: normalizeProfileLink(link.kind, link.value),
+          })),
       )
       .max(10, "Add up to 10 links."),
   })
@@ -485,9 +498,38 @@ export function ProfileForm({
             </Field>
             <Field
               label="Link, handle or number"
+              hint={
+                isWebsiteLink(watchedLinks?.[i]?.kind ?? "")
+                  ? "Enter a domain such as google.com, or paste a complete link."
+                  : undefined
+              }
               error={errors.links?.[i]?.value?.message}
             >
-              {(p) => <Input {...p} {...form.register(`links.${i}.value`)} />}
+              {(p) => (
+                <div className="flex min-w-0 items-center gap-2">
+                  {isWebsiteLink(watchedLinks?.[i]?.kind ?? "") &&
+                    !hasLinkScheme(watchedLinks?.[i]?.value ?? "") && (
+                      <span
+                        aria-hidden="true"
+                        className="shrink-0 text-sm text-muted"
+                      >
+                        https://
+                      </span>
+                    )}
+                  <Input
+                    {...p}
+                    {...form.register(`links.${i}.value`)}
+                    className="min-w-0 flex-1"
+                    autoCapitalize="none"
+                    spellCheck={false}
+                    placeholder={
+                      isWebsiteLink(watchedLinks?.[i]?.kind ?? "")
+                        ? "yourwebsite.com"
+                        : undefined
+                    }
+                  />
+                </div>
+              )}
             </Field>
             <Field
               label="Who can see this"
