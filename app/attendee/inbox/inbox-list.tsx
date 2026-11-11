@@ -74,9 +74,9 @@ export function InboxList() {
   }, [revision, retryRevision]);
 
   return (
-    <div className="mx-auto flex w-full max-w-2xl flex-col px-4 py-8">
+    <div className="attendee-network-list flex flex-col">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <h1 className="text-3xl font-bold">Inbox</h1>
+        <h2 className="attendee-list-heading">Messages</h2>
         {!loading && !failure && unread > 0 && (
           <Badge tone="accent" aria-label={`${unread} unread messages`}>
             {unread} unread

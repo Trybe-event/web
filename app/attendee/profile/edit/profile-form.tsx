@@ -389,7 +389,9 @@ export function ProfileForm({
       </Card>
 
       <Card className="flex flex-col gap-5">
-        <h2 className="text-lg font-bold">Help the right people find you</h2>
+        <h2 id="networking-profile" className="scroll-mt-24 text-lg font-bold">
+          Help the right people find you
+        </h2>
         <Field
           label="Skills"
           hint="Type a skill, then press comma or Enter."

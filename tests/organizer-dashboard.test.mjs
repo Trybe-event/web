@@ -140,7 +140,8 @@ test("dashboard shows all event statuses without aggregate metrics, trend querie
   );
   assert.ok(!rendered.includes("hidden@example.test"));
   assert.ok(rendered.includes("/organizer/events/event-0/edit"));
-  assert.ok(rendered.includes("/organizer/events/event-1/share"));
+  assert.ok(rendered.includes('href="/organizer/events/event-1"'));
+  assert.ok(rendered.includes('href="/organizer/events/event-2"'));
   assert.equal(
     harness.requests.filter((request) =>
       request.path.includes("registrations/trend"),

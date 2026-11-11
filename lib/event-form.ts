@@ -1,6 +1,33 @@
 import { z } from "zod";
 import type { Schemas } from "./api/client";
 
+// Mirrors the API's fixed category list (internal/events/patch.go).
+export const eventCategories = [
+  "Business & Professional",
+  "Entrepreneurship & Startups",
+  "Finance & Investing",
+  "Technology",
+  "AI & Data",
+  "Science & Research",
+  "Education & Learning",
+  "Career & Jobs",
+  "Community & Culture",
+  "Government & Politics",
+  "Charity & Causes",
+  "Health & Wellness",
+  "Sports & Fitness",
+  "Food & Drink",
+  "Music",
+  "Film, Media & Entertainment",
+  "Performing Arts",
+  "Visual Arts",
+  "Fashion & Beauty",
+  "Design & Creativity",
+  "Faith & Spirituality",
+  "Travel & Outdoor",
+  "Other",
+] as const;
+
 const timestamp = z
   .string()
   .refine(
@@ -54,6 +81,16 @@ export const eventDraftSchema = z
     registration_closes_at: timestamp.nullable(),
     networking_opens_at: timestamp.nullable(),
     networking_closes_at: timestamp.nullable(),
+    category: z.string().nullable().optional(),
+    approval_mode: z.enum(["automatic", "review"]).optional(),
+    capacity: z
+      .number({ message: "Enter a whole number." })
+      .int("Enter a whole number.")
+      .min(1, "Capacity must be at least 1.")
+      .max(100000)
+      .nullable()
+      .optional(),
+    waitlist_enabled: z.boolean().optional(),
   })
   .superRefine((event, context) => {
     if (event.format === "physical" || event.format === "hybrid") {

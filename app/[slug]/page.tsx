@@ -5,6 +5,8 @@ import {
   Globe,
   Building2,
   CalendarClock,
+  Tag,
+  UserCheck,
 } from "lucide-react";
 import Link from "next/link";
 import { EventSharing } from "@/components/events/event-sharing";
@@ -216,7 +218,59 @@ export default async function EventLanding({
                   />
                   <span>
                     Organized by <strong>{event.organizer_name}</strong>
+                    {(event.organizer_support_email ||
+                      event.organizer_support_phone ||
+                      event.organizer_website) && (
+                      <span className="mt-1 flex flex-wrap gap-x-3 gap-y-1 text-sm">
+                        {event.organizer_support_email && (
+                          <a
+                            className="underline"
+                            href={`mailto:${event.organizer_support_email}`}
+                          >
+                            {event.organizer_support_email}
+                          </a>
+                        )}
+                        {event.organizer_support_phone && (
+                          <a
+                            className="underline"
+                            href={`tel:${event.organizer_support_phone}`}
+                          >
+                            {event.organizer_support_phone}
+                          </a>
+                        )}
+                        {event.organizer_website && (
+                          <a
+                            className="underline"
+                            href={event.organizer_website}
+                            target="_blank"
+                            rel="noopener noreferrer nofollow"
+                          >
+                            Website
+                          </a>
+                        )}
+                      </span>
+                    )}
                   </span>
+                </p>
+              )}
+              {event.category && (
+                <p className="flex items-start gap-2">
+                  <Tag
+                    aria-hidden="true"
+                    size={16}
+                    className="mt-0.5 shrink-0 text-accent-ink"
+                  />
+                  <span>{event.category}</span>
+                </p>
+              )}
+              {event.approval_required && (
+                <p className="flex items-start gap-2">
+                  <UserCheck
+                    aria-hidden="true"
+                    size={16}
+                    className="mt-0.5 shrink-0 text-accent-ink"
+                  />
+                  <span>The organizer approves each registration.</span>
                 </p>
               )}
               {event.registration_closes_at && (

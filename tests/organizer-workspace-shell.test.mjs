@@ -17,6 +17,22 @@ const ui = {
   Button: element("button"),
   Card: element("section"),
   Input: element("input"),
+  Select: element("select"),
+  Textarea: element("textarea"),
+  Switch: ({ label, checked, onChange }) =>
+    React.createElement(
+      "button",
+      {
+        role: "switch",
+        "aria-label": label,
+        "aria-checked": checked,
+        onClick: () => onChange(!checked),
+      },
+      label,
+    ),
+  Alert: element("output"),
+  Field: ({ label, error, children }) =>
+    React.createElement("label", null, label, children({ id: label }), error),
   Dialog: ({ open, title, description, children, actions }) =>
     open
       ? React.createElement(
@@ -39,11 +55,9 @@ function compile(file, dependencies = {}) {
     },
   }).outputText;
   const loaded = { exports: {} };
-  vm.runInNewContext(`(function(require,module,exports){${javascript}\n})`)(
-    (name) => dependencies[name] ?? require(name),
-    loaded,
-    loaded.exports,
-  );
+  vm.runInNewContext(`(function(require,module,exports){${javascript}\n})`, {
+    AbortSignal,
+  })((name) => dependencies[name] ?? require(name), loaded, loaded.exports);
   return loaded.exports;
 }
 function walk(node, predicate) {
@@ -55,25 +69,41 @@ function walk(node, predicate) {
     ),
   ];
 }
-function harness(file, exportName, props, pathname = "/organizer") {
+function harness(
+  file,
+  exportName,
+  props,
+  pathname = "/organizer",
+  dependencies = {},
+) {
   const states = [];
   let stateIndex = 0;
   const component = compile(file, {
     react: {
       ...React,
+      useRef(initial) {
+        const index = stateIndex++;
+        if (!(index in states)) states[index] = { current: initial };
+        return states[index];
+      },
       useState(initial) {
         const index = stateIndex++;
         if (!(index in states)) states[index] = initial;
         return [
           states[index],
           (value) => {
-            states[index] = value;
+            states[index] =
+              typeof value === "function" ? value(states[index]) : value;
           },
         ];
       },
     },
     "next/link": { default: element("a"), __esModule: true },
-    "next/navigation": { usePathname: () => pathname },
+    "next/navigation": {
+      usePathname: () => pathname,
+      useRouter: () => ({ refresh() {} }),
+    },
+    "@/lib/api/client": {},
     "@/components/ui": ui,
     "@/components/brand-mark": {
       BrandMark: () =>
@@ -86,6 +116,10 @@ function harness(file, exportName, props, pathname = "/organizer") {
       ThemeToggle: () => React.createElement("button", null, "Choose theme"),
     },
     "@/lib/legal": { legalContact: { email: "trybevent@gmail.com" } },
+    "@/components/organizer/signed-in-devices": {
+      SignedInDevices: () => React.createElement("p", null, "Devices"),
+    },
+    ...dependencies,
   })[exportName];
   let tree;
   function render() {
@@ -228,15 +262,34 @@ test("event tabs and search filter only the organizer-provided rows without losi
   assert.match(view.html(), /Draft event/);
 });
 
-test("settings show saved account details and do not pretend unsupported business edits or payments are saved", () => {
+const savedAccount = {
+  id: "a1",
+  type: "organizer",
+  full_name: "Alex Host",
+  organization: "Gather Studio",
+  created_at: "2026-11-01T00:00:00Z",
+  business: {
+    support_email: "help@gather.ng",
+    support_phone: null,
+    website: null,
+    city: "Lagos",
+    country_code: "NG",
+    timezone: "Africa/Lagos",
+    about: "",
+    notify_event_updates: true,
+    notify_event_summaries: true,
+  },
+};
+
+test("settings open on the editable business profile and keep unsupported payments disclosed", () => {
   const view = harness(
     "../components/organizer/workspace-sections.tsx",
     "OrganizerSettings",
-    { businessName: "Gather Studio", ownerName: "Alex Host" },
+    { account: savedAccount },
   );
-  assert.match(view.html(), /value="Gather Studio"/);
-  assert.match(view.html(), /readOnly=""/);
-  assert.doesNotMatch(view.html(), /Save changes|Saved successfully/);
+  const form = view.find((node) => node.type?.name === "BusinessProfileForm");
+  assert.equal(form[0]?.props.account.organization, "Gather Studio");
+  assert.equal(form[0]?.props.account.full_name, "Alex Host");
   view
     .find(
       (node) =>
@@ -246,6 +299,122 @@ test("settings show saved account details and do not pretend unsupported busines
     .props.onClick();
   view.render();
   assert.match(view.html(), /Payments are coming/);
+  assert.doesNotMatch(view.html(), /Saved successfully/);
+});
+
+function businessForm(result, exportName = "BusinessProfileForm") {
+  const calls = { put: [], refresh: 0, saved: [] };
+  const view = harness(
+    "../components/organizer/workspace-sections.tsx",
+    exportName,
+    { account: savedAccount, onSaved: (account) => calls.saved.push(account) },
+    "/organizer/settings",
+    {
+      "next/navigation": {
+        useRouter: () => ({ refresh: () => calls.refresh++ }),
+      },
+      "@/lib/api/client": {
+        api: {
+          PUT: async (path, init) => {
+            calls.put.push({ path, body: init.body });
+            return result;
+          },
+        },
+        fieldErrors: (error) => error?.fields ?? {},
+        errorMessage: (error, fallback = "Something went wrong.") =>
+          error?.message ?? fallback,
+      },
+    },
+  );
+  const input = (label) =>
+    view
+      .find((node) => node.props?.label === label)[0]
+      .props.children({ id: label });
+  return {
+    view,
+    calls,
+    type(label, value) {
+      input(label).props.onChange({ target: { value } });
+      view.render();
+    },
+    async submit() {
+      view
+        .find((node) => node.type === "form")[0]
+        .props.onSubmit({ preventDefault() {} });
+      await new Promise((resolve) => setImmediate(resolve));
+      view.render();
+    },
+  };
+}
+
+test("business profile saves the whole profile and refreshes the workspace", async () => {
+  const form = businessForm({
+    data: {
+      ...savedAccount,
+      organization: "New Studio",
+      full_name: "Ada Okafor",
+    },
+    response: { ok: true, status: 200 },
+  });
+  assert.match(form.view.html(), /value="Gather Studio"/);
+  assert.match(form.view.html(), /value="help@gather.ng"/);
+  form.type("Business name", " New  Studio ");
+  form.type("Contact name", "Ada Okafor");
+  form.type("Website", "https://gather.ng");
+  await form.submit();
+  // The body is built inside the test VM, so compare its JSON across realms.
+  assert.deepEqual(JSON.parse(JSON.stringify(form.calls.put)), [
+    {
+      path: "/me/account",
+      body: {
+        ...savedAccount.business,
+        full_name: "Ada Okafor",
+        organization: " New  Studio ",
+        website: "https://gather.ng",
+      },
+    },
+  ]);
+  assert.equal(form.calls.refresh, 1);
+  assert.equal(form.calls.saved.length, 1);
+  assert.match(form.view.html(), /value="New Studio"/);
+  assert.match(form.view.html(), /Business profile saved/);
+});
+
+test("business profile shows API field errors and does not claim a save", async () => {
+  const form = businessForm({
+    error: { code: "invalid", fields: { organization: "Required." } },
+    response: { ok: false, status: 400 },
+  });
+  form.type("Business name", "");
+  await form.submit();
+  assert.equal(form.calls.refresh, 0);
+  assert.match(form.view.html(), /Required\./);
+  assert.match(form.view.html(), /Some fields need attention/);
+  assert.doesNotMatch(form.view.html(), /Business profile saved/);
+});
+
+test("email switches save with the rest of the profile unchanged", async () => {
+  const form = businessForm(
+    {
+      data: {
+        ...savedAccount,
+        business: { ...savedAccount.business, notify_event_summaries: false },
+      },
+      response: { ok: true, status: 200 },
+    },
+    "NotificationSettings",
+  );
+  form.view
+    .find((node) => node.props?.label === "Event summaries")[0]
+    .props.onChange(false);
+  form.view.render();
+  await form.submit();
+  const body = JSON.parse(JSON.stringify(form.calls.put[0].body));
+  assert.equal(body.notify_event_summaries, false);
+  assert.equal(body.notify_event_updates, true);
+  assert.equal(body.support_email, "help@gather.ng");
+  assert.equal(body.organization, "Gather Studio");
+  assert.match(form.view.html(), /Email preferences saved/);
 });
 
 test("new organizer sections guard the account before accessing event data or rendering settings", async () => {
@@ -264,6 +433,12 @@ test("new organizer sections guard the account before accessing event data or re
           return [];
         },
       },
+      "@/lib/api/server": {
+        serverApi: async () => {
+          dataCalls++;
+          return { GET: async () => ({ data: { items: [] } }) };
+        },
+      },
       "@/components/auth/workspace": {},
       "@/components/organizer/workspace-sections": {},
       "@/components/organizer/event-fields": {},
@@ -273,4 +448,137 @@ test("new organizer sections guard the account before accessing event data or re
     await assert.rejects(Page(), /redirect:wrong-account/);
     assert.equal(dataCalls, 0);
   }
+});
+
+test("owned event changes the sidebar, breadcrumb and selected route without losing business owner controls", () => {
+  const root = "/organizer/events/4498a070-f75f-44c8-ab2e-69138d0914b1";
+  const view = harness(
+    "../components/organizer/workspace-shell.tsx",
+    "OrganizerWorkspaceShell",
+    {
+      businessName: "Gather Studio",
+      ownerName: "Alex Host",
+      children: "Event-specific content",
+      event: {
+        id: "4498a070-f75f-44c8-ab2e-69138d0914b1",
+        name: "Builders Summit",
+        status: "published",
+      },
+    },
+    `${root}/analytics`,
+  );
+  const nav = renderToStaticMarkup(view.find((node) => node.type === "nav")[0]);
+  for (const label of [
+    "All events",
+    "Overview",
+    "Event setup",
+    "Attendance",
+    "Reach",
+    "Analytics",
+    "Preview event",
+    "Event settings",
+  ])
+    assert.ok(nav.includes(label), label);
+  assert.ok(nav.includes(`href="${root}/analytics"`));
+  assert.match(nav, /aria-label="Analytics"[^>]*aria-current="page"/);
+  assert.doesNotMatch(nav, /href="\/organizer\/(audience|payments|settings)"/);
+  assert.match(view.html(), /Builders Summit/);
+  assert.match(view.html(), /Published event/);
+  assert.match(view.html(), /Alex Host/);
+  view.click("Collapse sidebar");
+  assert.match(view.html(), /aria-label="Event setup"/);
+  view.click("Open navigation");
+  assert.match(view.html(), /Event-specific content/);
+});
+
+test("newly saved unnamed drafts get the event workspace and do not masquerade as published", () => {
+  const view = harness(
+    "../components/organizer/workspace-shell.tsx",
+    "OrganizerWorkspaceShell",
+    {
+      businessName: "Gather Studio",
+      ownerName: "Alex Host",
+      event: { id: "draft-id", name: "", status: "draft" },
+    },
+    "/organizer/events/draft-id/edit",
+  );
+  assert.match(view.html(), /Untitled event/);
+  assert.match(view.html(), /Draft event/);
+  assert.match(view.html(), /aria-label="Event setup"[^>]*aria-current="page"/);
+});
+
+test("audience lists registrations by status and approves through the API", async () => {
+  const calls = [];
+  const rows = [
+    {
+      id: "r1",
+      event_id: "e1",
+      event_name: "Hack Day",
+      attendee_name: "Tomi",
+      status: "pending",
+      registered_at: "2026-11-01T09:00:00Z",
+      decided_at: null,
+    },
+    {
+      id: "r2",
+      event_id: "e1",
+      event_name: "Hack Day",
+      attendee_name: "Seyi",
+      status: "active",
+      registered_at: "2026-11-01T10:00:00Z",
+      decided_at: null,
+    },
+  ];
+  const view = harness(
+    "../components/organizer/workspace-sections.tsx",
+    "OrganizerAudience",
+    { initial: rows },
+    "/organizer/audience",
+    {
+      "@/lib/api/client": {
+        api: {
+          GET: async () => ({
+            response: { ok: true },
+            data: {
+              items: rows.map((row) =>
+                row.id === "r1" ? { ...row, status: "active" } : row,
+              ),
+            },
+          }),
+          POST: async (path, init) => {
+            calls.push({
+              path,
+              id: init.params.path.registrationId,
+              body: init.body,
+            });
+            return {
+              data: {
+                id: "r1",
+                event_id: "e1",
+                status: "active",
+                joined_at: "x",
+              },
+            };
+          },
+        },
+        errorMessage: () => "failed",
+      },
+    },
+  );
+  assert.match(view.html(), /Pending \(1\)/);
+  assert.match(view.html(), /Approved \(1\)/);
+  assert.doesNotMatch(view.html(), /Approve Seyi/);
+  view
+    .find((node) => node.props?.["aria-label"] === "Approve Tomi")[0]
+    .props.onClick();
+  await new Promise((resolve) => setImmediate(resolve));
+  view.render();
+  assert.deepEqual(JSON.parse(JSON.stringify(calls)), [
+    {
+      path: "/organizer/registrations/{registrationId}/decision",
+      id: "r1",
+      body: { decision: "approve" },
+    },
+  ]);
+  assert.match(view.html(), /Approved \(2\)/);
 });

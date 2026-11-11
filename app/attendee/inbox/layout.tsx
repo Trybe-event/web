@@ -1,4 +1,5 @@
-import { UnavailableNotice, WorkspaceShell } from "@/components/auth/workspace";
+import { UnavailableNotice } from "@/components/auth/workspace";
+import { AttendeeNetworkFrame } from "@/components/attendee/network-frame";
 import { requireAccount } from "@/lib/session";
 
 // The guard runs here, before the shell renders, so signed-out visitors are
@@ -11,12 +12,16 @@ export default async function InboxLayout({
 }) {
   const access = await requireAccount("attendee");
   return (
-    <WorkspaceShell type="attendee">
+    <AttendeeNetworkFrame
+      accountName={
+        "unavailable" in access ? undefined : access.account.full_name
+      }
+    >
       {"unavailable" in access ? (
         <UnavailableNotice href="/attendee/inbox" />
       ) : (
         children
       )}
-    </WorkspaceShell>
+    </AttendeeNetworkFrame>
   );
 }

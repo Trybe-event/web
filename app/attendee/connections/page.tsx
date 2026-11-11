@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 
 import { UnavailableNotice } from "@/components/auth/workspace";
+import { AttendeeNetworkFrame } from "@/components/attendee/network-frame";
 import { requireAccount } from "@/lib/session";
 
 import { ConnectionsTabs } from "./connections-tabs";
@@ -12,6 +13,14 @@ export default async function ConnectionsPage() {
   // or a signed-out visitor never reaches the lists below.
   const guard = await requireAccount("attendee");
   if ("unavailable" in guard)
-    return <UnavailableNotice href="/attendee/connections" />;
-  return <ConnectionsTabs />;
+    return (
+      <AttendeeNetworkFrame>
+        <UnavailableNotice href="/attendee/connections" />
+      </AttendeeNetworkFrame>
+    );
+  return (
+    <AttendeeNetworkFrame accountName={guard.account.full_name}>
+      <ConnectionsTabs mode="connections" />
+    </AttendeeNetworkFrame>
+  );
 }

@@ -47,7 +47,8 @@ export interface paths {
         };
         /** The caller's bound account, or 404 when no account type is bound yet */
         get: operations["getMyAccount"];
-        put?: never;
+        /** Replace the organizer's names and business profile (idempotent). Account type and the private signup phone are not changed. */
+        put: operations["putMyOrganizerAccount"];
         post?: never;
         delete?: never;
         options?: never;
@@ -474,7 +475,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Explicitly join an event (idempotent) */
+        /** Explicitly register for an event (idempotent). The status says whether the attendee is admitted, pending review or waitlisted. */
         post: operations["joinEvent"];
         delete?: never;
         options?: never;
@@ -494,6 +495,42 @@ export interface paths {
         get?: never;
         put?: never;
         post: operations["leaveEvent"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/organizer/registrations": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Registrations across the caller's events (newest 500), or one event's. Name and state only. */
+        get: operations["listOrganizerRegistrations"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/organizer/registrations/{registrationId}/decision": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                registrationId: string;
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Approve or reject a registration (idempotent). Approval respects capacity. */
+        post: operations["decideRegistration"];
         delete?: never;
         options?: never;
         head?: never;
@@ -1029,12 +1066,46 @@ export interface components {
             organization?: string | null;
             /** Format: date-time */
             created_at: string;
+            /** @description Present for organizers only */
+            business?: components["schemas"]["OrganizerBusiness"];
+        };
+        OrganizerBusiness: {
+            /** @description Public on the organizer's event pages */
+            support_email: string | null;
+            /** @description Public on the organizer's event pages; E.164 */
+            support_phone: string | null;
+            website: string | null;
+            city: string | null;
+            country_code: string;
+            /** @description IANA zone used as the default for new events */
+            timezone: string;
+            about: string;
+            /** @description Event created, started, ending and end reminder emails */
+            notify_event_updates: boolean;
+            /** @description Post-event summary email */
+            notify_event_summaries: boolean;
         };
         OrganizerSignup: {
             full_name: string;
             organization: string;
             /** @description Optional private business contact in E.164 format. Omitted from account and public event responses. */
             phone?: string | null;
+        };
+        /** @description Full replacement. Optional fields left out are cleared or reset to their defaults (country NG, timezone Africa/Lagos, both notifications on). */
+        OrganizerAccountInput: {
+            full_name: string;
+            organization: string;
+            /** Format: email */
+            support_email?: string | null;
+            support_phone?: string | null;
+            /** Format: uri */
+            website?: string | null;
+            city?: string | null;
+            country_code?: string;
+            timezone?: string;
+            about?: string;
+            notify_event_updates?: boolean;
+            notify_event_summaries?: boolean;
         };
         AttendeeSignup: {
             full_name: string;
@@ -1153,6 +1224,17 @@ export interface components {
             networking_opens_at?: string | null;
             /** Format: date-time */
             networking_closes_at?: string | null;
+            /** @description One of the fixed categories, e.g. Technology, Music, Business & Professional */
+            category?: string | null;
+            /**
+             * @description review holds every registration as pending until the organizer decides
+             * @enum {string}
+             */
+            approval_mode?: "automatic" | "review";
+            /** @description Most admitted attendees; null means no limit */
+            capacity?: number | null;
+            /** @description When full, new registrations wait and are admitted in order as places free up */
+            waitlist_enabled?: boolean;
         };
         Event: components["schemas"]["EventInput"] & {
             /** Format: uuid */
@@ -1178,6 +1260,12 @@ export interface components {
             name: string;
             /** @description Public host organization name; no personal account fields */
             organizer_name?: string;
+            /** @description Present only when the host published one */
+            organizer_support_email?: string;
+            /** @description Present only when the host published one */
+            organizer_support_phone?: string;
+            /** @description Present only when the host published one */
+            organizer_website?: string;
             /** Format: date-time */
             registration_closes_at?: string | null;
             format: components["schemas"]["EventFormat"];
@@ -1192,6 +1280,9 @@ export interface components {
             summary?: string;
             description?: string;
             topics?: string[];
+            category?: string | null;
+            /** @description Registrations wait for the organizer's approval */
+            approval_required?: boolean;
             image_url?: string | null;
             status: components["schemas"]["EventStatus"];
             registration_state: components["schemas"]["WindowState"];
@@ -1253,11 +1344,30 @@ export interface components {
         };
         Membership: {
             /** Format: uuid */
+            id?: string;
+            /** Format: uuid */
             event_id: string;
-            /** @enum {string} */
-            status: "active" | "left" | "removed";
+            /**
+             * @description Only active members can network; pending waits for the organizer, waitlisted for a free place
+             * @enum {string}
+             */
+            status: "active" | "pending" | "waitlisted" | "rejected" | "left" | "removed";
             /** Format: date-time */
             joined_at: string;
+        };
+        OrganizerRegistration: {
+            /** Format: uuid */
+            id: string;
+            /** Format: uuid */
+            event_id: string;
+            event_name: string;
+            attendee_name: string;
+            /** @enum {string} */
+            status: "active" | "pending" | "waitlisted" | "rejected";
+            /** Format: date-time */
+            registered_at: string;
+            /** Format: date-time */
+            decided_at: string | null;
         };
         MyEvent: {
             event: components["schemas"]["PublicEvent"];
@@ -1433,6 +1543,34 @@ export interface operations {
             };
             401: components["responses"]["Error"];
             404: components["responses"]["Error"];
+        };
+    };
+    putMyOrganizerAccount: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["OrganizerAccountInput"];
+            };
+        };
+        responses: {
+            /** @description Saved account */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Account"];
+                };
+            };
+            400: components["responses"]["Error"];
+            401: components["responses"]["Error"];
+            403: components["responses"]["Error"];
+            409: components["responses"]["Error"];
         };
     };
     bindOrganizer: {
@@ -2203,6 +2341,7 @@ export interface operations {
                     "application/json": components["schemas"]["Membership"];
                 };
             };
+            403: components["responses"]["Error"];
             409: components["responses"]["Error"];
         };
     };
@@ -2224,6 +2363,63 @@ export interface operations {
                 };
                 content?: never;
             };
+        };
+    };
+    listOrganizerRegistrations: {
+        parameters: {
+            query?: {
+                event_id?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Registrations */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        items: components["schemas"]["OrganizerRegistration"][];
+                    };
+                };
+            };
+            400: components["responses"]["Error"];
+        };
+    };
+    decideRegistration: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                registrationId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** @enum {string} */
+                    decision: "approve" | "reject";
+                };
+            };
+        };
+        responses: {
+            /** @description Updated membership */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Membership"];
+                };
+            };
+            400: components["responses"]["Error"];
+            404: components["responses"]["Error"];
+            409: components["responses"]["Error"];
         };
     };
     listMyEvents: {

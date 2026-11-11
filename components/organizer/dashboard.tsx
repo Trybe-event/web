@@ -26,7 +26,7 @@ function EventRow({ event }: { event: OrganizerEvent }) {
   const destination =
     event.status === "draft"
       ? `/organizer/events/${encodeURIComponent(event.id)}/edit`
-      : `/organizer/events/${encodeURIComponent(event.id)}/share`;
+      : `/organizer/events/${encodeURIComponent(event.id)}`;
   return (
     <Card className="grid min-w-0 grid-cols-[5rem_minmax(0,1fr)] items-start gap-4 md:grid-cols-[6rem_minmax(0,1fr)]">
       <EventThumbnail imageUrl={event.image_url} name={event.name} />

@@ -13,6 +13,7 @@ import {
 import { localEventTime } from "@/lib/event-time";
 import { useEventEditor } from "./event-editor-context";
 import { DraftTimeField } from "./event-fields";
+import { RegistrationPolicyFields } from "./event-setup-panels";
 
 type Review = { event: Schemas["Event"]; program: Schemas["Program"] };
 const labels: Record<keyof EventDraft, string> = {
@@ -33,6 +34,10 @@ const labels: Record<keyof EventDraft, string> = {
   registration_closes_at: "Registration closes",
   networking_opens_at: "Networking opens",
   networking_closes_at: "Networking closes",
+  category: "Category",
+  approval_mode: "Registration approval",
+  capacity: "Capacity",
+  waitlist_enabled: "Waitlist when full",
 };
 
 function reviewedValue(name: keyof EventDraft, event: Schemas["Event"]) {
@@ -41,10 +46,18 @@ function reviewedValue(name: keyof EventDraft, event: Schemas["Event"]) {
   if (name.endsWith("_at") && value)
     return `${localEventTime(String(value), event.timezone || "UTC").replace("T", " ")} (${event.timezone || "UTC"})`;
   if (Array.isArray(value)) return value.join(", ") || "None";
+  if (name === "capacity" && value == null) return "No limit";
+  if (name === "waitlist_enabled") return value ? "On" : "Off";
+  if (name === "approval_mode")
+    return value === "review" ? "Review each registration" : "Automatic";
   return value == null || value === "" ? "Not set" : String(value);
 }
 
-export function EventSettings() {
+export function EventSettings({
+  reviewOnly = false,
+}: {
+  reviewOnly?: boolean;
+}) {
   const form = useFormContext<EventDraft>();
   const { event, save, busySections, setSectionBusy, reportErrors } =
     useEventEditor();
@@ -135,7 +148,7 @@ export function EventSettings() {
         }
         setPublishedEvent(result.data);
         router.replace(
-          `/organizer/events/${encodeURIComponent(result.data.id)}/share`,
+          `/organizer/events/${encodeURIComponent(result.data.id)}`,
         );
         router.refresh();
       } catch (error) {
@@ -152,50 +165,57 @@ export function EventSettings() {
   }
   return (
     <div className="space-y-5">
-      <Field
-        label="Event visibility"
-        error={form.formState.errors.visibility?.message}
-      >
-        {(props) => (
-          <Select {...props} required {...form.register("visibility")}>
-            <option value="">Choose visibility</option>
-            <option value="private">Private</option>
-            <option value="public">Public</option>
-          </Select>
-        )}
-      </Field>
-      <p className="text-sm text-muted">
-        Public events can appear in discovery and recommendations. Private
-        events stay out of public discovery. Anyone with a private registration
-        link can forward it; the link is not an invitation-only access control.
-      </p>
-      <div className="grid gap-5 md:grid-cols-2">
-        <DraftTimeField
-          name="registration_opens_at"
-          label="Registration opens"
-          optional
-        />
-        <DraftTimeField
-          name="registration_closes_at"
-          label="Registration closes"
-          optional
-        />
-        <DraftTimeField
-          name="networking_opens_at"
-          label="Networking opens"
-          optional
-        />
-        <DraftTimeField
-          name="networking_closes_at"
-          label="Networking closes"
-          optional
-        />
-      </div>
-      <p className="text-sm text-muted">
-        Leave a window boundary empty to leave that boundary unrestricted. All
-        times use your event timezone. Existing connections remain available
-        when new networking closes.
-      </p>
+      {!reviewOnly && (
+        <>
+          {" "}
+          <Field
+            label="Event visibility"
+            error={form.formState.errors.visibility?.message}
+          >
+            {(props) => (
+              <Select {...props} required {...form.register("visibility")}>
+                <option value="">Choose visibility</option>
+                <option value="private">Private</option>
+                <option value="public">Public</option>
+              </Select>
+            )}
+          </Field>
+          <p className="text-sm text-muted">
+            Public events can appear in discovery and recommendations. Private
+            events stay out of public discovery. Anyone with a private
+            registration link can forward it; the link is not an invitation-only
+            access control.
+          </p>
+          <RegistrationPolicyFields />
+          <div className="grid gap-5 md:grid-cols-2">
+            <DraftTimeField
+              name="registration_opens_at"
+              label="Registration opens"
+              optional
+            />
+            <DraftTimeField
+              name="registration_closes_at"
+              label="Registration closes"
+              optional
+            />
+            <DraftTimeField
+              name="networking_opens_at"
+              label="Networking opens"
+              optional
+            />
+            <DraftTimeField
+              name="networking_closes_at"
+              label="Networking closes"
+              optional
+            />
+          </div>
+          <p className="text-sm text-muted">
+            Leave a window boundary empty to leave that boundary unrestricted.
+            All times use your event timezone. Existing connections remain
+            available when new networking closes.
+          </p>
+        </>
+      )}
       {hasUnfinishedEdits && (
         <p role="status">
           Finish or cancel your program edits and wait for image uploads before
@@ -303,7 +323,8 @@ export function EventSettings() {
             >
               <strong>Your event is published.</strong>
               <p className="text-sm">
-                Opening the share page with your registration link and QR code.
+                Opening your event overview. Your registration link and QR code
+                are ready under Reach.
               </p>
               {publishedEvent.registration_url && (
                 <p className="break-all text-sm">

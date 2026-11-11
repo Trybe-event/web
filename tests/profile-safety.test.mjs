@@ -24,7 +24,15 @@ test("your own profile cannot block or report you", () => {
 });
 
 test("your own profile still deletes the account and edits it", () => {
+  const menu = readFileSync(
+    new URL("../components/attendee/profile-menu.tsx", import.meta.url),
+    "utf8",
+  );
   assert.ok(source.includes('api.DELETE("/me")'), "delete account stays");
-  assert.ok(source.includes("/attendee/profile/edit"), "edit stays");
-  assert.ok(source.includes("/attendee/profile/settings"), "settings stay");
+  assert.ok(
+    source.includes("<AttendeeProfileMenu />"),
+    "profile mounts its settings menu",
+  );
+  assert.ok(menu.includes("/attendee/profile/edit"), "edit stays");
+  assert.ok(menu.includes("/attendee/profile/settings"), "settings stay");
 });

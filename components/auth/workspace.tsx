@@ -3,16 +3,11 @@ import Link from "next/link";
 import type { ReactNode } from "react";
 
 import { RelevancePrompt } from "@/components/feedback/relevance-prompt";
-import { InboxBadge } from "@/components/messaging/inbox-badge";
-import { Logo } from "@/components/ui";
 import { OrganizerWorkspaceShell } from "@/components/organizer/workspace-shell";
+import { AttendeeWorkspaceShell } from "@/components/attendee/workspace-shell";
 import { type AccountType, workspacePath } from "@/lib/account";
 
 import type { EventOption } from "@/lib/events";
-
-import { EventSwitcher } from "./event-switcher";
-import { SignOut } from "./sign-out";
-import { ThemeToggle } from "./theme-toggle";
 
 // WorkspaceShell is the header and frame shared by organizer and attendee workspaces.
 // Attendee pages pass the memberships from GET /me/events, which renders the event
@@ -22,17 +17,26 @@ export function WorkspaceShell({
   events,
   activeSlug,
   organizerAccount,
+  organizerEvent,
+  attendeeAccount,
   children,
 }: {
   type: AccountType;
+  attendeeAccount?: { full_name: string };
   events?: EventOption[];
   activeSlug?: string;
   organizerAccount?: { full_name: string; organization?: string | null };
+  organizerEvent?: {
+    id: string;
+    name?: string | null;
+    status: "draft" | "published" | "ended";
+  };
   children: ReactNode;
 }) {
   if (type === "organizer") {
     return (
       <OrganizerWorkspaceShell
+        event={organizerEvent}
         businessName={organizerAccount?.organization?.trim() || "Your business"}
         ownerName={organizerAccount?.full_name?.trim() || "Account owner"}
       >
@@ -41,30 +45,14 @@ export function WorkspaceShell({
     );
   }
   return (
-    <main className="workspace">
-      <header className="workspace-header">
-        <Link href={workspacePath(type)} aria-label="Trybe workspace home">
-          <Logo />
-        </Link>
-        <div>
-          <span className="workspace-badge">Attendee workspace</span>
-          <ThemeToggle />
-          {type === "attendee" && (
-            <nav aria-label="Attendee sections">
-              <InboxBadge />
-            </nav>
-          )}
-          <SignOut />
-        </div>
-      </header>
-      {events && events.length > 0 && (
-        <EventSwitcher events={events} activeSlug={activeSlug} />
-      )}
-      {/* The relevance prompt follows the attendee between sections, in the flow of
-          the page so it can never block what they came to do (web#28). */}
-      {type === "attendee" && <RelevancePrompt />}
+    <AttendeeWorkspaceShell
+      events={events}
+      activeSlug={activeSlug}
+      accountName={attendeeAccount?.full_name}
+    >
+      <RelevancePrompt />
       {children}
-    </main>
+    </AttendeeWorkspaceShell>
   );
 }
 

@@ -16,6 +16,8 @@ import {
 import { api, errorMessage, type Schemas } from "@/lib/api/client";
 
 import { LINK_LABELS, VISIBILITY_LABELS } from "./labels";
+import { AttendeeProfileMenu } from "@/components/attendee/profile-menu";
+import { SignOut } from "@/components/auth/sign-out";
 import { PortfolioLink } from "@/components/ui/portfolio-link";
 
 export function ProfileHome() {
@@ -43,80 +45,97 @@ export function ProfileHome() {
   }
 
   return (
-    <div className="mx-auto flex max-w-3xl flex-col gap-6 px-4 py-8">
-      <div className="flex items-center justify-between gap-4">
-        <h1 className="text-3xl font-bold">Your profile</h1>
-      </div>
+    <div className="attendee-profile-page">
+      <header className="attendee-page-heading">
+        <span className="attendee-kicker">
+          A LITTLE INTRODUCTION GOES A LONG WAY
+        </span>
+        <h1>Your profile</h1>
+        <p>Your story, your interests and how you choose to connect.</p>
+      </header>
       {failure && <Alert>{failure}</Alert>}
       {!profile && !failure && <Skeleton className="h-48" />}
       {profile && (
         <>
-          <Card className="flex flex-col gap-4">
-            <div className="flex items-center gap-4">
-              <Avatar
-                name={profile.full_name}
-                src={profile.photo_url}
-                size={64}
-              />
-              <div>
-                <p className="text-xl font-bold">{profile.full_name}</p>
-                <p className="text-muted">
-                  {profile.role}
-                  {profile.organization ? ` · ${profile.organization}` : ""}
+          <div className="attendee-profile-grid">
+            <Card className="attendee-profile-card flex flex-col gap-4">
+              <div className="flex items-center gap-4">
+                <Avatar
+                  name={profile.full_name}
+                  src={profile.photo_url}
+                  size={64}
+                />
+                <div>
+                  <p className="text-xl font-bold">{profile.full_name}</p>
+                  <p className="text-muted">
+                    {profile.role}
+                    {profile.organization ? ` · ${profile.organization}` : ""}
+                  </p>
+                </div>
+              </div>
+              <p>{profile.bio}</p>
+              {profile.goals && (
+                <p>
+                  <span className="font-semibold">Looking for: </span>
+                  {profile.goals}
                 </p>
-              </div>
-            </div>
-            <p>{profile.bio}</p>
-            {profile.goals && (
-              <p>
-                <span className="font-semibold">Looking for: </span>
-                {profile.goals}
-              </p>
-            )}
-            <TagList label="Skills" items={profile.skills} />
-            <TagList label="Interests" items={profile.interests} />
-            {profile.links.length > 0 && (
-              <div>
-                <h2 className="text-sm font-semibold">Links and contacts</h2>
-                <ul className="mt-2 flex flex-col gap-2">
-                  {profile.links.map((l, i) => (
-                    <li
-                      key={i}
-                      className="flex flex-wrap items-center justify-between gap-2 text-sm"
-                    >
-                      {l.kind === "portfolio" ? (
-                        <PortfolioLink value={l.value} />
-                      ) : (
-                        <span>
-                          <span className="font-semibold">
-                            {LINK_LABELS[l.kind]}:
-                          </span>{" "}
-                          {l.value}
-                        </span>
-                      )}
-                      <Badge
-                        tone={l.visibility === "hidden" ? "neutral" : "accent"}
+              )}
+              <TagList label="Skills" items={profile.skills} />
+              <TagList label="Interests" items={profile.interests} />
+              {profile.links.length > 0 && (
+                <div>
+                  <h2 className="text-sm font-semibold">Links and contacts</h2>
+                  <ul className="mt-2 flex flex-col gap-2">
+                    {profile.links.map((l, i) => (
+                      <li
+                        key={i}
+                        className="flex flex-wrap items-center justify-between gap-2 text-sm"
                       >
-                        {VISIBILITY_LABELS[l.visibility]}
-                      </Badge>
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            )}
-          </Card>
-          <div className="flex flex-wrap gap-3">
-            <ButtonLink href="/attendee/profile/edit">Edit profile</ButtonLink>
-            <ButtonLink href="/attendee/profile/preview" variant="secondary">
-              Preview how others see me
-            </ButtonLink>
-            <ButtonLink href="/attendee/profile/settings" variant="secondary">
-              Privacy settings
-            </ButtonLink>
-            <Button variant="danger" onClick={() => setShowDeleteDialog(true)}>
-              Delete account
-            </Button>
+                        {l.kind === "portfolio" ? (
+                          <PortfolioLink value={l.value} />
+                        ) : (
+                          <span>
+                            <span className="font-semibold">
+                              {LINK_LABELS[l.kind]}:
+                            </span>{" "}
+                            {l.value}
+                          </span>
+                        )}
+                        <Badge
+                          tone={
+                            l.visibility === "hidden" ? "neutral" : "accent"
+                          }
+                        >
+                          {VISIBILITY_LABELS[l.visibility]}
+                        </Badge>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+              <ButtonLink href="/attendee/profile/preview" variant="secondary">
+                Preview how others see me
+              </ButtonLink>
+            </Card>
+            <AttendeeProfileMenu />
           </div>
+          <section id="account-actions" className="attendee-account-actions">
+            <div>
+              <h2>Account actions</h2>
+              <p>
+                Sign out of this device, or permanently delete your account.
+              </p>
+            </div>
+            <div className="flex flex-wrap gap-3">
+              <SignOut />
+              <Button
+                variant="danger"
+                onClick={() => setShowDeleteDialog(true)}
+              >
+                Delete account
+              </Button>
+            </div>
+          </section>
           {showDeleteDialog && (
             <Dialog
               open={showDeleteDialog}
