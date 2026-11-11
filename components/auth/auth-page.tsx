@@ -7,7 +7,7 @@ import { getSession } from "@/lib/session";
 
 import { AuthForm } from "./auth-form";
 import { AuthShell } from "./auth-shell";
-import { LegalNotice } from "@/components/legal/legal-notice";
+import { TermsConsent } from "@/components/legal/legal-notice";
 
 // An attendee arriving from an event keeps that event through sign-in and sign-up
 // (web#7, web#8): the slug travels in the query and Clerk's redirect carries it on.
@@ -86,10 +86,10 @@ export async function AuthPage({
             disabled
             placeholder="Enter your password"
           />
+          {isSignUp && <TermsConsent checked={false} />}
           <button type="button" className="primary-button" disabled>
             {isSignUp ? "Create account" : "Sign in"}
           </button>
-          {isSignUp && <LegalNotice />}
           <p role="status">
             Account access is being prepared. Please check back shortly.
           </p>

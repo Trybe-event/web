@@ -35,7 +35,8 @@ export function TermsConsent({
   error,
 }: {
   checked: boolean;
-  onChange: (checked: boolean) => void;
+  // Without a handler the box is shown disabled, for pages where sign-up is unavailable.
+  onChange?: (checked: boolean) => void;
   error?: string;
 }) {
   return (
@@ -45,7 +46,10 @@ export function TermsConsent({
           type="checkbox"
           className="mt-1 size-4 shrink-0"
           checked={checked}
-          onChange={(event) => onChange(event.target.checked)}
+          disabled={!onChange}
+          {...(onChange
+            ? { onChange: (event) => onChange(event.target.checked) }
+            : { readOnly: true })}
           aria-invalid={error ? true : undefined}
           aria-describedby={error ? "terms-consent-error" : undefined}
           required
