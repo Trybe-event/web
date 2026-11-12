@@ -520,6 +520,23 @@ paths:
                         registrations: { type: integer }
 
   # ------------------------------------------------------------------ registration (public + attendee)
+  /discover/events:
+    get:
+      tags: [events]
+      operationId: discoverEvents
+      summary: Public, published events that haven't ended, soonest first (at most 50). Private events are never listed.
+      x-account: public
+      x-milestone: M2
+      responses:
+        "200":
+          description: Upcoming and ongoing public events
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [items]
+                properties:
+                  items: { type: array, items: { $ref: "#/components/schemas/DiscoverEvent" } }
   /e/{slug}:
     parameters: [{ $ref: "#/components/parameters/Slug" }]
     get:
@@ -1623,6 +1640,24 @@ components:
         registration_state: { $ref: "#/components/schemas/WindowState" }
         networking_state: { $ref: "#/components/schemas/WindowState" }
         program: { $ref: "#/components/schemas/Program" }
+    DiscoverEvent:
+      type: object
+      description: A listing card. No program, attendance URL, attendee or membership data.
+      required: [id, slug, name, organizer_name, format, timezone, starts_at, ends_at, summary, topics, registration_state]
+      properties:
+        id: { type: string, format: uuid }
+        slug: { type: string }
+        name: { type: string }
+        organizer_name: { type: string }
+        format: { $ref: "#/components/schemas/EventFormat" }
+        timezone: { type: string }
+        starts_at: { type: string, format: date-time }
+        ends_at: { type: string, format: date-time }
+        venue_name: { type: [string, "null"] }
+        summary: { type: string }
+        topics: { type: array, items: { type: string } }
+        image_url: { type: [string, "null"] }
+        registration_state: { $ref: "#/components/schemas/WindowState" }
     OrganizerEventSummary:
       type: object
       required: [id, name, status, registrations]

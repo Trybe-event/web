@@ -84,6 +84,7 @@ type HomeProps = {
   privacy: { body: string; status: string };
   events?: EventOption[];
   activeSlug?: string;
+  children?: ReactNode;
 };
 
 export function WorkspaceHome({
@@ -93,6 +94,7 @@ export function WorkspaceHome({
   privacy,
   events,
   activeSlug,
+  children,
 }: HomeProps) {
   const organizer = type === "organizer";
   return (
@@ -136,6 +138,7 @@ export function WorkspaceHome({
           <span>{privacy.status}</span>
         </aside>
       </section>
+      {children}
     </WorkspaceShell>
   );
 }

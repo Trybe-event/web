@@ -4,7 +4,8 @@ import {
   WorkspaceUnavailable,
   WorkspaceShell,
 } from "@/components/auth/workspace";
-import { Alert, ButtonLink } from "@/components/ui";
+import { EventCodeEntry } from "@/components/events/event-code-entry";
+import { Alert, ButtonLink, Card } from "@/components/ui";
 import { serverApi } from "@/lib/api/server";
 import { loadAttendeeEventSnapshot } from "@/lib/attendee-events";
 import { AttendeeMyEvents } from "@/components/attendee/my-events";
@@ -74,6 +75,9 @@ export default async function AttendeeHome() {
           </ButtonLink>
         </div>
       )}
+      <Card className="mb-6">
+        <EventCodeEntry />
+      </Card>
       <AttendeeMyEvents items={events} now={eventSnapshot.readAt} />
     </WorkspaceShell>
   );

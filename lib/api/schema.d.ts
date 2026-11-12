@@ -427,6 +427,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/discover/events": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Public, published events that haven't ended, soonest first (at most 50). Private events are never listed. */
+        get: operations["discoverEvents"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/e/{slug}": {
         parameters: {
             query?: never;
@@ -1404,6 +1421,25 @@ export interface components {
             registration_state: components["schemas"]["WindowState"];
             networking_state: components["schemas"]["WindowState"];
             program?: components["schemas"]["Program"];
+        };
+        /** @description A listing card. No program, attendance URL, attendee or membership data. */
+        DiscoverEvent: {
+            /** Format: uuid */
+            id: string;
+            slug: string;
+            name: string;
+            organizer_name: string;
+            format: components["schemas"]["EventFormat"];
+            timezone: string;
+            /** Format: date-time */
+            starts_at: string;
+            /** Format: date-time */
+            ends_at: string;
+            venue_name?: string | null;
+            summary: string;
+            topics: string[];
+            image_url?: string | null;
+            registration_state: components["schemas"]["WindowState"];
         };
         OrganizerEventSummary: {
             /** Format: uuid */
@@ -2421,6 +2457,28 @@ export interface operations {
                             date: string;
                             registrations: number;
                         }[];
+                    };
+                };
+            };
+        };
+    };
+    discoverEvents: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Upcoming and ongoing public events */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        items: components["schemas"]["DiscoverEvent"][];
                     };
                 };
             };

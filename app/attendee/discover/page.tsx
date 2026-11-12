@@ -1,16 +1,23 @@
 import type { Metadata } from "next";
-import { Compass } from "lucide-react";
 import {
   WorkspaceShell,
   WorkspaceUnavailable,
 } from "@/components/auth/workspace";
-import { ButtonLink, Card } from "@/components/ui";
+import { DiscoverEvents } from "@/components/events/discover-events";
+import { EventCodeEntry } from "@/components/events/event-code-entry";
+import { Card } from "@/components/ui";
+import { loadAttendeeEventSnapshot } from "@/lib/attendee-events";
 import { requireAccount } from "@/lib/session";
 
 export const metadata: Metadata = { title: "Discover events" };
 export default async function DiscoverEventsPage() {
   const access = await requireAccount("attendee");
   if ("unavailable" in access) return <WorkspaceUnavailable type="attendee" />;
+  // A failed snapshot only loses the "Joined" badges; the list still loads.
+  const snapshot = await loadAttendeeEventSnapshot();
+  const joinedSlugs = new Set(
+    (snapshot?.items ?? []).map((item) => item.event.slug),
+  );
   return (
     <WorkspaceShell type="attendee" attendeeAccount={access.account}>
       <header className="attendee-page-heading">
@@ -18,18 +25,12 @@ export default async function DiscoverEventsPage() {
         <h1>Discover events</h1>
         <p>Find your next gathering, and the people who make it matter.</p>
       </header>
-      <Card className="attendee-discover-progress">
-        <Compass size={34} aria-hidden="true" />
-        <span className="attendee-progress-label">In progress</span>
-        <h2>More ways to find your people.</h2>
-        <p>
-          We’re building a place to explore public events on Trybe. For now, use
-          an organizer’s invitation link to join an event.
-        </p>
-        <ButtonLink href="/attendee" variant="secondary">
-          View my events
-        </ButtonLink>
-      </Card>
+      <div className="flex flex-col gap-8">
+        <Card>
+          <EventCodeEntry />
+        </Card>
+        <DiscoverEvents joinedSlugs={joinedSlugs} />
+      </div>
     </WorkspaceShell>
   );
 }
