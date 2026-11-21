@@ -13,5 +13,7 @@ export default defineConfig([
     "next-env.d.ts",
     "public/mockServiceWorker.js",
     "lib/api/schema.d.ts",
+    "e2e-report/**",
+    "test-results/**",
   ]),
 ]);
