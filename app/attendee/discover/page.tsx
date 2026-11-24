@@ -3,14 +3,21 @@ import {
   WorkspaceShell,
   WorkspaceUnavailable,
 } from "@/components/auth/workspace";
-import { DiscoverEvents } from "@/components/events/discover-events";
+import {
+  DiscoverEvents,
+  discoverFilters,
+} from "@/components/events/discover-events";
 import { EventCodeEntry } from "@/components/events/event-code-entry";
 import { Card } from "@/components/ui";
 import { loadAttendeeEventSnapshot } from "@/lib/attendee-events";
 import { requireAccount } from "@/lib/session";
 
 export const metadata: Metadata = { title: "Discover events" };
-export default async function DiscoverEventsPage() {
+export default async function DiscoverEventsPage({
+  searchParams,
+}: {
+  searchParams?: Promise<Record<string, string | string[] | undefined>>;
+} = {}) {
   const access = await requireAccount("attendee");
   if ("unavailable" in access) return <WorkspaceUnavailable type="attendee" />;
   // A failed snapshot only loses the "Joined" badges; the list still loads.
@@ -29,7 +36,10 @@ export default async function DiscoverEventsPage() {
         <Card>
           <EventCodeEntry />
         </Card>
-        <DiscoverEvents joinedSlugs={joinedSlugs} />
+        <DiscoverEvents
+          joinedSlugs={joinedSlugs}
+          filters={discoverFilters((await searchParams) ?? {})}
+        />
       </div>
     </WorkspaceShell>
   );

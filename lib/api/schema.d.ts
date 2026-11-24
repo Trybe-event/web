@@ -1460,6 +1460,10 @@ export interface components {
             topics: string[];
             image_url?: string | null;
             registration_state: components["schemas"]["WindowState"];
+            /** @description The event's primary category, for filtering */
+            category?: string | null;
+            /** @description Registrations wait for the organizer's approval */
+            approval_required?: boolean;
         };
         OrganizerEventSummary: {
             /** Format: uuid */

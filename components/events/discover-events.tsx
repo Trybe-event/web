@@ -1,10 +1,46 @@
 import { CalendarDays, MapPin } from "lucide-react";
 import Link from "next/link";
 
-import { Badge, Card } from "@/components/ui";
+import { Badge, Button, Card, Select } from "@/components/ui";
 import type { Schemas } from "@/lib/api/client";
 import { serverApi } from "@/lib/api/server";
+import { eventCategories } from "@/lib/event-form";
 import { routes } from "@/lib/routes";
+
+// Discover filters live in the page address, so a filtered view can be shared and
+// works without JavaScript.
+export type DiscoverFilters = {
+  category?: string;
+  format?: DiscoverEvent["format"];
+  openOnly?: boolean;
+};
+
+export function discoverFilters(
+  params: Record<string, string | string[] | undefined>,
+): DiscoverFilters {
+  const one = (name: string) =>
+    typeof params[name] === "string" ? (params[name] as string) : undefined;
+  const category = one("category");
+  const format = one("format");
+  return {
+    category: eventCategories.some((c) => c === category)
+      ? category
+      : undefined,
+    format:
+      format === "physical" || format === "virtual" || format === "hybrid"
+        ? format
+        : undefined,
+    openOnly: one("open") === "1",
+  };
+}
+
+export function matchesFilters(event: DiscoverEvent, filters: DiscoverFilters) {
+  return (
+    (!filters.category || event.category === filters.category) &&
+    (!filters.format || event.format === filters.format) &&
+    (!filters.openOnly || event.registration_state === "open")
+  );
+}
 
 type DiscoverEvent = Schemas["DiscoverEvent"];
 
@@ -45,10 +81,16 @@ async function loadDiscoverEvents(): Promise<DiscoverEvent[] | null> {
 // reviewing what the event will see.
 export async function DiscoverEvents({
   joinedSlugs,
+  filters = {},
 }: {
   joinedSlugs: Set<string>;
+  filters?: DiscoverFilters;
 }) {
-  const events = await loadDiscoverEvents();
+  const all = await loadDiscoverEvents();
+  const events = all?.filter((event) => matchesFilters(event, filters)) ?? null;
+  const filtered = Boolean(
+    filters.category || filters.format || filters.openOnly,
+  );
   return (
     <section aria-labelledby="discover-title" className="flex flex-col gap-4">
       <div>
@@ -60,6 +102,49 @@ export async function DiscoverEvents({
           events are only reachable through their invitation link.
         </p>
       </div>
+      <form
+        method="get"
+        className="flex flex-wrap items-end gap-3"
+        aria-label="Filter events"
+      >
+        <label className="flex flex-col gap-1 text-sm font-semibold">
+          Category
+          <Select name="category" defaultValue={filters.category ?? ""}>
+            <option value="">All categories</option>
+            {eventCategories.map((category) => (
+              <option key={category} value={category}>
+                {category}
+              </option>
+            ))}
+          </Select>
+        </label>
+        <label className="flex flex-col gap-1 text-sm font-semibold">
+          Format
+          <Select name="format" defaultValue={filters.format ?? ""}>
+            <option value="">Any format</option>
+            <option value="physical">In person</option>
+            <option value="virtual">Online</option>
+            <option value="hybrid">In person and online</option>
+          </Select>
+        </label>
+        <label className="flex min-h-11 items-center gap-2 text-sm">
+          <input
+            type="checkbox"
+            name="open"
+            value="1"
+            defaultChecked={filters.openOnly}
+          />
+          Open for registration
+        </label>
+        <Button type="submit" variant="secondary">
+          Show events
+        </Button>
+        {filtered && (
+          <Link href="?" className="text-sm font-semibold underline">
+            Clear filters
+          </Link>
+        )}
+      </form>
       {events === null ? (
         <p role="status" className="text-sm text-muted">
           Upcoming events couldn&apos;t be loaded right now. Refresh to try
@@ -67,8 +152,9 @@ export async function DiscoverEvents({
         </p>
       ) : events.length === 0 ? (
         <p className="text-sm text-muted">
-          No public events are open yet. When an organizer publishes one, it
-          appears here.
+          {filtered
+            ? "No public events match these filters. Try another category or clear the filters."
+            : "No public events are open yet. When an organizer publishes one, it appears here."}
         </p>
       ) : (
         <ul className="grid gap-3 md:grid-cols-2">
@@ -90,6 +176,10 @@ export async function DiscoverEvents({
                       </Badge>
                     )}
                     <Badge>{FORMAT_LABEL[event.format]}</Badge>
+                    {event.category && <Badge>{event.category}</Badge>}
+                    {event.approval_required && !joined && (
+                      <Badge>Approval required</Badge>
+                    )}
                   </div>
                   <h3 className="text-lg font-semibold">
                     <Link

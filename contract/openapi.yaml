@@ -1685,6 +1685,8 @@ components:
         topics: { type: array, items: { type: string } }
         image_url: { type: [string, "null"] }
         registration_state: { $ref: "#/components/schemas/WindowState" }
+        category: { type: [string, "null"], description: "The event's primary category, for filtering" }
+        approval_required: { type: boolean, description: Registrations wait for the organizer's approval }
     OrganizerEventSummary:
       type: object
       required: [id, name, status, registrations]
