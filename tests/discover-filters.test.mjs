@@ -77,3 +77,35 @@ test("an event shows only when it matches every chosen filter", () => {
     ),
   );
 });
+
+test("status and price filters", () => {
+  const upcoming = {
+    state: "upcoming",
+    pricing: "free",
+    registration_state: "open",
+  };
+  const live = {
+    state: "ongoing",
+    pricing: "free",
+    registration_state: "open",
+  };
+  const ended = {
+    state: "ended",
+    pricing: "free",
+    registration_state: "closed",
+  };
+  const active = discoverFilters({ status: "active" });
+  assert.ok(matchesFilters(upcoming, active) && matchesFilters(live, active));
+  assert.ok(!matchesFilters(ended, active));
+  assert.ok(matchesFilters(ended, discoverFilters({ status: "ended" })));
+  assert.ok(!matchesFilters(live, discoverFilters({ status: "upcoming" })));
+  // No status chosen shows every event, ended ones included.
+  assert.ok(matchesFilters(ended, discoverFilters({})));
+  assert.ok(!matchesFilters(upcoming, discoverFilters({ price: "paid" })));
+  assert.ok(matchesFilters(upcoming, discoverFilters({ price: "free" })));
+  assert.equal(
+    discoverFilters({ status: "someday", price: "cheap" }).status,
+    undefined,
+  );
+  assert.equal(discoverFilters({ price: "cheap" }).price, undefined);
+});

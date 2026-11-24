@@ -551,7 +551,7 @@ paths:
     get:
       tags: [events]
       operationId: discoverEvents
-      summary: Public, published events that haven't ended, soonest first (at most 50). Private events are never listed.
+      summary: "Public events, published or ended (at most 100): active events first, soonest first, then ended events, most recent first. Private events and drafts are never listed."
       x-account: public
       x-milestone: M2
       responses:
@@ -1687,6 +1687,8 @@ components:
         registration_state: { $ref: "#/components/schemas/WindowState" }
         category: { type: [string, "null"], description: "The event's primary category, for filtering" }
         approval_required: { type: boolean, description: Registrations wait for the organizer's approval }
+        state: { type: string, enum: [upcoming, ongoing, ended], description: Where the event is in time }
+        pricing: { type: string, enum: [free, paid], description: "free until the event sells paid tickets (V2-4)" }
     OrganizerEventSummary:
       type: object
       required: [id, name, status, registrations]

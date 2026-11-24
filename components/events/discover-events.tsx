@@ -12,8 +12,17 @@ import { routes } from "@/lib/routes";
 export type DiscoverFilters = {
   category?: string;
   format?: DiscoverEvent["format"];
+  status?: "active" | DiscoverEvent["state"];
+  price?: DiscoverEvent["pricing"];
   openOnly?: boolean;
 };
+
+const STATUS_OPTIONS = [
+  ["active", "Active (upcoming and happening now)"],
+  ["upcoming", "Upcoming"],
+  ["ongoing", "Happening now"],
+  ["ended", "Ended"],
+] as const;
 
 export function discoverFilters(
   params: Record<string, string | string[] | undefined>,
@@ -22,6 +31,8 @@ export function discoverFilters(
     typeof params[name] === "string" ? (params[name] as string) : undefined;
   const category = one("category");
   const format = one("format");
+  const status = one("status");
+  const price = one("price");
   return {
     category: eventCategories.some((c) => c === category)
       ? category
@@ -30,6 +41,10 @@ export function discoverFilters(
       format === "physical" || format === "virtual" || format === "hybrid"
         ? format
         : undefined,
+    status: STATUS_OPTIONS.some(([value]) => value === status)
+      ? (status as DiscoverFilters["status"])
+      : undefined,
+    price: price === "free" || price === "paid" ? price : undefined,
     openOnly: one("open") === "1",
   };
 }
@@ -38,6 +53,11 @@ export function matchesFilters(event: DiscoverEvent, filters: DiscoverFilters) {
   return (
     (!filters.category || event.category === filters.category) &&
     (!filters.format || event.format === filters.format) &&
+    (!filters.status ||
+      (filters.status === "active"
+        ? event.state !== "ended"
+        : event.state === filters.status)) &&
+    (!filters.price || event.pricing === filters.price) &&
     (!filters.openOnly || event.registration_state === "open")
   );
 }
@@ -89,17 +109,22 @@ export async function DiscoverEvents({
   const all = await loadDiscoverEvents();
   const events = all?.filter((event) => matchesFilters(event, filters)) ?? null;
   const filtered = Boolean(
-    filters.category || filters.format || filters.openOnly,
+    filters.category ||
+    filters.format ||
+    filters.status ||
+    filters.price ||
+    filters.openOnly,
   );
   return (
     <section aria-labelledby="discover-title" className="flex flex-col gap-4">
       <div>
         <h2 id="discover-title" className="text-xl font-bold">
-          Upcoming and ongoing events
+          Public events
         </h2>
         <p className="text-sm text-muted">
-          Public events on Trybe. Open one to see its program and join. Private
-          events are only reachable through their invitation link.
+          Upcoming and live events first, then past events. Open one to see its
+          program and join. Private events are only reachable through their
+          invitation link.
         </p>
       </div>
       <form
@@ -107,6 +132,25 @@ export async function DiscoverEvents({
         className="flex flex-wrap items-end gap-3"
         aria-label="Filter events"
       >
+        <label className="flex flex-col gap-1 text-sm font-semibold">
+          Status
+          <Select name="status" defaultValue={filters.status ?? ""}>
+            <option value="">All events</option>
+            {STATUS_OPTIONS.map(([value, label]) => (
+              <option key={value} value={value}>
+                {label}
+              </option>
+            ))}
+          </Select>
+        </label>
+        <label className="flex flex-col gap-1 text-sm font-semibold">
+          Price
+          <Select name="price" defaultValue={filters.price ?? ""}>
+            <option value="">Free and paid</option>
+            <option value="free">Free</option>
+            <option value="paid">Paid</option>
+          </Select>
+        </label>
         <label className="flex flex-col gap-1 text-sm font-semibold">
           Category
           <Select name="category" defaultValue={filters.category ?? ""}>
@@ -164,9 +208,15 @@ export async function DiscoverEvents({
               <li key={event.id}>
                 <Card className="flex h-full flex-col gap-2">
                   <div className="flex flex-wrap items-center gap-2">
+                    {event.state === "ended" ? (
+                      <Badge>Ended</Badge>
+                    ) : event.state === "ongoing" ? (
+                      <Badge tone="success">Happening now</Badge>
+                    ) : null}
                     {joined ? (
                       <Badge tone="success">Joined</Badge>
-                    ) : event.registration_state === "open" ? (
+                    ) : event.state ===
+                      "ended" ? null : event.registration_state === "open" ? (
                       <Badge tone="success">Registration open</Badge>
                     ) : (
                       <Badge>
@@ -176,10 +226,13 @@ export async function DiscoverEvents({
                       </Badge>
                     )}
                     <Badge>{FORMAT_LABEL[event.format]}</Badge>
+                    <Badge>{event.pricing === "paid" ? "Paid" : "Free"}</Badge>
                     {event.category && <Badge>{event.category}</Badge>}
-                    {event.approval_required && !joined && (
-                      <Badge>Approval required</Badge>
-                    )}
+                    {event.approval_required &&
+                      !joined &&
+                      event.state !== "ended" && (
+                        <Badge>Approval required</Badge>
+                      )}
                   </div>
                   <h3 className="text-lg font-semibold">
                     <Link

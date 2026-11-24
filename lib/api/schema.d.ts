@@ -454,7 +454,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Public, published events that haven't ended, soonest first (at most 50). Private events are never listed. */
+        /** Public events, published or ended (at most 100): active events first, soonest first, then ended events, most recent first. Private events and drafts are never listed. */
         get: operations["discoverEvents"];
         put?: never;
         post?: never;
@@ -1464,6 +1464,16 @@ export interface components {
             category?: string | null;
             /** @description Registrations wait for the organizer's approval */
             approval_required?: boolean;
+            /**
+             * @description Where the event is in time
+             * @enum {string}
+             */
+            state?: "upcoming" | "ongoing" | "ended";
+            /**
+             * @description free until the event sells paid tickets (V2-4)
+             * @enum {string}
+             */
+            pricing?: "free" | "paid";
         };
         OrganizerEventSummary: {
             /** Format: uuid */
