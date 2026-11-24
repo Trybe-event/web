@@ -11,6 +11,10 @@ export const STREAM_PATHS = new Set(["/notifications/stream"]);
 // Signature-verified callbacks from Clerk; they carry no session and no Origin header.
 export const WEBHOOK_PATHS = new Set(["/webhooks/clerk"]);
 
+// Writes authorized by a signed token in the URL rather than a session, so they need no
+// same-origin check: mail providers call one-click unsubscribe (RFC 8058) server to server.
+export const TOKEN_WRITE_PATHS = new Set(["/email/unsubscribe"]);
+
 const compiled = CONTRACT_ROUTES.map(([method, pattern]) => ({
   method,
   regex: new RegExp("^" + pattern.replace(/\{[^}]+\}/g, "[^/]+") + "$"),
