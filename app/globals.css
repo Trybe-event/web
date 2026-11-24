@@ -201,17 +201,17 @@ body {
   font-size: 11px;
 }
 .attendee-identity {
-  display: flex;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 30px;
   align-items: center;
-  justify-content: space-between;
-  gap: 6px;
+  gap: 8px;
   padding-top: 18px;
   border-top: 1px solid var(--line);
 }
 .attendee-identity > a {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 8px;
   min-width: 0;
 }
 .attendee-identity-avatar {
@@ -221,21 +221,39 @@ body {
   width: 32px;
   height: 32px;
   border-radius: 50%;
+  overflow: hidden;
   border: 1px solid var(--line);
   background: var(--paper);
   font-size: 12px;
 }
 .attendee-identity-name {
+  display: block;
+  min-width: 0;
   font-size: 12px;
   font-weight: 600;
-  overflow-wrap: anywhere;
+  line-height: 1.25;
+}
+.attendee-identity-name strong {
+  display: block;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  font-weight: 600;
 }
 .attendee-identity-name small {
   display: block;
-  margin-top: 4px;
+  margin-top: 3px;
   color: var(--muted);
-  font-size: 10px;
+  font-size: 9px;
   font-weight: 400;
+  line-height: 1.4;
+  white-space: nowrap;
+}
+.attendee-identity > .secondary-button {
+  width: 30px;
+  height: 30px;
+  padding: 0;
+  border-radius: 8px;
 }
 .attendee-app[data-sidebar-collapsed="true"] .attendee-nav-link > span,
 .attendee-app[data-sidebar-collapsed="true"] .attendee-identity-name,
@@ -244,6 +262,7 @@ body {
 }
 .attendee-app[data-sidebar-collapsed="true"] .attendee-sidebar-brand,
 .attendee-app[data-sidebar-collapsed="true"] .attendee-identity {
+  display: flex;
   flex-direction: column;
   padding-inline: 0;
   gap: 14px;

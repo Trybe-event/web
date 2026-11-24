@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import {
   Alert,
@@ -12,6 +12,8 @@ import {
   Card,
   Skeleton,
   Dialog,
+  Field,
+  Input,
 } from "@/components/ui";
 import { api, errorMessage, type Schemas } from "@/lib/api/client";
 
@@ -25,6 +27,14 @@ export function ProfileHome() {
   const [profile, setProfile] = useState<Schemas["OwnProfile"] | null>(null);
   const [failure, setFailure] = useState<string | null>(null);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const [deleteStep, setDeleteStep] = useState<"confirmation" | "review">(
+    "confirmation",
+  );
+  const [deleteConfirmation, setDeleteConfirmation] = useState("");
+  const [deleteAcknowledged, setDeleteAcknowledged] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const deletionInProgress = useRef(false);
+  const confirmationMatches = deleteConfirmation === "DELETE MY ACCOUNT";
 
   useEffect(() => {
     api.GET("/me/profile").then(({ data, error, response }) => {
@@ -36,11 +46,31 @@ export function ProfileHome() {
   }, [router]);
 
   async function handleDeleteConfirm() {
-    const { error } = await api.DELETE("/me");
-    if (error) {
-      setFailure(errorMessage(error));
-    } else {
+    if (
+      deletionInProgress.current ||
+      deleteStep !== "review" ||
+      !confirmationMatches ||
+      !deleteAcknowledged
+    )
+      return;
+    deletionInProgress.current = true;
+    setIsDeleting(true);
+    setFailure(null);
+    try {
+      const { error, response } = await api.DELETE("/me", {
+        signal: AbortSignal.timeout(15_000),
+      });
+      if (!response.ok) {
+        setFailure(errorMessage(error));
+        return;
+      }
+      setShowDeleteDialog(false);
       router.replace("/attendee/sign-in");
+    } catch {
+      setFailure("We couldn't confirm account deletion. Please try again.");
+    } finally {
+      deletionInProgress.current = false;
+      setIsDeleting(false);
     }
   }
 
@@ -130,7 +160,13 @@ export function ProfileHome() {
               <SignOut />
               <Button
                 variant="danger"
-                onClick={() => setShowDeleteDialog(true)}
+                disabled={isDeleting}
+                onClick={() => {
+                  setDeleteStep("confirmation");
+                  setDeleteConfirmation("");
+                  setDeleteAcknowledged(false);
+                  setShowDeleteDialog(true);
+                }}
               >
                 Delete account
               </Button>
@@ -140,28 +176,96 @@ export function ProfileHome() {
             <Dialog
               open={showDeleteDialog}
               onClose={() => setShowDeleteDialog(false)}
-              title="Delete account"
+              title={
+                deleteStep === "confirmation"
+                  ? "Confirm account deletion"
+                  : "Final review"
+              }
               description="This will permanently delete your account. This action cannot be undone. Your connections may already have copied or seen your data."
               actions={
                 <>
                   <Button
                     variant="secondary"
+                    disabled={isDeleting}
                     onClick={() => setShowDeleteDialog(false)}
                   >
                     Cancel
                   </Button>
-                  <Button
-                    variant="danger"
-                    onClick={() => {
-                      handleDeleteConfirm();
-                      setShowDeleteDialog(false);
-                    }}
-                  >
-                    Delete
-                  </Button>
+                  {deleteStep === "confirmation" ? (
+                    <Button
+                      disabled={!confirmationMatches}
+                      onClick={() => setDeleteStep("review")}
+                    >
+                      Review deletion
+                    </Button>
+                  ) : (
+                    <>
+                      <Button
+                        variant="secondary"
+                        disabled={isDeleting}
+                        onClick={() => {
+                          setDeleteAcknowledged(false);
+                          setDeleteStep("confirmation");
+                        }}
+                      >
+                        Go back
+                      </Button>
+                      <Button
+                        variant="danger"
+                        loading={isDeleting}
+                        disabled={
+                          !confirmationMatches ||
+                          !deleteAcknowledged ||
+                          isDeleting
+                        }
+                        onClick={handleDeleteConfirm}
+                      >
+                        Permanently delete my account
+                      </Button>
+                    </>
+                  )}
                 </>
               }
-            />
+            >
+              {deleteStep === "confirmation" ? (
+                <Field
+                  label="Type DELETE MY ACCOUNT to continue"
+                  hint="Type the phrase exactly as shown. Nothing is deleted at this step."
+                >
+                  {(inputProps) => (
+                    <Input
+                      {...inputProps}
+                      value={deleteConfirmation}
+                      autoComplete="off"
+                      spellCheck={false}
+                      onChange={(event) =>
+                        setDeleteConfirmation(event.target.value)
+                      }
+                    />
+                  )}
+                </Field>
+              ) : (
+                <div className="flex flex-col gap-4">
+                  <p>
+                    Your profile and access to your connections and
+                    conversations will be removed. You cannot undo this action.
+                  </p>
+                  <label className="flex items-start gap-3 text-sm">
+                    <input
+                      type="checkbox"
+                      className="mt-1 size-4 shrink-0"
+                      checked={deleteAcknowledged}
+                      disabled={isDeleting}
+                      onChange={(event) =>
+                        setDeleteAcknowledged(event.target.checked)
+                      }
+                    />
+                    I understand that this permanently deletes my account.
+                  </label>
+                  {failure && <Alert>{failure}</Alert>}
+                </div>
+              )}
+            </Dialog>
           )}
         </>
       )}

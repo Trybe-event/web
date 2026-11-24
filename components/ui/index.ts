@@ -12,5 +12,6 @@ export {
 } from "./display";
 export { Field, Input, Select, Textarea } from "./field";
 export { TagInput } from "./tag-input";
+export { VerificationCodeInput } from "./verification-code-input";
 export { Switch } from "./switch";
 export { ToastProvider, useToast } from "./toast";

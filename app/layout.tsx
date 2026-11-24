@@ -22,8 +22,33 @@ const manrope = Manrope({
 });
 
 export const metadata: Metadata = {
+  metadataBase: new URL(
+    process.env.NEXT_PUBLIC_APP_URL || "https://trybe-event.vercel.app",
+  ),
   title: { default: "Trybe", template: "%s · Trybe" },
   description: "Meet the right people at your next event.",
+  openGraph: {
+    type: "website",
+    siteName: "Trybe",
+    title: "Trybe | Your people. Your next chapter.",
+    description:
+      "Discover events, meet your people and keep the conversation going. Fostering connection with convenience.",
+    url: "/",
+    images: [
+      {
+        url: "/images/trybe-share-v1.png",
+        width: 1200,
+        height: 630,
+        alt: "Trybe. Your people. Your next chapter.",
+      },
+    ],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Trybe | Your people. Your next chapter.",
+    description: "Fostering connection with convenience.",
+    images: ["/images/trybe-share-v1.png"],
+  },
   icons: { icon: "/favicon.svg", shortcut: "/favicon.svg" },
 };
 

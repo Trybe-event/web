@@ -3,17 +3,29 @@
 import { useAuth, useSignIn, useSignUp } from "@clerk/nextjs";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useEffect, useId, useState, type ReactNode } from "react";
-import { useForm, useWatch } from "react-hook-form";
+import { Controller, useForm, useWatch } from "react-hook-form";
 import { z } from "zod";
 
 import { workspacePath, type AccountType } from "@/lib/account";
-import { Alert, Button, Field, Input } from "@/components/ui";
+import {
+  Alert,
+  Button,
+  Field,
+  Input,
+  VerificationCodeInput,
+} from "@/components/ui";
+import {
+  isCompleteVerificationCode,
+  verificationCodeSchema,
+} from "@/lib/verification-code";
 import { authenticationDestination, signInStep } from "@/lib/auth-flow";
 import { newPasswordSchema } from "@/lib/password-policy";
 import {
   assertAuthenticationSucceeded,
   AuthenticationActionError,
   authenticationErrorDetail,
+  SIGN_IN_FAILED,
+  signInFailure,
 } from "@/lib/authentication-errors";
 import { PasswordChecklist } from "./password-checklist";
 import {
@@ -23,9 +35,6 @@ import {
 import { TermsConsent } from "@/components/legal/legal-notice";
 import { EmailConfirmation } from "./email-confirmation";
 
-const codeSchema = z.object({
-  code: z.string().trim().min(1, "Enter your verification code."),
-});
 type Step =
   | "credentials"
   | "recovery"
@@ -41,6 +50,24 @@ type Step =
 type AuthFormProps =
   | { type: AccountType; mode: "sign-in" | "sign-up"; eventSlug?: string }
   | { type: "admin"; mode: "sign-in"; eventSlug?: never };
+
+// signedInAs reports whether the session that just signed in may use this page's
+// workspace. Only a bound account of another type is refused; a new sign-in without a
+// Trybe account continues to that type's setup, and a lookup failure is left to the
+// workspace, which checks the account on the server anyway.
+async function signedInAs(type: AccountType | "admin") {
+  try {
+    const response = await fetch("/api/me/account", {
+      cache: "no-store",
+      signal: AbortSignal.timeout(8000),
+    });
+    if (!response.ok) return true;
+    const account = (await response.json()) as { type?: string };
+    return !account.type || account.type === type;
+  } catch {
+    return true;
+  }
+}
 
 export function AuthForm({
   type,
@@ -58,7 +85,7 @@ export function AuthForm({
   const newPasswordChecklistId = useId();
   const { signIn, errors: signInErrors } = useSignIn();
   const { signUp, errors: signUpErrors } = useSignUp();
-  const { isLoaded } = useAuth();
+  const { isLoaded, signOut } = useAuth();
   const [authenticationLoadTimedOut, setAuthenticationLoadTimedOut] =
     useState(false);
   useEffect(() => {
@@ -91,8 +118,8 @@ export function AuthForm({
       confirm_password: "",
     },
   });
-  const verificationForm = useForm<z.infer<typeof codeSchema>>({
-    resolver: zodResolver(codeSchema),
+  const verificationForm = useForm<z.infer<typeof verificationCodeSchema>>({
+    resolver: zodResolver(verificationCodeSchema),
     defaultValues: { code: "" },
   });
   const passwordRecoveryForm = useForm<{ email: string }>({
@@ -112,6 +139,10 @@ export function AuthForm({
   const resetPassword = useWatch({
     control: newPasswordForm.control,
     name: "password",
+  });
+  const verificationCode = useWatch({
+    control: verificationForm.control,
+    name: "code",
   });
   async function performAuthenticationAction(action: () => Promise<void>) {
     setAuthenticationPending(true);
@@ -136,22 +167,28 @@ export function AuthForm({
     }
   }
   async function activateAuthenticatedSession(signingUp = false) {
+    let destination = "";
     assertAuthenticationSucceeded(
       await (signingUp ? signUp : signIn).finalize({
         navigate: ({ session, decorateUrl }) => {
-          window.location.assign(
-            decorateUrl(
-              authenticationDestination(
-                workspaceRoute,
-                signingUp,
-                Boolean(session?.currentTask),
-                eventSlug,
-              ),
+          destination = decorateUrl(
+            authenticationDestination(
+              workspaceRoute,
+              signingUp,
+              Boolean(session?.currentTask),
+              eventSlug,
             ),
           );
         },
       }),
     );
+    // A sign-in that belongs to the other kind of Trybe account is refused with the same
+    // answer as a wrong password, so this page never reveals what kind of account it is.
+    if (!signingUp && !(await signedInAs(type))) {
+      await signOut();
+      throw new AuthenticationActionError({ message: SIGN_IN_FAILED });
+    }
+    if (destination) window.location.assign(destination);
   }
   async function continueSignIn() {
     const nextAuthenticationStep = signInStep(
@@ -228,12 +265,14 @@ export function AuthForm({
                     await signUp.verifications.sendEmailCode(),
                   );
                 } else {
-                  assertAuthenticationSucceeded(
-                    await signIn.password({
-                      emailAddress: values.email,
-                      password: values.password,
-                    }),
-                  );
+                  const attempt = await signIn.password({
+                    emailAddress: values.email,
+                    password: values.password,
+                  });
+                  if (attempt.error)
+                    throw new AuthenticationActionError(
+                      signInFailure(authenticationErrorDetail(attempt.error)),
+                    );
                   credentialsForm.resetField("password");
                   await continueSignIn();
                 }
@@ -583,12 +622,16 @@ export function AuthForm({
             }
           >
             {(props) => (
-              <Input
-                {...props}
-                {...verificationForm.register("code")}
-                autoComplete="one-time-code"
-                inputMode="numeric"
-                disabled={isAuthenticationPending}
+              <Controller
+                name="code"
+                control={verificationForm.control}
+                render={({ field }) => (
+                  <VerificationCodeInput
+                    {...props}
+                    {...field}
+                    disabled={isAuthenticationPending}
+                  />
+                )}
               />
             )}
           </Field>
@@ -596,7 +639,9 @@ export function AuthForm({
             type="submit"
             className="primary-button w-full"
             loading={isAuthenticationPending}
-            disabled={!isLoaded}
+            disabled={
+              !isLoaded || !isCompleteVerificationCode(verificationCode)
+            }
           >
             {isOrganizerEmailCheck
               ? "I’ve confirmed my email"

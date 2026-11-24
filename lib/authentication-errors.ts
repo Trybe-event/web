@@ -58,6 +58,37 @@ export function authenticationErrorDetail(
   );
 }
 
+// One answer for every sign-in that fails on the credentials, so the form never says
+// whether an email has an account, which part was wrong, or what kind of account it is.
+export const SIGN_IN_FAILED = "Incorrect email or password.";
+
+const signInCredentialCodes = new Set([
+  "form_identifier_not_found",
+  "form_password_incorrect",
+  "form_param_format_invalid",
+  "form_param_nil",
+  "form_param_unknown",
+  "form_password_validation_failed",
+  "strategy_for_user_invalid",
+  "identification_deleted",
+  "user_locked",
+  "not_allowed_access",
+]);
+
+export function signInFailure(
+  detail: AuthenticationErrorDetail,
+): AuthenticationErrorDetail {
+  if (detail.code === "too_many_requests") return detail;
+  if (
+    !detail.code ||
+    signInCredentialCodes.has(detail.code) ||
+    detail.code.startsWith("form_identifier") ||
+    detail.code.startsWith("form_password")
+  )
+    return { message: SIGN_IN_FAILED, code: detail.code };
+  return detail;
+}
+
 export class AuthenticationActionError extends Error {
   constructor(readonly detail: AuthenticationErrorDetail) {
     super(detail.message);

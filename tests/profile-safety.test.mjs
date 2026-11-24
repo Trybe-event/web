@@ -28,7 +28,7 @@ test("your own profile still deletes the account and edits it", () => {
     new URL("../components/attendee/profile-menu.tsx", import.meta.url),
     "utf8",
   );
-  assert.ok(source.includes('api.DELETE("/me")'), "delete account stays");
+  assert.match(source, /api\.DELETE\("\/me"(?:,|\))/, "delete account stays");
   assert.ok(
     source.includes("<AttendeeProfileMenu />"),
     "profile mounts its settings menu",

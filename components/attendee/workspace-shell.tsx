@@ -15,7 +15,7 @@ import { usePathname } from "next/navigation";
 import { useState, type ReactNode } from "react";
 import { Logo } from "@/components/ui";
 import { BrandMark } from "@/components/brand-mark";
-import { SignOut } from "@/components/auth/sign-out";
+import { AttendeeAccountIdentity } from "./account-identity";
 import { ThemeToggle } from "@/components/auth/theme-toggle";
 import { EventSwitcher } from "@/components/auth/event-switcher";
 import { InboxBadge } from "@/components/messaging/inbox-badge";
@@ -47,7 +47,6 @@ export function AttendeeWorkspaceShell({
   const sectionTitle = attendeeSections.find(
     (item) => item.id === section,
   )?.label;
-  const initial = accountName?.trim().charAt(0).toUpperCase();
   function links(mobile: boolean) {
     return attendeeSections.map((item) => {
       const Icon = icons[item.id];
@@ -121,18 +120,7 @@ export function AttendeeWorkspaceShell({
             <ShieldCheck size={17} aria-hidden="true" />
             <span>Privacy &amp; visibility</span>
           </Link>
-          <div className="attendee-identity">
-            <Link href="/attendee/profile" aria-label="Your profile">
-              <span className="attendee-identity-avatar" aria-hidden="true">
-                {initial || <UserRound size={16} />}
-              </span>
-              <span className="attendee-identity-name">
-                {accountName || "Your Trybe"}
-                <small>Attendee workspace</small>
-              </span>
-            </Link>
-            <SignOut iconOnly />
-          </div>
+          <AttendeeAccountIdentity accountName={accountName} />
         </div>
       </aside>
       <div className="attendee-main">
