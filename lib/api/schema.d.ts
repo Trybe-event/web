@@ -124,6 +124,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/email/unsubscribe": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Switch off one group of optional emails from a signed link (no session; RFC 8058 one-click compatible)
+         * @description The token in the link names the recipient and the group (event_updates, event_summaries or event_recaps) and is signed by the server. Repeating it is harmless. Required mail such as welcome and registration emails has no link.
+         */
+        post: operations["emailUnsubscribe"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/me/profile": {
         parameters: {
             query?: never;
@@ -1836,6 +1856,39 @@ export interface operations {
                 content?: never;
             };
             401: components["responses"]["Error"];
+        };
+    };
+    emailUnsubscribe: {
+        parameters: {
+            query: {
+                token: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/x-www-form-urlencoded": {
+                    /** @enum {string} */
+                    "List-Unsubscribe"?: "One-Click";
+                };
+            };
+        };
+        responses: {
+            /** @description Unsubscribed (or already unsubscribed) */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @enum {string} */
+                        group: "event_updates" | "event_summaries" | "event_recaps";
+                    };
+                };
+            };
+            400: components["responses"]["Error"];
         };
     };
     getMyProfile: {

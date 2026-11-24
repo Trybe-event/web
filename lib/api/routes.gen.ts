@@ -8,6 +8,7 @@ export const CONTRACT_ROUTES: ReadonlyArray<readonly [string, string]> = [
   ["POST", "/accounts/attendee"],
   ["DELETE", "/me"],
   ["POST", "/webhooks/clerk"],
+  ["POST", "/email/unsubscribe"],
   ["GET", "/me/profile"],
   ["PUT", "/me/profile"],
   ["GET", "/me/profile/preview"],

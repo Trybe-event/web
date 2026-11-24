@@ -14,6 +14,7 @@ import {
   responseHeaders,
   STREAM_PATHS,
   TIMEOUT_MS,
+  TOKEN_WRITE_PATHS,
   WEBHOOK_PATHS,
 } from "@/lib/proxy";
 
@@ -38,6 +39,7 @@ async function handle(
   const appOrigin = process.env.NEXT_PUBLIC_APP_URL ?? req.nextUrl.origin;
   if (
     !WEBHOOK_PATHS.has(path) &&
+    !TOKEN_WRITE_PATHS.has(path) &&
     !isSameOrigin(method, req.headers.get("origin"), new URL(appOrigin).origin)
   ) {
     return error(403, "forbidden", "Cross-site request refused.");

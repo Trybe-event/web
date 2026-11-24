@@ -156,6 +156,33 @@ paths:
       responses:
         "204": { description: Processed or already processed }
         "401": { $ref: "#/components/responses/Error" }
+  /email/unsubscribe:
+    post:
+      tags: [notifications]
+      operationId: emailUnsubscribe
+      summary: "Switch off one group of optional emails from a signed link (no session; RFC 8058 one-click compatible)"
+      description: "The token in the link names the recipient and the group (event_updates, event_summaries or event_recaps) and is signed by the server. Repeating it is harmless. Required mail such as welcome and registration emails has no link."
+      x-account: public
+      x-milestone: V2-0
+      security: []
+      parameters:
+        - { name: token, in: query, required: true, schema: { type: string } }
+      requestBody:
+        required: false
+        content:
+          application/x-www-form-urlencoded:
+            schema: { type: object, properties: { List-Unsubscribe: { type: string, enum: [One-Click] } } }
+      responses:
+        "200":
+          description: Unsubscribed (or already unsubscribed)
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [group]
+                properties:
+                  group: { type: string, enum: [event_updates, event_summaries, event_recaps] }
+        "400": { $ref: "#/components/responses/Error" }
 
   # ------------------------------------------------------------------ profiles
   /me/profile:
