@@ -243,6 +243,8 @@ test("Discover, requests and My events guard the attendee account before renderi
       "@/components/ui": {},
       "@/components/attendee/my-events": {},
       "@/components/attendee/network-frame": {},
+      "@/components/events/discover-events": {},
+      "@/components/events/event-code-entry": {},
       "../connections/connections-tabs": {},
     });
     await assert.rejects(Page(), /wrong account redirect/);

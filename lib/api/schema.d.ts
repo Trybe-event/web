@@ -447,6 +447,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/discover/events": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Public events, published or ended (at most 100): active events first, soonest first, then ended events, most recent first. Private events and drafts are never listed. */
+        get: operations["discoverEvents"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/e/{slug}": {
         parameters: {
             query?: never;
@@ -1424,6 +1441,39 @@ export interface components {
             registration_state: components["schemas"]["WindowState"];
             networking_state: components["schemas"]["WindowState"];
             program?: components["schemas"]["Program"];
+        };
+        /** @description A listing card. No program, attendance URL, attendee or membership data. */
+        DiscoverEvent: {
+            /** Format: uuid */
+            id: string;
+            slug: string;
+            name: string;
+            organizer_name: string;
+            format: components["schemas"]["EventFormat"];
+            timezone: string;
+            /** Format: date-time */
+            starts_at: string;
+            /** Format: date-time */
+            ends_at: string;
+            venue_name?: string | null;
+            summary: string;
+            topics: string[];
+            image_url?: string | null;
+            registration_state: components["schemas"]["WindowState"];
+            /** @description The event's primary category, for filtering */
+            category?: string | null;
+            /** @description Registrations wait for the organizer's approval */
+            approval_required?: boolean;
+            /**
+             * @description Where the event is in time
+             * @enum {string}
+             */
+            state?: "upcoming" | "ongoing" | "ended";
+            /**
+             * @description free until the event sells paid tickets (V2-4)
+             * @enum {string}
+             */
+            pricing?: "free" | "paid";
         };
         OrganizerEventSummary: {
             /** Format: uuid */
@@ -2474,6 +2524,28 @@ export interface operations {
                             date: string;
                             registrations: number;
                         }[];
+                    };
+                };
+            };
+        };
+    };
+    discoverEvents: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Upcoming and ongoing public events */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        items: components["schemas"]["DiscoverEvent"][];
                     };
                 };
             };

@@ -58,3 +58,31 @@ export const routes = {
   organizerSignUp: "/organizer/sign-up",
   accountSetup: "/account/setup",
 } as const;
+
+// Turns what an attendee pastes or types (a code such as "7LQRD4", "/7lqrd4" or a
+// full invitation URL) into an event slug, or null when it can't be one. Only the
+// path is read, so a link from any Trybe origin works and nothing else is followed.
+export function eventSlugFromInput(input: string): string | null {
+  const value = input.trim();
+  if (!value) return null;
+  let path = value;
+  if (/^[a-z][a-z0-9+.-]*:\/\//i.test(value) || value.includes("/")) {
+    // A link pasted without its scheme ("trybe.events/7lqrd4") starts with a host.
+    const withScheme =
+      /^[a-z][a-z0-9+.-]*:\/\//i.test(value) || value.startsWith("/")
+        ? value
+        : /^[^/]+\.[^/]+\//.test(value)
+          ? `https://${value}`
+          : value;
+    try {
+      path = new URL(withScheme, "https://trybe.invalid").pathname;
+    } catch {
+      return null;
+    }
+  }
+  const segments = path.split("/").filter(Boolean);
+  const [segment] = segments;
+  if (segments.length !== 1 || !segment) return null;
+  const slug = segment.toLowerCase();
+  return isEventSlug(slug) ? slug : null;
+}
