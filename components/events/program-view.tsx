@@ -1,13 +1,21 @@
+import type { ReactNode } from "react";
+
 import { Badge, Card, EmptyState } from "@/components/ui";
+import { sessionKindLabel } from "@/lib/agenda";
 import type { Schemas } from "@/lib/api/client";
 import { localEventTime } from "@/lib/event-time";
+
+type Session = Schemas["Program"]["days"][number]["sessions"][number];
 
 export function ProgramView({
   program,
   timezone,
+  action,
 }: {
   program: Schemas["Program"];
   timezone: string;
+  // An extra control on each session card, such as "Save to My agenda".
+  action?: (session: Session) => ReactNode;
 }) {
   if (!program.days.length)
     return (
@@ -41,8 +49,16 @@ export function ProgramView({
                   {localEventTime(session.ends_at, timezone).replace("T", " ")}{" "}
                   ({timezone})
                 </p>
-                {session.overlaps_with.length > 0 && (
-                  <Badge>Parallel session</Badge>
+                {(sessionKindLabel(session.kind) ||
+                  session.overlaps_with.length > 0) && (
+                  <div className="flex flex-wrap gap-2">
+                    {sessionKindLabel(session.kind) && (
+                      <Badge>{sessionKindLabel(session.kind)}</Badge>
+                    )}
+                    {session.overlaps_with.length > 0 && (
+                      <Badge>Parallel session</Badge>
+                    )}
+                  </div>
                 )}
                 {(session.room || session.track) && (
                   <p className="text-sm">
@@ -68,6 +84,7 @@ export function ProgramView({
                     {speaker.bio && <p>{speaker.bio}</p>}
                   </div>
                 ))}
+                {action?.(session)}
               </Card>
             ))}
           </div>

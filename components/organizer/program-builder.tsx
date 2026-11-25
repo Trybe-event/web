@@ -16,11 +16,17 @@ import {
   Dialog,
   Field,
   Input,
+  Select,
   Skeleton,
   Textarea,
 } from "@/components/ui";
 import { api, errorMessage, fieldErrors, type Schemas } from "@/lib/api/client";
 import { localEventTime } from "@/lib/event-time";
+import {
+  SESSION_KINDS,
+  SESSION_KIND_LABELS,
+  sessionKindLabel,
+} from "@/lib/agenda";
 import { useEventEditor } from "./event-editor-context";
 import { EventTimeInput } from "./event-fields";
 
@@ -288,7 +294,9 @@ export function ProgramBuilder() {
                 ({event.timezone || "UTC"})
               </p>
               <p className="text-sm">
-                {[session.track, session.room].filter(Boolean).join(" · ")}
+                {[sessionKindLabel(session.kind), session.track, session.room]
+                  .filter(Boolean)
+                  .join(" · ")}
               </p>
               {!!session.overlaps_with.length && (
                 <Badge>Parallel session</Badge>
@@ -595,6 +603,7 @@ function SessionEditor({
       description: "",
       room: "",
       track: "",
+      kind: null,
       speakers: [],
     },
   });
@@ -644,6 +653,29 @@ function SessionEditor({
           )}
         </Field>
       ))}
+      <Field
+        label="Session type"
+        optional
+        hint="Attendees can filter the program by type."
+        error={form.formState.errors.kind?.message}
+      >
+        {(props) => (
+          <Select
+            {...props}
+            {...form.register("kind", {
+              // "Not set" is an empty option; the API wants null.
+              setValueAs: (value) => (value === "" ? null : value),
+            })}
+          >
+            <option value="">Not set</option>
+            {SESSION_KINDS.map((kind) => (
+              <option key={kind} value={kind}>
+                {SESSION_KIND_LABELS[kind]}
+              </option>
+            ))}
+          </Select>
+        )}
+      </Field>
       <Field
         label="Session description"
         optional

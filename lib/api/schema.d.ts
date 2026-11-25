@@ -577,6 +577,49 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/events/{eventId}/bookmarks": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                eventId: components["parameters"]["EventId"];
+            };
+            cookie?: never;
+        };
+        /**
+         * The caller's saved sessions, oldest first (admitted members only)
+         * @description The web builds My agenda from these ids and the event program.
+         */
+        get: operations["listBookmarks"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/events/{eventId}/bookmarks/{sessionId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                eventId: components["parameters"]["EventId"];
+                sessionId: string;
+            };
+            cookie?: never;
+        };
+        get?: never;
+        /** Save a session of this event to My agenda. Saving twice is fine. */
+        put: operations["addBookmark"];
+        post?: never;
+        /** Remove a session from My agenda. Removing an unsaved session is fine. */
+        delete: operations["removeBookmark"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/events/{eventId}/pass": {
         parameters: {
             query?: never;
@@ -1576,6 +1619,11 @@ export interface components {
             ends_at: string;
             room?: string | null;
             track?: string | null;
+            /**
+             * @description What the session is, so attendees can filter the program. Null when not set.
+             * @enum {string|null}
+             */
+            kind?: "keynote" | "talk" | "workshop" | "panel" | "practical" | "social" | "break" | null;
             speakers?: components["schemas"]["Speaker"][];
         };
         Session: components["schemas"]["SessionInput"] & {
@@ -2829,6 +2877,77 @@ export interface operations {
                 };
             };
             403: components["responses"]["Error"];
+        };
+    };
+    listBookmarks: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                eventId: components["parameters"]["EventId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Saved session ids */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        items: string[];
+                    };
+                };
+            };
+            403: components["responses"]["Error"];
+        };
+    };
+    addBookmark: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                eventId: components["parameters"]["EventId"];
+                sessionId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Saved */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            403: components["responses"]["Error"];
+            404: components["responses"]["Error"];
+        };
+    };
+    removeBookmark: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                eventId: components["parameters"]["EventId"];
+                sessionId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Removed */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            403: components["responses"]["Error"];
+            404: components["responses"]["Error"];
         };
     };
     getEntryPass: {
