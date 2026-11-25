@@ -61,9 +61,9 @@ export default async function EventAttendancePage({
         />
       ) : (
         <p className="text-xs text-muted">
-          Check-in is off for this event. Turn it on in Settings under
-          registration to give admitted attendees an entry pass and check them
-          in here.
+          Check-in is off for this event. Turn it on in Edit event, on the
+          Registration step, to give admitted attendees an entry pass and check
+          them in here.
         </p>
       )}
     </div>

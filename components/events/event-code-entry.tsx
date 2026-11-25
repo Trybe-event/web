@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { useState, type FormEvent } from "react";
 
 import { Button, Field, Input } from "@/components/ui";
+import { api } from "@/lib/api/client";
 import { eventSlugFromInput, routes } from "@/lib/routes";
 
 // For an attendee who heard about an event but has no QR code to scan: paste the
@@ -14,8 +15,12 @@ export function EventCodeEntry() {
   const [error, setError] = useState<string | null>(null);
   const [opening, setOpening] = useState(false);
 
-  function submit(event: FormEvent<HTMLFormElement>) {
+  async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    if (!value.trim()) {
+      setError("Enter an event code or link.");
+      return;
+    }
     const slug = eventSlugFromInput(value);
     if (!slug) {
       setError(
@@ -25,6 +30,20 @@ export function EventCodeEntry() {
     }
     setError(null);
     setOpening(true);
+    // Check the code first, so a mistyped one is answered here instead of a 404 page.
+    try {
+      const { response } = await api.GET("/e/{slug}", {
+        params: { path: { slug } },
+        signal: AbortSignal.timeout(10000),
+      });
+      if (response.status === 404) {
+        setError("That event code is not correct. Check it and try again.");
+        setOpening(false);
+        return;
+      }
+    } catch {
+      // Network trouble: let the event page load and explain itself.
+    }
     router.push(routes.eventLanding(slug));
   }
 
