@@ -11,6 +11,7 @@ import { RetryDashboard } from "./retry-dashboard";
 import { EventThumbnail } from "./event-thumbnail";
 import { DeleteDraft } from "./delete-draft";
 import { OrganizerEventList } from "./event-list";
+import { eventListTab } from "@/lib/event-lifecycle";
 
 export function DashboardLoading() {
   return (
@@ -61,6 +62,9 @@ function EventRow({ event }: { event: OrganizerEvent }) {
           {event.status === "draft" && (
             <DeleteDraft eventId={event.id} name={event.name} />
           )}
+          {event.ended_by_system && (
+            <p className="text-xs text-muted">Ended automatically by Trybe</p>
+          )}
         </div>
       </div>
     </Card>
@@ -89,7 +93,7 @@ export async function OrganizerDashboard() {
         items={events.map((event) => ({
           id: event.id,
           name: event.name,
-          status: event.status,
+          status: eventListTab(event),
           content: <EventRow event={event} />,
         }))}
       />

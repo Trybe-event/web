@@ -1829,6 +1829,8 @@ components:
         image_url: { type: [string, "null"], description: Short-lived view URL for the event cover }
         status: { $ref: "#/components/schemas/EventStatus" }
         starts_at: { type: [string, "null"], format: date-time }
+        ends_at: { type: [string, "null"], format: date-time, description: "Scheduled end. Trybe ends a published event 30 minutes after it." }
+        ended_by_system: { type: boolean, description: Trybe ended the event because it was still open 30 minutes after its scheduled end }
         registrations: { type: integer }
         registration_state: { $ref: "#/components/schemas/WindowState" }
         networking_state: { $ref: "#/components/schemas/WindowState" }

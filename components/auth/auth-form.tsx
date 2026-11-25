@@ -2,7 +2,7 @@
 
 import { useAuth, useSignIn, useSignUp } from "@clerk/nextjs";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useEffect, useId, useState, type ReactNode } from "react";
+import { useEffect, useId, useRef, useState, type ReactNode } from "react";
 import { Controller, useForm, useWatch } from "react-hook-form";
 import { z } from "zod";
 import { signedInAs } from "@/lib/signed-in-as";
@@ -101,6 +101,7 @@ export function AuthForm({
       confirm_password: "",
     },
   });
+  const verificationFormElement = useRef<HTMLFormElement>(null);
   const verificationForm = useForm<z.infer<typeof verificationCodeSchema>>({
     resolver: zodResolver(verificationCodeSchema),
     defaultValues: { code: "" },
@@ -545,6 +546,7 @@ export function AuthForm({
         authenticationStep,
       ) && (
         <form
+          ref={verificationFormElement}
           className="space-y-5"
           noValidate
           onSubmit={verificationForm.handleSubmit(({ code: value }) =>
@@ -616,6 +618,13 @@ export function AuthForm({
                     {...props}
                     {...field}
                     disabled={isAuthenticationPending}
+                    // Like most two-step sign-ins: the sixth digit checks the code,
+                    // no extra click. The button stays for retries.
+                    onComplete={() =>
+                      window.setTimeout(() =>
+                        verificationFormElement.current?.requestSubmit(),
+                      )
+                    }
                   />
                 )}
               />

@@ -102,6 +102,7 @@ function dashboardHarness({ events = [], points = [], failure = false } = {}) {
     "./delete-draft": deletion,
     "./event-list": compile("../components/organizer/event-list.tsx"),
     "./event-status-badges": lifecycleBadges,
+    "@/lib/event-lifecycle": lifecyclePolicy,
     "./retry-dashboard": {
       RetryDashboard: () => React.createElement("button", null, "Try again"),
     },

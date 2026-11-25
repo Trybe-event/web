@@ -2,6 +2,7 @@ import Link from "next/link";
 import { CalendarDays, ImageIcon, ListChecks, Share2 } from "lucide-react";
 import { Card, ButtonLink, Alert } from "@/components/ui";
 import { EventStatusBadges } from "./event-status-badges";
+import { EndEventPrompt } from "./end-event-prompt";
 import { RegistrationTrend } from "./registration-trend";
 import { RetryDashboard } from "./retry-dashboard";
 import type { Schemas } from "@/lib/api/client";
@@ -47,6 +48,7 @@ export function EventOverview({
           {event.status === "draft" ? "Continue setup" : "View event page"}
         </ButtonLink>
       </header>
+      <EndEventPrompt event={event} />
       <section className="organizer-event-metrics" aria-label="Event summary">
         <Card>
           <span>Registrations</span>
