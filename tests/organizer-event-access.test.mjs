@@ -143,6 +143,7 @@ test("event pages do not load statistics or program before ownership is confirme
         "@/lib/api/server": {},
         "@/components/organizer/registration-trend": {},
         "@/components/organizer/retry-dashboard": {},
+        "@/components/organizer/check-in-desk": {},
         "@/components/organizer/event-lifecycle": {},
         "@/components/organizer/delete-draft": {},
         "@/components/events/event-hero": {},

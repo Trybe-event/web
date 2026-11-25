@@ -577,6 +577,67 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/events/{eventId}/pass": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                eventId: components["parameters"]["EventId"];
+            };
+            cookie?: never;
+        };
+        /** The caller's entry pass, issued on first request (admitted members, check-in on) */
+        get: operations["getEntryPass"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/events/{eventId}/pass/reissue": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                eventId: components["parameters"]["EventId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Replace the pass code, for example after a screenshot was shared */
+        post: operations["reissueEntryPass"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/organizer/events/{eventId}/check-ins": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                eventId: components["parameters"]["EventId"];
+            };
+            cookie?: never;
+        };
+        /** Everyone checked in, newest first */
+        get: operations["listCheckIns"];
+        put?: never;
+        /**
+         * Check an attendee in by scanned pass code or, manually, by registration. Once per event day.
+         * @description Refused with 409 when check-in is off, outside the event's dates, the pass is for another event (code wrong_event) or the attendee is not admitted (code not_admitted). A repeat on the same day answers already_checked_in with the first check-in.
+         */
+        post: operations["checkIn"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/organizer/events/{eventId}/questions": {
         parameters: {
             query?: never;
@@ -1387,6 +1448,8 @@ export interface components {
             capacity?: number | null;
             /** @description When full, new registrations wait and are admitted in order as places free up */
             waitlist_enabled?: boolean;
+            /** @description Admitted attendees get an entry pass and the organizer checks them in at the venue. Off by default. */
+            checkin_enabled?: boolean;
         };
         Event: components["schemas"]["EventInput"] & {
             /** Format: uuid */
@@ -1435,6 +1498,8 @@ export interface components {
             category?: string | null;
             /** @description Registrations wait for the organizer's approval */
             approval_required?: boolean;
+            /** @description Admitted attendees show an entry pass at the venue */
+            checkin_enabled?: boolean;
             registration_questions?: components["schemas"]["RegistrationQuestion"][];
             image_url?: string | null;
             status: components["schemas"]["EventStatus"];
@@ -1592,6 +1657,31 @@ export interface components {
             body: string;
             /** Format: date-time */
             created_at: string;
+        };
+        /** @description The code carries no personal data. Reissuing it stops the old one working. */
+        EntryPass: {
+            /** Format: uuid */
+            event_id: string;
+            /** @description Shown as a QR code at the venue */
+            code: string;
+            /** Format: date-time */
+            issued_at: string;
+            /** @description Event days the attendee checked in */
+            checked_in_days: string[];
+        };
+        CheckIn: {
+            /** Format: uuid */
+            registration_id: string;
+            attendee_name: string;
+            /**
+             * Format: date
+             * @description The date in the event's time zone
+             */
+            event_day: string;
+            /** Format: date-time */
+            checked_in_at: string;
+            /** @enum {string} */
+            method: "scan" | "manual";
         };
         MyEvent: {
             event: components["schemas"]["PublicEvent"];
@@ -2732,6 +2822,115 @@ export interface operations {
                 };
             };
             403: components["responses"]["Error"];
+        };
+    };
+    getEntryPass: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                eventId: components["parameters"]["EventId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Entry pass */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EntryPass"];
+                };
+            };
+            403: components["responses"]["Error"];
+            409: components["responses"]["Error"];
+        };
+    };
+    reissueEntryPass: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                eventId: components["parameters"]["EventId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The new entry pass */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EntryPass"];
+                };
+            };
+            403: components["responses"]["Error"];
+            409: components["responses"]["Error"];
+        };
+    };
+    listCheckIns: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                eventId: components["parameters"]["EventId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Check-ins */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        items: components["schemas"]["CheckIn"][];
+                    };
+                };
+            };
+            404: components["responses"]["Error"];
+        };
+    };
+    checkIn: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                eventId: components["parameters"]["EventId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    code?: string;
+                    /** Format: uuid */
+                    registration_id?: string;
+                };
+            };
+        };
+        responses: {
+            /** @description Checked in, or already checked in today */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CheckIn"] & {
+                        /** @enum {string} */
+                        result: "checked_in" | "already_checked_in";
+                    };
+                };
+            };
+            400: components["responses"]["Error"];
+            404: components["responses"]["Error"];
+            409: components["responses"]["Error"];
         };
     };
     listOrganizerQuestions: {

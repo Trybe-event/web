@@ -246,6 +246,21 @@ export function RegistrationPolicyFields() {
           </span>
         </span>
       </label>
+      <label className="flex items-start gap-3 text-sm">
+        <input
+          type="checkbox"
+          className="mt-1"
+          {...form.register("checkin_enabled")}
+        />
+        <span>
+          <strong>Check people in at the venue</strong>
+          <span className="block text-muted">
+            Admitted attendees get an entry pass with a QR code. You scan it, or
+            find them by name, on the Check-in page. Leave it off if you do not
+            take attendance at the door.
+          </span>
+        </span>
+      </label>
       <p className="text-sm text-muted">
         With review on, every registration waits for you on the Audience page.
         Only admitted people can network and message.

@@ -91,6 +91,7 @@ export const eventDraftSchema = z
       .nullable()
       .optional(),
     waitlist_enabled: z.boolean().optional(),
+    checkin_enabled: z.boolean().optional(),
   })
   .superRefine((event, context) => {
     if (event.format === "physical" || event.format === "hybrid") {
