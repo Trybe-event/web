@@ -210,6 +210,7 @@ const authDependencies = {
   "@/lib/password-policy": compile("../lib/password-policy.ts"),
   "@/lib/verification-code": verificationPolicy,
   "@/lib/authentication-errors": compile("../lib/authentication-errors.ts"),
+  "@/lib/signed-in-as": { signedInAs: async () => true },
   "./password-checklist": {
     PasswordChecklist: () =>
       React.createElement("p", null, "Password requirements"),
