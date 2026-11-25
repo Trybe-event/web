@@ -27,6 +27,7 @@ tags:
   - name: events
   - name: engagement
   - name: checkin
+  - name: agenda
   - name: program
   - name: registration
   - name: organizer
@@ -688,6 +689,50 @@ paths:
                 properties:
                   items: { type: array, items: { $ref: "#/components/schemas/Announcement" } }
         "403": { $ref: "#/components/responses/Error" }
+  /events/{eventId}/bookmarks:
+    parameters: [{ $ref: "#/components/parameters/EventId" }]
+    get:
+      tags: [agenda]
+      operationId: listBookmarks
+      summary: The caller's saved sessions, oldest first (admitted members only)
+      description: The web builds My agenda from these ids and the event program.
+      x-account: attendee
+      x-milestone: V2-1
+      responses:
+        "200":
+          description: Saved session ids
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [items]
+                properties:
+                  items: { type: array, items: { type: string, format: uuid } }
+        "403": { $ref: "#/components/responses/Error" }
+  /events/{eventId}/bookmarks/{sessionId}:
+    parameters:
+      - { $ref: "#/components/parameters/EventId" }
+      - { name: sessionId, in: path, required: true, schema: { type: string, format: uuid } }
+    put:
+      tags: [agenda]
+      operationId: addBookmark
+      summary: Save a session of this event to My agenda. Saving twice is fine.
+      x-account: attendee
+      x-milestone: V2-1
+      responses:
+        "204": { description: Saved }
+        "403": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+    delete:
+      tags: [agenda]
+      operationId: removeBookmark
+      summary: Remove a session from My agenda. Removing an unsaved session is fine.
+      x-account: attendee
+      x-milestone: V2-1
+      responses:
+        "204": { description: Removed }
+        "403": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
   /events/{eventId}/pass:
     parameters: [{ $ref: "#/components/parameters/EventId" }]
     get:
@@ -1806,6 +1851,10 @@ components:
         ends_at: { type: string, format: date-time }
         room: { type: [string, "null"] }
         track: { type: [string, "null"] }
+        kind:
+          type: [string, "null"]
+          enum: [keynote, talk, workshop, panel, practical, social, break, null]
+          description: What the session is, so attendees can filter the program. Null when not set.
         speakers: { type: array, items: { $ref: "#/components/schemas/Speaker" } }
     Session:
       allOf:

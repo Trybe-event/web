@@ -1,5 +1,5 @@
 import { Alert, ButtonLink } from "@/components/ui";
-import { ProgramView } from "@/components/events/program-view";
+import { MemberProgram } from "@/components/events/member-program";
 import { getPublicEvent } from "@/lib/events";
 import { requireEventWorkspace } from "@/lib/event-workspace";
 
@@ -17,7 +17,9 @@ export default async function ProgramPage({
       <h1 className="text-3xl font-bold">The program</h1>
       <p className="text-muted">{workspace.event.name}</p>
       {result.kind === "found" && result.event.program ? (
-        <ProgramView
+        <MemberProgram
+          eventId={workspace.event.id}
+          slug={slug}
           program={result.event.program}
           timezone={result.event.timezone}
         />

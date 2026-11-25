@@ -2,6 +2,7 @@
 import {
   Archive,
   Bell,
+  BookmarkCheck,
   CalendarDays,
   Link2,
   Megaphone,
@@ -38,6 +39,7 @@ export function EventWorkspaceNavigation({
           },
         ]),
     { title: "Program", href: `${base}/program`, icon: CalendarDays },
+    { title: "My agenda", href: `${base}/agenda`, icon: BookmarkCheck },
     { title: "Updates & Q&A", href: `${base}/updates`, icon: Megaphone },
     ...(entryPass
       ? [{ title: "Entry pass", href: `${base}/pass`, icon: QrCode }]
