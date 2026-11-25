@@ -1,6 +1,7 @@
 import { z } from "zod";
 import type { Schemas } from "./api/client";
 import { localEventTime } from "./event-time";
+import { SESSION_KINDS } from "./agenda";
 
 export const programDaySchema = z.object({
   date: z.string().date("Choose a valid program date."),
@@ -18,6 +19,7 @@ export const sessionSchema = z
       .datetime({ offset: true, message: "Choose when this session ends." }),
     room: z.string().max(120).nullable().optional(),
     track: z.string().max(120).nullable().optional(),
+    kind: z.enum(SESSION_KINDS).nullable().optional(),
     speakers: z
       .array(
         z.object({

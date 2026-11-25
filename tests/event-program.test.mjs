@@ -29,7 +29,10 @@ const {
   programDayError,
   sessionSchema,
   sessionScheduleErrors,
-} = compile("../lib/event-program.ts", { "./event-time": time });
+} = compile("../lib/event-program.ts", {
+  "./event-time": time,
+  "./agenda": compile("../lib/agenda.ts"),
+});
 const event = {
   timezone: "Africa/Lagos",
   starts_at: "2026-11-01T08:00:00Z",
@@ -96,4 +99,15 @@ test("program day dates are required and must fall within the event's local date
   assert.ok(programDayError("2026-10-31", event));
   assert.ok(programDayError("2026-11-03", event));
   assert.ok(programDayError("2026-11-01", {}));
+});
+
+test("a session type is one of the fixed types or not set", () => {
+  const base = {
+    title: "Opening",
+    starts_at: "2082-12-01T09:00:00Z",
+    ends_at: "2082-12-01T10:00:00Z",
+  };
+  for (const kind of ["keynote", "break", null, undefined])
+    assert.ok(sessionSchema.safeParse({ ...base, kind }).success, String(kind));
+  assert.ok(!sessionSchema.safeParse({ ...base, kind: "karaoke" }).success);
 });
