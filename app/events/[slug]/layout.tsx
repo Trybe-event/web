@@ -29,6 +29,10 @@ export default async function EventWorkspaceLayout({
         <EventWorkspaceNavigation
           slug={slug}
           networkingClosed={workspace.event.networking_state === "closed"}
+          entryPass={
+            workspace.kind === "member" &&
+            Boolean(workspace.event.checkin_enabled)
+          }
         />
         <div className="min-w-0 flex-1">
           <NetworkingNotice

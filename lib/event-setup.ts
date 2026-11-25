@@ -26,9 +26,13 @@ export function eventSetupFieldStep(field: string, published = false): number {
   if (published && field === "program") return 4;
   if (field === "program" || field.startsWith("networking_")) return 3;
   if (
-    ["visibility", "approval_mode", "capacity", "waitlist_enabled"].includes(
-      field,
-    ) ||
+    [
+      "visibility",
+      "approval_mode",
+      "capacity",
+      "waitlist_enabled",
+      "checkin_enabled",
+    ].includes(field) ||
     field.startsWith("registration_")
   )
     return 2;

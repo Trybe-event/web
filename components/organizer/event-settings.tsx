@@ -38,6 +38,7 @@ const labels: Record<keyof EventDraft, string> = {
   approval_mode: "Registration approval",
   capacity: "Capacity",
   waitlist_enabled: "Waitlist when full",
+  checkin_enabled: "Check-in at the venue",
 };
 
 function reviewedValue(name: keyof EventDraft, event: Schemas["Event"]) {
@@ -47,7 +48,8 @@ function reviewedValue(name: keyof EventDraft, event: Schemas["Event"]) {
     return `${localEventTime(String(value), event.timezone || "UTC").replace("T", " ")} (${event.timezone || "UTC"})`;
   if (Array.isArray(value)) return value.join(", ") || "None";
   if (name === "capacity" && value == null) return "No limit";
-  if (name === "waitlist_enabled") return value ? "On" : "Off";
+  if (name === "waitlist_enabled" || name === "checkin_enabled")
+    return value ? "On" : "Off";
   if (name === "approval_mode")
     return value === "review" ? "Review each registration" : "Automatic";
   return value == null || value === "" ? "Not set" : String(value);

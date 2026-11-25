@@ -5,6 +5,7 @@ import { Card, Alert } from "@/components/ui";
 import { RetryDashboard } from "@/components/organizer/retry-dashboard";
 import { loadOwnedEvent } from "@/lib/organizer-event";
 import { loadOrganizerEvents } from "@/lib/organizer-dashboard";
+import { CheckInDesk } from "@/components/organizer/check-in-desk";
 export const metadata: Metadata = { title: "Event attendance" };
 export default async function EventAttendancePage({
   params,
@@ -12,7 +13,9 @@ export default async function EventAttendancePage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  if (!(await loadOwnedEvent(id))) return null;
+  const owned = await loadOwnedEvent(id);
+  if (!owned) return null;
+  const { event } = owned;
   const [events, registrations] = await Promise.all([
     loadOrganizerEvents(),
     (async () => {
@@ -50,10 +53,19 @@ export default async function EventAttendancePage({
         </Alert>
       )}
       <OrganizerAudience initial={registrations} scopeEventId={id} />
-      <p className="text-xs text-muted">
-        Check-in is being built. Registration and approval do not prove physical
-        attendance.
-      </p>
+      {event.checkin_enabled ? (
+        <CheckInDesk
+          eventId={id}
+          timezone={event.timezone || "UTC"}
+          registrations={registrations ?? []}
+        />
+      ) : (
+        <p className="text-xs text-muted">
+          Check-in is off for this event. Turn it on in Settings under
+          registration to give admitted attendees an entry pass and check them
+          in here.
+        </p>
+      )}
     </div>
   );
 }

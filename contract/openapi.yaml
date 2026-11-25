@@ -26,6 +26,7 @@ tags:
   - name: uploads
   - name: events
   - name: engagement
+  - name: checkin
   - name: program
   - name: registration
   - name: organizer
@@ -687,6 +688,88 @@ paths:
                 properties:
                   items: { type: array, items: { $ref: "#/components/schemas/Announcement" } }
         "403": { $ref: "#/components/responses/Error" }
+  /events/{eventId}/pass:
+    parameters: [{ $ref: "#/components/parameters/EventId" }]
+    get:
+      tags: [checkin]
+      operationId: getEntryPass
+      summary: The caller's entry pass, issued on first request (admitted members, check-in on)
+      x-account: attendee
+      x-milestone: V2-1
+      responses:
+        "200":
+          description: Entry pass
+          content: { application/json: { schema: { $ref: "#/components/schemas/EntryPass" } } }
+        "403": { $ref: "#/components/responses/Error" }
+        "409": { $ref: "#/components/responses/Error" }
+  /events/{eventId}/pass/reissue:
+    parameters: [{ $ref: "#/components/parameters/EventId" }]
+    post:
+      tags: [checkin]
+      operationId: reissueEntryPass
+      summary: Replace the pass code, for example after a screenshot was shared
+      x-account: attendee
+      x-milestone: V2-1
+      responses:
+        "200":
+          description: The new entry pass
+          content: { application/json: { schema: { $ref: "#/components/schemas/EntryPass" } } }
+        "403": { $ref: "#/components/responses/Error" }
+        "409": { $ref: "#/components/responses/Error" }
+  /organizer/events/{eventId}/check-ins:
+    parameters: [{ $ref: "#/components/parameters/EventId" }]
+    get:
+      tags: [checkin]
+      operationId: listCheckIns
+      summary: Everyone checked in, newest first
+      x-account: organizer
+      x-milestone: V2-1
+      responses:
+        "200":
+          description: Check-ins
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [items]
+                properties:
+                  items: { type: array, items: { $ref: "#/components/schemas/CheckIn" } }
+        "404": { $ref: "#/components/responses/Error" }
+    post:
+      tags: [checkin]
+      operationId: checkIn
+      summary: Check an attendee in by scanned pass code or, manually, by registration. Once per event day.
+      description: >-
+        Refused with 409 when check-in is off, outside the event's dates, the pass is for another event
+        (code wrong_event) or the attendee is not admitted (code not_admitted). A repeat on the same day
+        answers already_checked_in with the first check-in.
+      x-account: organizer
+      x-milestone: V2-1
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              description: Send exactly one of code and registration_id.
+              properties:
+                code: { type: string, maxLength: 64 }
+                registration_id: { type: string, format: uuid }
+      responses:
+        "200":
+          description: Checked in, or already checked in today
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/CheckIn"
+                  - type: object
+                    required: [result]
+                    properties:
+                      result: { type: string, enum: [checked_in, already_checked_in] }
+        "400": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+        "409": { $ref: "#/components/responses/Error" }
   /organizer/events/{eventId}/questions:
     parameters: [{ $ref: "#/components/parameters/EventId" }]
     get:
@@ -1621,6 +1704,7 @@ components:
         approval_mode: { type: string, enum: [automatic, review], description: review holds every registration as pending until the organizer decides }
         capacity: { type: [integer, "null"], minimum: 1, maximum: 100000, description: Most admitted attendees; null means no limit }
         waitlist_enabled: { type: boolean, description: "When full, new registrations wait and are admitted in order as places free up" }
+        checkin_enabled: { type: boolean, description: "Admitted attendees get an entry pass and the organizer checks them in at the venue. Off by default." }
     Event:
       allOf:
         - $ref: "#/components/schemas/EventInput"
@@ -1661,6 +1745,7 @@ components:
         topics: { type: array, items: { type: string } }
         category: { type: [string, "null"] }
         approval_required: { type: boolean, description: Registrations wait for the organizer's approval }
+        checkin_enabled: { type: boolean, description: Admitted attendees show an entry pass at the venue }
         registration_questions: { type: array, items: { $ref: "#/components/schemas/RegistrationQuestion" } }
         image_url: { type: [string, "null"] }
         status: { $ref: "#/components/schemas/EventStatus" }
@@ -1810,6 +1895,24 @@ components:
         title: { type: string }
         body: { type: string }
         created_at: { type: string, format: date-time }
+    EntryPass:
+      type: object
+      description: The code carries no personal data. Reissuing it stops the old one working.
+      required: [event_id, code, issued_at, checked_in_days]
+      properties:
+        event_id: { type: string, format: uuid }
+        code: { type: string, description: Shown as a QR code at the venue }
+        issued_at: { type: string, format: date-time }
+        checked_in_days: { type: array, items: { type: string, format: date }, description: Event days the attendee checked in }
+    CheckIn:
+      type: object
+      required: [registration_id, attendee_name, event_day, checked_in_at, method]
+      properties:
+        registration_id: { type: string, format: uuid }
+        attendee_name: { type: string }
+        event_day: { type: string, format: date, description: "The date in the event's time zone" }
+        checked_in_at: { type: string, format: date-time }
+        method: { type: string, enum: [scan, manual] }
     MyEvent:
       type: object
       required: [event, membership]

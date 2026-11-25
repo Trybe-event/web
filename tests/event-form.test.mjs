@@ -213,7 +213,12 @@ test("walkthrough steps retain every publication requirement and point errors to
   assert.equal(eventSetupFieldStep("program", true), 4);
   assert.equal(eventSetupFieldStep("networking_closes_at", true), 3);
   assert.equal(eventSetupFieldStep("visibility"), 2);
-  for (const field of ["capacity", "approval_mode", "waitlist_enabled"])
+  for (const field of [
+    "capacity",
+    "approval_mode",
+    "waitlist_enabled",
+    "checkin_enabled",
+  ])
     assert.equal(eventSetupFieldStep(field), 2);
   assert.equal(eventSetupFieldStep("image_key"), 0);
   for (const published of [false, true]) {

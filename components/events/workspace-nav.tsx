@@ -6,6 +6,7 @@ import {
   Link2,
   Megaphone,
   MessageSquare,
+  QrCode,
   Settings,
   Sparkles,
   UserRound,
@@ -17,9 +18,11 @@ import { usePathname } from "next/navigation";
 export function EventWorkspaceNavigation({
   slug,
   networkingClosed = false,
+  entryPass = false,
 }: {
   slug: string;
   networkingClosed?: boolean;
+  entryPass?: boolean;
 }) {
   const pathname = usePathname();
   const base = `/events/${encodeURIComponent(slug)}`;
@@ -36,6 +39,9 @@ export function EventWorkspaceNavigation({
         ]),
     { title: "Program", href: `${base}/program`, icon: CalendarDays },
     { title: "Updates & Q&A", href: `${base}/updates`, icon: Megaphone },
+    ...(entryPass
+      ? [{ title: "Entry pass", href: `${base}/pass`, icon: QrCode }]
+      : []),
     { title: "Notifications", href: "/attendee/notifications", icon: Bell },
     { title: "Profile", href: "/attendee/profile", icon: UserRound },
     { title: "Settings", href: "/attendee/profile/settings", icon: Settings },
