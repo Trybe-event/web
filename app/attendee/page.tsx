@@ -58,7 +58,7 @@ export default async function AttendeeHome() {
             YOUR PEOPLE. YOUR NEXT CHAPTER.
           </span>
           <h1>My events</h1>
-          <p>Make the most of every room you�re part of.</p>
+          <p>Make the most of every room you’re part of.</p>
         </div>
         <ButtonLink href="/attendee/discover" variant="secondary">
           Discover events
