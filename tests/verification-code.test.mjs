@@ -28,6 +28,7 @@ const policy = compile("../lib/verification-code.ts");
 
 function inputHarness(initial = "", disabled = false) {
   let value = initial;
+  const completed = [];
   const focused = [];
   const references = { current: [] };
   const firstInput = { current: null };
@@ -50,6 +51,7 @@ function inputHarness(initial = "", disabled = false) {
           value = next;
         },
         onBlur() {},
+        onComplete: (code) => completed.push(code),
         disabled,
         "aria-describedby": "code-help",
         "aria-invalid": true,
@@ -65,6 +67,7 @@ function inputHarness(initial = "", disabled = false) {
   return {
     render,
     focused,
+    completed,
     firstInput,
     value: () => value,
     change: (index, text) =>
@@ -171,4 +174,22 @@ test("disabled verification fields cannot accept pasted or typed codes", () => {
   harness.change(0, "9");
   assert.equal(harness.value(), "123456");
   assert.ok(harness.render().every((input) => input.disabled));
+});
+
+test("the sixth digit, typed or pasted, asks the form to check the code once", () => {
+  const typed = inputHarness();
+  for (let index = 0; index < 5; index++) typed.change(index, String(index));
+  assert.deepEqual(typed.completed, []);
+  typed.change(5, "9");
+  assert.deepEqual(typed.completed, ["012349"]);
+  // Re-entering the same digit changes nothing and does not check again.
+  typed.change(5, "9");
+  assert.deepEqual(typed.completed, ["012349"]);
+  // Fixing a wrong digit checks the corrected code.
+  typed.change(2, "7");
+  assert.deepEqual(typed.completed, ["012349", "017349"]);
+
+  const pasted = inputHarness();
+  pasted.paste(0, "654321");
+  assert.deepEqual(pasted.completed, ["654321"]);
 });

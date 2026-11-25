@@ -1550,6 +1550,13 @@ export interface components {
             status: components["schemas"]["EventStatus"];
             /** Format: date-time */
             starts_at?: string | null;
+            /**
+             * Format: date-time
+             * @description Scheduled end. Trybe ends a published event 30 minutes after it.
+             */
+            ends_at?: string | null;
+            /** @description Trybe ended the event because it was still open 30 minutes after its scheduled end */
+            ended_by_system?: boolean;
             registrations: number;
             registration_state?: components["schemas"]["WindowState"];
             networking_state?: components["schemas"]["WindowState"];

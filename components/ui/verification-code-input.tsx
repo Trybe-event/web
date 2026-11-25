@@ -9,6 +9,8 @@ type VerificationCodeInputProps = {
   value: string;
   onChange: (value: string) => void;
   onBlur: () => void;
+  // Called once the last digit is entered, so the form can check the code at once.
+  onComplete?: (value: string) => void;
   disabled?: boolean;
   "aria-describedby"?: string;
   "aria-invalid"?: boolean;
@@ -18,10 +20,24 @@ export const VerificationCodeInput = forwardRef<
   HTMLInputElement,
   VerificationCodeInputProps
 >(function VerificationCodeInput(
-  { id, value, onChange, onBlur, disabled, ...accessibilityProps },
+  {
+    id,
+    value,
+    onChange: setValue,
+    onBlur,
+    onComplete,
+    disabled,
+    ...accessibilityProps
+  },
   forwardedRef,
 ) {
   const digitInputs = useRef<(HTMLInputElement | null)[]>([]);
+
+  function onChange(next: string) {
+    setValue(next);
+    if (next.length === VERIFICATION_CODE_LENGTH && next !== value)
+      onComplete?.(next);
+  }
 
   function focusDigit(index: number) {
     const input =

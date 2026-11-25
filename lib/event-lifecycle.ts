@@ -46,3 +46,30 @@ export function lifecycleStatuses(
     },
   ];
 }
+
+// Trybe ends a published event this long after its scheduled end (api: event-auto-end).
+export const AUTO_END_GRACE_MINUTES = 30;
+
+type Timed = {
+  status: "draft" | "published" | "ended";
+  ends_at?: string | null;
+};
+
+// awaitingEnd: published, and the scheduled end has passed.
+export function awaitingEnd(event: Timed, now = Date.now()) {
+  return (
+    event.status === "published" &&
+    !!event.ends_at &&
+    Date.parse(event.ends_at) <= now
+  );
+}
+
+// eventListTab places an event on the organizer dashboard. A finished event belongs
+// under Past even in the few minutes before it is formally ended.
+export function eventListTab(event: Timed, now = Date.now()) {
+  return awaitingEnd(event, now) ? "ended" : event.status;
+}
+
+export function autoEndTime(endsAt: string) {
+  return new Date(Date.parse(endsAt) + AUTO_END_GRACE_MINUTES * 60_000);
+}
