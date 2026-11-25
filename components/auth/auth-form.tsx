@@ -5,6 +5,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useEffect, useId, useState, type ReactNode } from "react";
 import { Controller, useForm, useWatch } from "react-hook-form";
 import { z } from "zod";
+import { signedInAs } from "@/lib/signed-in-as";
 
 import { workspacePath, type AccountType } from "@/lib/account";
 import {
@@ -51,24 +52,6 @@ type AuthFormProps =
   | { type: AccountType; mode: "sign-in" | "sign-up"; eventSlug?: string }
   | { type: "admin"; mode: "sign-in"; eventSlug?: never };
 
-// signedInAs reports whether the session that just signed in may use this page's
-// workspace. Only a bound account of another type is refused; a new sign-in without a
-// Trybe account continues to that type's setup, and a lookup failure is left to the
-// workspace, which checks the account on the server anyway.
-async function signedInAs(type: AccountType | "admin") {
-  try {
-    const response = await fetch("/api/me/account", {
-      cache: "no-store",
-      signal: AbortSignal.timeout(8000),
-    });
-    if (!response.ok) return true;
-    const account = (await response.json()) as { type?: string };
-    return !account.type || account.type === type;
-  } catch {
-    return true;
-  }
-}
-
 export function AuthForm({
   type,
   mode,
@@ -85,7 +68,7 @@ export function AuthForm({
   const newPasswordChecklistId = useId();
   const { signIn, errors: signInErrors } = useSignIn();
   const { signUp, errors: signUpErrors } = useSignUp();
-  const { isLoaded, signOut } = useAuth();
+  const { isLoaded, signOut, getToken } = useAuth();
   const [authenticationLoadTimedOut, setAuthenticationLoadTimedOut] =
     useState(false);
   useEffect(() => {
@@ -184,7 +167,10 @@ export function AuthForm({
     );
     // A sign-in that belongs to the other kind of Trybe account is refused with the same
     // answer as a wrong password, so this page never reveals what kind of account it is.
-    if (!signingUp && !(await signedInAs(type))) {
+    if (
+      !signingUp &&
+      !(await signedInAs(type, () => getToken({ skipCache: true })))
+    ) {
       await signOut();
       throw new AuthenticationActionError({ message: SIGN_IN_FAILED });
     }
