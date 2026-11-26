@@ -24,7 +24,9 @@ export async function renderNavigation(networkingClosed = false) {
   ).outputText;
   const loaded = { exports: {} };
   const dependencies = {
-    "next/navigation": { usePathname: () => "/attendee/connections" },
+    "next/navigation": {
+      usePathname: () => "/events/community/messages/c1",
+    },
     "next/link": {
       default: (props) => React.createElement("a", props),
       __esModule: true,
@@ -45,10 +47,19 @@ export async function renderNavigation(networkingClosed = false) {
   return new Response(stream).text();
 }
 
-test("event navigation opens implemented connections and stays at the top on mobile", async () => {
+test("event navigation keeps the attendee's network and profile inside the event", async () => {
   const html = await renderNavigation();
-  assert.match(html, /href="\/attendee\/connections"/);
-  assert.match(html, /aria-current="page"/);
+  assert.match(html, /href="\/events\/community\/connections"/);
+  assert.match(html, /href="\/events\/community\/messages"/);
+  assert.match(html, /href="\/events\/community\/profile"/);
+  // One way back to everything else.
+  assert.match(html, /href="\/attendee"/);
+  assert.doesNotMatch(html, /href="\/attendee\/(connections|inbox|profile)/);
+  // Inside a conversation, Messages is the current section.
+  assert.match(
+    html,
+    /aria-current="page"[^>]*href="\/events\/community\/messages"|href="\/events\/community\/messages"[^>]*aria-current="page"/,
+  );
   assert.match(html, /sticky top-0/);
   assert.doesNotMatch(
     html,
@@ -56,11 +67,11 @@ test("event navigation opens implemented connections and stays at the top on mob
   );
 });
 
-test("closed networking replaces discovery with archive but preserves account connections and inbox", async () => {
+test("closed networking replaces discovery with archive but keeps this event's connections and messages", async () => {
   const html = await renderNavigation(true);
   assert.match(html, /href="\/events\/community\/archive"/);
-  assert.match(html, /href="\/attendee\/connections"/);
-  assert.match(html, /href="\/attendee\/inbox"/);
+  assert.match(html, /href="\/events\/community\/connections"/);
+  assert.match(html, /href="\/events\/community\/messages"/);
   assert.doesNotMatch(
     html,
     /href="\/events\/community"|href="\/events\/community\/attendees"|not available yet/,

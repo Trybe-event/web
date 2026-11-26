@@ -17,7 +17,12 @@ import {
   EmptyState,
   Skeleton,
 } from "@/components/ui";
-import type { Schemas } from "@/lib/api/client";
+import { api, type Schemas } from "@/lib/api/client";
+import {
+  conversationsAt,
+  scopedPaths,
+  type EventScope,
+} from "@/lib/event-scope";
 import {
   conversationTimeLabel,
   conversationTimestamp,
@@ -28,7 +33,8 @@ import { loadInboxSnapshot } from "@/lib/messaging/inbox-read";
 // a conversation for an accepted connection, so nothing is derived here from a
 // profile, a request or a connection list. `can_send` is false once the
 // connection ends; the thread stays readable and the card says so.
-export function InboxList() {
+export function InboxList({ scope }: { scope?: EventScope } = {}) {
+  const paths = scopedPaths(scope);
   const [conversations, setConversations] = useState<Schemas["Conversation"][]>(
     [],
   );
@@ -55,9 +61,18 @@ export function InboxList() {
         return;
       }
 
-      setConversations(result.conversations);
+      let shown = result.conversations;
+      if (scope) {
+        // Which conversations belong here depends on where each connection was made.
+        const { data } = await api
+          .GET("/me/connections", { signal: abort.signal })
+          .catch(() => ({ data: undefined }));
+        if (cancelled) return;
+        shown = conversationsAt(shown, data?.items ?? [], scope);
+      }
+      setConversations(shown);
       const messages = result.unread;
-      setUnread(messages);
+      setUnread(scope ? shown.reduce((sum, c) => sum + c.unread, 0) : messages);
       setFailure(null);
       setLoading(false);
       // The nav badge shares the count without a second stream.
@@ -71,7 +86,7 @@ export function InboxList() {
       cancelled = true;
       abort.abort();
     };
-  }, [revision, retryRevision]);
+  }, [revision, retryRevision, scope]);
 
   return (
     <div className="attendee-network-list flex flex-col">
@@ -112,7 +127,7 @@ export function InboxList() {
           <EmptyState
             title="No messages yet"
             action={
-              <ButtonLink href="/attendee/connections">
+              <ButtonLink href={paths.connections}>
                 Find people to connect with
               </ButtonLink>
             }
@@ -131,6 +146,7 @@ export function InboxList() {
               key={conversation.id}
               conversation={conversation}
               now={now}
+              href={paths.conversation(conversation.id)}
             />
           ))}
         </div>
@@ -142,9 +158,11 @@ export function InboxList() {
 function ConversationCard({
   conversation,
   now,
+  href,
 }: {
   conversation: Schemas["Conversation"];
   now: Date;
+  href: string;
 }) {
   const other = conversation.other;
   const lastMessage = conversation.last_message;
@@ -154,7 +172,7 @@ function ConversationCard({
   // person plus the unread count, not every line of the preview.
   return (
     <Link
-      href={`/attendee/inbox/${conversation.id}`}
+      href={href}
       aria-label={
         conversation.unread > 0
           ? `Open conversation with ${other.full_name}, ${conversation.unread} unread`

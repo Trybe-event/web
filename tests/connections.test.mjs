@@ -356,7 +356,7 @@ test("an accepted connection opens its conversation through the API", () => {
   );
   assert.match(
     tabs,
-    /router\.push\(`\/attendee\/inbox\/\$\{encodeURIComponent\(data\.id\)\}`\)/,
-    "it goes to the conversation the server returned",
+    /router\.push\(scopedPaths\(scope\)\.conversation\(data\.id\)\)/,
+    "it goes to the conversation the server returned, in the inbox it came from",
   );
 });

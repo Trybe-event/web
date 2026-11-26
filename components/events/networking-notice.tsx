@@ -20,10 +20,16 @@ export function NetworkingNotice({
         and conversations are not removed by this networking window.
       </p>
       <div className="flex flex-wrap gap-3">
-        <ButtonLink variant="secondary" href="/attendee/connections">
+        <ButtonLink
+          variant="secondary"
+          href={`/events/${encodeURIComponent(slug)}/connections`}
+        >
           Your connections
         </ButtonLink>
-        <ButtonLink variant="secondary" href="/attendee/inbox">
+        <ButtonLink
+          variant="secondary"
+          href={`/events/${encodeURIComponent(slug)}/messages`}
+        >
           Open inbox
         </ButtonLink>
         {state === "closed" && (

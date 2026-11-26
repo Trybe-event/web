@@ -1,14 +1,13 @@
 "use client";
 import {
   Archive,
-  Bell,
   BookmarkCheck,
   CalendarDays,
+  LayoutGrid,
   Link2,
   Megaphone,
   MessageSquare,
   QrCode,
-  Settings,
   Sparkles,
   UserRound,
   UsersRound,
@@ -44,11 +43,12 @@ export function EventWorkspaceNavigation({
     ...(entryPass
       ? [{ title: "Entry pass", href: `${base}/pass`, icon: QrCode }]
       : []),
-    { title: "Notifications", href: "/attendee/notifications", icon: Bell },
-    { title: "Profile", href: "/attendee/profile", icon: UserRound },
-    { title: "Settings", href: "/attendee/profile/settings", icon: Settings },
-    { title: "Connections", href: "/attendee/connections", icon: Link2 },
-    { title: "Inbox", href: "/attendee/inbox", icon: MessageSquare },
+    // The attendee's network at this event, and their profile, stay in this frame.
+    { title: "Connections", href: `${base}/connections`, icon: Link2 },
+    { title: "Messages", href: `${base}/messages`, icon: MessageSquare },
+    { title: "Edit my profile", href: `${base}/profile`, icon: UserRound },
+    // Everything not about this event lives in the general workspace.
+    { title: "All my events", href: "/attendee", icon: LayoutGrid },
   ];
   return (
     <nav
@@ -59,7 +59,14 @@ export function EventWorkspaceNavigation({
         <Link
           key={link.href}
           href={link.href}
-          aria-current={pathname === link.href ? "page" : undefined}
+          aria-current={
+            pathname === link.href ||
+            // A conversation or attendee page belongs to the section it sits under.
+            (link.href.startsWith(`${base}/`) &&
+              pathname.startsWith(`${link.href}/`))
+              ? "page"
+              : undefined
+          }
           className="attendee-event-nav-link"
         >
           <link.icon size={17} aria-hidden="true" className="shrink-0" />
