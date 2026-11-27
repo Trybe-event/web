@@ -22,6 +22,12 @@ import {
 } from "@/components/ui";
 import { api, errorMessage, type Schemas } from "@/lib/api/client";
 import {
+  connectionsAt,
+  requestsAt,
+  scopedPaths,
+  type EventScope,
+} from "@/lib/event-scope";
+import {
   fetchPendingRequests,
   fetchAcceptedConnections,
 } from "@/lib/connection-reads";
@@ -72,7 +78,12 @@ const EMPTY_SLUGS = new Map<string, string>();
 // request id — accepting refetches the accepted list, which only the server fills.
 export function ConnectionsTabs({
   mode = "all",
-}: { mode?: "all" | "connections" | "requests" } = {}) {
+  scope,
+}: {
+  mode?: "all" | "connections" | "requests";
+  // Inside an event: only requests and connections from that event.
+  scope?: EventScope;
+} = {}) {
   const visibleTabOrder: readonly Tab[] =
     mode === "connections"
       ? ["connected"]
@@ -116,16 +127,24 @@ export function ConnectionsTabs({
       fetchPendingRequests("incoming"),
       fetchPendingRequests("outgoing"),
     ]);
-    setIncoming(orderedRequests(pendingOnly(incomingResult.items ?? [])));
-    setOutgoing(orderedRequests(pendingOnly(outgoingResult.items ?? [])));
+    setIncoming(
+      orderedRequests(
+        pendingOnly(requestsAt(incomingResult.items ?? [], scope)),
+      ),
+    );
+    setOutgoing(
+      orderedRequests(
+        pendingOnly(requestsAt(outgoingResult.items ?? [], scope)),
+      ),
+    );
     return incomingResult.error ?? outgoingResult.error ?? null;
-  }, []);
+  }, [scope]);
 
   const loadConnections = useCallback(async () => {
     const result = await fetchAcceptedConnections();
-    setConnected(orderedConnections(result.items ?? []));
+    setConnected(orderedConnections(connectionsAt(result.items ?? [], scope)));
     return result.error;
-  }, []);
+  }, [scope]);
 
   useEffect(() => {
     let active = true;
@@ -286,7 +305,7 @@ export function ConnectionsTabs({
         { params: { path: { connectionId: connection.id } } },
       );
       if (data) {
-        router.push(`/attendee/inbox/${encodeURIComponent(data.id)}`);
+        router.push(scopedPaths(scope).conversation(data.id));
         return;
       }
       setNotice({

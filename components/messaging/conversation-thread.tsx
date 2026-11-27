@@ -62,8 +62,11 @@ const LIVE_LABELS = {
 // while the composer says why it is off.
 export function ConversationThread({
   conversationId,
+  backHref = "/attendee/inbox",
 }: {
   conversationId: string;
+  // The inbox this thread was opened from: the general one or an event's.
+  backHref?: string;
 }) {
   const [conversation, setConversation] = useState<
     Schemas["Conversation"] | null
@@ -316,9 +319,7 @@ export function ConversationThread({
         ) : (
           <EmptyState
             title="This conversation isn't available."
-            action={
-              <ButtonLink href="/attendee/inbox">Back to inbox</ButtonLink>
-            }
+            action={<ButtonLink href={backHref}>Back to inbox</ButtonLink>}
           >
             <p>
               It may have been removed, or it belongs to someone else&apos;s
@@ -338,7 +339,7 @@ export function ConversationThread({
     <div className="mx-auto flex h-[calc(100dvh-8rem)] w-full max-w-2xl flex-col px-4 pt-4 pb-2 sm:h-[calc(100dvh-10rem)]">
       <header className="flex shrink-0 items-start gap-3 border-b border-line pb-3">
         <ButtonLink
-          href="/attendee/inbox"
+          href={backHref}
           variant="ghost"
           size="sm"
           aria-label="Back to inbox"

@@ -20,6 +20,9 @@ test("all event workspace pages require attendee authentication", async () => {
     "/events/community/attendees/20000000-0000-4000-8000-000000000001",
     "/events/community/archive",
     "/events/community/pass",
+    "/events/community/connections",
+    "/events/community/messages",
+    "/events/community/profile",
     "/events/community/agenda",
   ]) {
     const response = await get(path);

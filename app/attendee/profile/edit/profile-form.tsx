@@ -98,11 +98,14 @@ export function ProfileForm({
   onboarding,
   fallbackName,
   eventSlug,
+  returnTo,
 }: {
   onboarding: boolean;
   fallbackName: string;
   // The event an attendee is joining, carried through onboarding to /{slug} (web#7).
   eventSlug?: string;
+  // Where Save and Cancel go back to, such as the event workspace it was opened from.
+  returnTo?: string;
 }) {
   const router = useRouter();
   const toast = useToast();
@@ -277,9 +280,10 @@ export function ProfileForm({
                 "/attendee/profile/preview?onboarding=1",
                 eventSlug,
               )
-            : eventSlug
-              ? routes.eventLanding(eventSlug)
-              : "/attendee/profile",
+            : (returnTo ??
+                (eventSlug
+                  ? routes.eventLanding(eventSlug)
+                  : "/attendee/profile")),
         );
         router.refresh();
         return;
@@ -591,9 +595,10 @@ export function ProfileForm({
             variant="secondary"
             onClick={() =>
               router.push(
-                eventSlug
-                  ? routes.eventLanding(eventSlug)
-                  : "/attendee/profile",
+                returnTo ??
+                  (eventSlug
+                    ? routes.eventLanding(eventSlug)
+                    : "/attendee/profile"),
               )
             }
           >

@@ -396,8 +396,8 @@ test("the inbox opens each conversation and the thread leads back", () => {
   );
   assert.match(
     inbox,
-    /href=\{`\/attendee\/inbox\/\$\{conversation\.id\}`\}/,
-    "a conversation card links to its thread",
+    /href=\{paths\.conversation\(conversation\.id\)\}/,
+    "a conversation card links to its thread (general or event inbox)",
   );
 
   const thread = readFileSync(
@@ -406,8 +406,8 @@ test("the inbox opens each conversation and the thread leads back", () => {
   );
   assert.match(
     thread,
-    /href="\/attendee\/inbox"/,
-    "the thread links back to the inbox",
+    /backHref = "\/attendee\/inbox"[\s\S]*href=\{backHref\}/,
+    "the thread links back to the inbox it was opened from",
   );
 });
 

@@ -47,10 +47,13 @@ export default async function EventArchivePage({
         connections are closed; existing accepted connections are retained.
       </p>
       <div className="flex flex-wrap gap-3">
-        <ButtonLink href="/attendee/connections">
+        <ButtonLink href={`/events/${encodeURIComponent(slug)}/connections`}>
           Your accepted connections
         </ButtonLink>
-        <ButtonLink href="/attendee/inbox" variant="secondary">
+        <ButtonLink
+          href={`/events/${encodeURIComponent(slug)}/messages`}
+          variant="secondary"
+        >
           Continue a conversation
         </ButtonLink>
       </div>
