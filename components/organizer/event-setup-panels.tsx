@@ -1,6 +1,6 @@
 "use client";
 
-import { useFormContext } from "react-hook-form";
+import { useFormContext, useWatch } from "react-hook-form";
 import { LockKeyhole, Ticket, Check } from "lucide-react";
 import { Field, Input, Select } from "@/components/ui";
 import { EventHero } from "@/components/events/event-hero";
@@ -197,6 +197,10 @@ export function EventPagePreview({
 
 export function RegistrationPolicyFields() {
   const form = useFormContext<EventDraft>();
+  const checkinEnabled = useWatch({
+    control: form.control,
+    name: "checkin_enabled",
+  });
   return (
     <>
       <div className="grid gap-5 md:grid-cols-2">
@@ -261,6 +265,20 @@ export function RegistrationPolicyFields() {
           </span>
         </span>
       </label>
+      {checkinEnabled && (
+        <Field
+          label="How often to check people in"
+          hint="Only matters for events that run over more than one day."
+          error={form.formState.errors.checkin_mode?.message}
+        >
+          {(props) => (
+            <Select {...props} {...form.register("checkin_mode")}>
+              <option value="daily">Every day of the event</option>
+              <option value="once">Once, on their first day</option>
+            </Select>
+          )}
+        </Field>
+      )}
       <p className="text-sm text-muted">
         With review on, every registration waits for you on the Audience page.
         Only admitted people can network and message.

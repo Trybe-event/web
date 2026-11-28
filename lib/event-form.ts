@@ -92,6 +92,7 @@ export const eventDraftSchema = z
       .optional(),
     waitlist_enabled: z.boolean().optional(),
     checkin_enabled: z.boolean().optional(),
+    checkin_mode: z.enum(["daily", "once"]).optional(),
   })
   .superRefine((event, context) => {
     if (event.format === "physical" || event.format === "hybrid") {

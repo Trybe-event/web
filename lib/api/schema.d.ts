@@ -1493,6 +1493,11 @@ export interface components {
             waitlist_enabled?: boolean;
             /** @description Admitted attendees get an entry pass and the organizer checks them in at the venue. Off by default. */
             checkin_enabled?: boolean;
+            /**
+             * @description daily (default): checked in on each event day. once: one check-in covers the whole event.
+             * @enum {string}
+             */
+            checkin_mode?: "daily" | "once";
         };
         Event: components["schemas"]["EventInput"] & {
             /** Format: uuid */
@@ -3017,6 +3022,13 @@ export interface operations {
                 content: {
                     "application/json": {
                         items: components["schemas"]["CheckIn"][];
+                        /**
+                         * Format: date
+                         * @description Today in the event's time zone, from the server's clock
+                         */
+                        today?: string;
+                        /** @enum {string} */
+                        mode?: "daily" | "once";
                     };
                 };
             };

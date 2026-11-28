@@ -779,6 +779,8 @@ paths:
                 required: [items]
                 properties:
                   items: { type: array, items: { $ref: "#/components/schemas/CheckIn" } }
+                  today: { type: string, format: date, description: "Today in the event's time zone, from the server's clock" }
+                  mode: { type: string, enum: [daily, once] }
         "404": { $ref: "#/components/responses/Error" }
     post:
       tags: [checkin]
@@ -1750,6 +1752,10 @@ components:
         capacity: { type: [integer, "null"], minimum: 1, maximum: 100000, description: Most admitted attendees; null means no limit }
         waitlist_enabled: { type: boolean, description: "When full, new registrations wait and are admitted in order as places free up" }
         checkin_enabled: { type: boolean, description: "Admitted attendees get an entry pass and the organizer checks them in at the venue. Off by default." }
+        checkin_mode:
+          type: string
+          enum: [daily, once]
+          description: "daily (default): checked in on each event day. once: one check-in covers the whole event."
     Event:
       allOf:
         - $ref: "#/components/schemas/EventInput"

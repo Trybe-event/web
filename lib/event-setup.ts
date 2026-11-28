@@ -32,6 +32,7 @@ export function eventSetupFieldStep(field: string, published = false): number {
       "capacity",
       "waitlist_enabled",
       "checkin_enabled",
+      "checkin_mode",
     ].includes(field) ||
     field.startsWith("registration_")
   )
