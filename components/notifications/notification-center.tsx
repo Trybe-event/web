@@ -13,7 +13,11 @@ import {
   Skeleton,
   useToast,
 } from "@/components/ui";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
+
 import { api, errorMessage } from "@/lib/api/client";
+import { notificationHref } from "@/lib/notifications/links";
 import type { Schemas } from "@/lib/api/client";
 
 import {
@@ -26,6 +30,7 @@ const KIND_LABELS: Record<Schemas["Notification"]["kind"], string> = {
   connection_accepted: "Connected",
   message: "Message",
   organizer_update: "Event update",
+  question_answered: "Your question",
 };
 
 // The order to act: newest first, like the API list.
@@ -52,8 +57,34 @@ export function NotificationCenter() {
     () => new Set(),
   );
   const toast = useToast();
+  const router = useRouter();
+  // Event notifications link to the event by its code, from the attendee's own events.
+  const [slugByEventId, setSlugByEventId] = useState<Map<string, string>>(
+    () => new Map(),
+  );
+  useEffect(() => {
+    api
+      .GET("/me/events")
+      .then(({ data }) => {
+        if (data)
+          setSlugByEventId(
+            new Map(
+              data.items
+                .filter((item) => item.event.slug)
+                .map((item) => [item.event.id, item.event.slug as string]),
+            ),
+          );
+      })
+      .catch(() => {});
+  }, []);
 
   useEffect(() => broadcastUnread(unread), [unread]);
+
+  // Opening a notification marks it read, then goes where it points.
+  function open(n: Schemas["Notification"], href: string) {
+    if (!n.read) void markRead([n.id]);
+    router.push(href);
+  }
 
   async function act(
     notification: Schemas["Notification"],
@@ -182,7 +213,16 @@ export function NotificationCenter() {
                   {timeLabel(n.created_at)}
                 </span>
               </div>
-              <p className="mt-1 text-sm font-semibold">{n.text}</p>
+              <Link
+                href={notificationHref(n, slugByEventId)}
+                onClick={(event) => {
+                  event.preventDefault();
+                  open(n, notificationHref(n, slugByEventId));
+                }}
+                className="mt-1 block text-sm font-semibold underline-offset-4 hover:underline"
+              >
+                {n.text}
+              </Link>
               {n.kind === "connection_request" &&
                 n.subject_id &&
                 !handledRequests.has(n.subject_id) && (

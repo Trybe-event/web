@@ -168,6 +168,8 @@ function ModeratedQuestion({
   onSaved: (q: Question) => void;
 }) {
   const [answer, setAnswer] = useState(question.answer ?? "");
+  // An answered question shows its answer; the box opens only to write or edit one.
+  const [editing, setEditing] = useState(!question.answer);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string>();
   async function save(status: Question["status"]) {
@@ -181,8 +183,11 @@ function ModeratedQuestion({
           body: { status, answer: answer.trim() || null },
         },
       );
-      if (data) onSaved({ ...data, author_name: question.author_name });
-      else setError(errorMessage(failure));
+      if (data) {
+        onSaved({ ...data, author_name: question.author_name });
+        setAnswer(data.answer ?? "");
+        setEditing(!data.answer);
+      } else setError(errorMessage(failure));
     } catch {
       setError("We couldn't save that. Try again.");
     } finally {
@@ -200,39 +205,98 @@ function ModeratedQuestion({
             ? "Hidden"
             : "Waiting for review"}
       </p>
-      <div className="mt-3 space-y-2">
-        <Field label="Answer" optional error={error}>
-          {(props) => (
-            <Textarea
-              {...props}
-              value={answer}
-              maxLength={2000}
-              onChange={(e) => setAnswer(e.target.value)}
-            />
-          )}
-        </Field>
-        <div className="flex flex-wrap gap-2">
-          <Button
-            size="sm"
-            loading={busy}
-            onClick={() => void save("published")}
-            aria-label={`Publish question: ${question.body}`}
-          >
-            {question.status === "published" ? "Save answer" : "Publish"}
-          </Button>
-          {question.status !== "hidden" && (
+      {!editing && question.answer ? (
+        <div className="mt-3 space-y-2">
+          <div className="rounded-lg border border-line bg-paper p-3">
+            <p className="text-xs font-semibold text-muted">
+              Your answer
+              {question.status === "published" ? ", published" : ""}
+            </p>
+            <p className="mt-1 whitespace-pre-wrap text-sm">
+              {question.answer}
+            </p>
+          </div>
+          {error && <p className="text-sm text-danger">{error}</p>}
+          <div className="flex flex-wrap gap-2">
             <Button
               size="sm"
               variant="secondary"
-              disabled={busy}
-              onClick={() => void save("hidden")}
-              aria-label={`Hide question: ${question.body}`}
+              onClick={() => setEditing(true)}
+              aria-label={`Edit answer to: ${question.body}`}
             >
-              Hide
+              Edit answer
             </Button>
-          )}
+            {question.status !== "published" && (
+              <Button
+                size="sm"
+                loading={busy}
+                onClick={() => void save("published")}
+                aria-label={`Publish question: ${question.body}`}
+              >
+                Publish
+              </Button>
+            )}
+            {question.status !== "hidden" && (
+              <Button
+                size="sm"
+                variant="secondary"
+                disabled={busy}
+                onClick={() => void save("hidden")}
+                aria-label={`Hide question: ${question.body}`}
+              >
+                Hide
+              </Button>
+            )}
+          </div>
         </div>
-      </div>
+      ) : (
+        <div className="mt-3 space-y-2">
+          <Field label="Answer" optional error={error}>
+            {(props) => (
+              <Textarea
+                {...props}
+                value={answer}
+                maxLength={2000}
+                onChange={(e) => setAnswer(e.target.value)}
+              />
+            )}
+          </Field>
+          <div className="flex flex-wrap gap-2">
+            <Button
+              size="sm"
+              loading={busy}
+              onClick={() => void save("published")}
+              aria-label={`Publish question: ${question.body}`}
+            >
+              {question.status === "published" ? "Save answer" : "Publish"}
+            </Button>
+            {question.answer && (
+              <Button
+                size="sm"
+                variant="ghost"
+                disabled={busy}
+                onClick={() => {
+                  setAnswer(question.answer ?? "");
+                  setEditing(false);
+                }}
+              >
+                Cancel
+              </Button>
+            )}
+            {question.status !== "hidden" && (
+              <Button
+                size="sm"
+                variant="secondary"
+                disabled={busy}
+                onClick={() => void save("hidden")}
+                aria-label={`Hide question: ${question.body}`}
+              >
+                Hide
+              </Button>
+            )}
+          </div>
+        </div>
+      )}
     </Card>
   );
 }

@@ -1783,8 +1783,11 @@ export interface components {
             /** Format: date-time */
             created_at: string;
         };
-        /** @enum {string} */
-        NotificationKind: "connection_request" | "connection_accepted" | "message" | "organizer_update";
+        /**
+         * @description question_answered: the organizer answered the caller's question (subject_id is the question). It follows the organizer_update preference.
+         * @enum {string}
+         */
+        NotificationKind: "connection_request" | "connection_accepted" | "message" | "organizer_update" | "question_answered";
         Notification: {
             /** Format: uuid */
             id: string;

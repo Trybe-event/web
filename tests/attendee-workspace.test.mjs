@@ -73,6 +73,14 @@ function shell(pathname, props = {}) {
         InboxBadge: () =>
           React.createElement("a", { href: "/attendee/inbox" }, "Inbox"),
       },
+      "@/components/notifications/notification-bell": {
+        NotificationBell: () =>
+          React.createElement(
+            "a",
+            { href: "/attendee/notifications" },
+            "Notifications",
+          ),
+      },
     },
   );
   return renderToStaticMarkup(
@@ -92,9 +100,10 @@ test("attendee areas map to one shared navigation section, including nested inbo
   ])
     assert.equal(navigation.attendeeSection(path), "network");
   assert.equal(navigation.attendeeSection("/attendee/profile/edit"), "profile");
+  // Notifications have their own way in (the header bell), so no tab lights up.
   assert.equal(
     navigation.attendeeSection("/attendee/notifications/preferences"),
-    "profile",
+    "notifications",
   );
   assert.equal(navigation.attendeeSection("/events/abc123/program"), "events");
   assert.equal(navigation.attendeeSection("/attendee/discover"), "discover");
