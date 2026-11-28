@@ -36,3 +36,23 @@ export async function loadRegistrationTrend(
     return null;
   }
 }
+
+export type EventAnalytics = components["schemas"]["EventAnalytics"];
+
+export async function loadEventAnalytics(
+  eventId: string,
+): Promise<EventAnalytics | null> {
+  try {
+    const client = await serverApi();
+    const { data, response } = await client.GET(
+      "/organizer/events/{eventId}/analytics",
+      {
+        params: { path: { eventId } },
+        signal: AbortSignal.timeout(10000),
+      },
+    );
+    return response.ok && data ? data : null;
+  } catch {
+    return null;
+  }
+}

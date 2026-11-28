@@ -429,6 +429,28 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/organizer/events/{eventId}/analytics": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                eventId: components["parameters"]["EventId"];
+            };
+            cookie?: never;
+        };
+        /**
+         * Counts for one owned event, for the analytics page and the event report
+         * @description Counts only. No names, contact details or message contents. Another organizer's event is 404.
+         */
+        get: operations["getEventAnalytics"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/organizer/events/{eventId}/registrations/trend": {
         parameters: {
             query?: never;
@@ -1718,6 +1740,89 @@ export interface components {
             /** Format: date-time */
             created_at: string;
         };
+        EventAnalytics: {
+            /** Format: date-time */
+            generated_at: string;
+            registrations: {
+                /** @description Registrations by current status: active (admitted), pending, waitlisted, rejected, left, removed. */
+                by_status: {
+                    [key: string]: number;
+                };
+                /** @description Every registration, whatever its status */
+                total: number;
+            };
+            checkin: {
+                enabled: boolean;
+                /** @enum {string} */
+                mode: "daily" | "once";
+                /** @description People currently admitted */
+                admitted: number;
+                /** @description Admitted people checked in on at least one day */
+                checked_in: number;
+                /** @description Admitted people never checked in */
+                not_checked_in: number;
+                /** @description checked_in / admitted; null when nobody is admitted */
+                rate: number | null;
+                /** @description People checked in on each event day */
+                days: {
+                    /** Format: date */
+                    day: string;
+                    checked_in: number;
+                }[];
+                /** @description Check-ins by event day and hour, in the event's time zone */
+                arrivals: {
+                    /** Format: date */
+                    day: string;
+                    hour: number;
+                    checked_in: number;
+                }[];
+            };
+            sessions: {
+                /** Format: uuid */
+                id: string;
+                title: string;
+                kind: string | null;
+                /** Format: date-time */
+                starts_at: string;
+                /** Format: date-time */
+                ends_at: string;
+                /** @description Admitted attendees who saved it to My agenda */
+                bookmarks: number;
+            }[];
+            networking: {
+                /** @description Connection requests sent at this event */
+                requests_sent: number;
+                /** @description Of those, accepted */
+                requests_accepted: number;
+                /** @description Connections made at this event, including ones since ended */
+                connections: number;
+                /** @description Conversations started from those connections */
+                conversations: number;
+            };
+            engagement: {
+                questions_asked: number;
+                /** @description Published with an answer */
+                questions_answered: number;
+                announcements: number;
+                /** @description People who received at least one announcement in Trybe */
+                announcement_reach: number;
+            };
+            /** @description Registration question answers */
+            questions: {
+                /** Format: uuid */
+                id: string;
+                label: string;
+                /** @enum {string} */
+                kind: "short" | "long" | "select" | "multi";
+                /** @description Registrations that answered it */
+                answered: number;
+                /** @description For select and multi questions, people per option; empty for text questions */
+                choices: {
+                    choice: string;
+                    people: number;
+                }[];
+            }[];
+        };
         /** @description The code carries no personal data. Reissuing it stops the old one working. */
         EntryPass: {
             /** Format: uuid */
@@ -2652,6 +2757,29 @@ export interface operations {
                     };
                 };
             };
+        };
+    };
+    getEventAnalytics: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                eventId: components["parameters"]["EventId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Event analytics */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EventAnalytics"];
+                };
+            };
+            404: components["responses"]["Error"];
         };
     };
     getRegistrationTrend: {

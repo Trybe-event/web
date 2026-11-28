@@ -11,6 +11,8 @@
   --lime: #c3ef66;
   --lime-ink: #20261d;
   --accent-ink: #4f6e1c; /* lime family, readable as text on paper */
+  /* Chart bars: validated for chart marks (lightness band, 3:1 on the surface). */
+  --chart-bar: #4f6e1c;
   --danger: #b42318;
   --danger-surface: #fef3f2;
   --success: #1f6b3a;
@@ -28,6 +30,7 @@
     --lime: #c3ef66;
     --lime-ink: #161c17;
     --accent-ink: #c3ef66;
+    --chart-bar: #7aa52c;
     --danger: #f97066;
     --danger-surface: #3b1714;
     --success: #75d39a;
@@ -45,6 +48,7 @@
   --lime: #c3ef66;
   --lime-ink: #161c17;
   --accent-ink: #c3ef66;
+  --chart-bar: #7aa52c;
   --danger: #f97066;
   --danger-surface: #3b1714;
   --success: #75d39a;
