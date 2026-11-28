@@ -53,6 +53,19 @@ const nextConfig: NextConfig = {
           },
         ],
       },
+      {
+        // The check-in desk scans passes with the camera. The policy belongs to the
+        // page load, and organizers reach the desk by navigating inside their
+        // workspace, so the whole organizer area may ask for this site's own camera.
+        // It is still off everywhere else, and never granted to other sites.
+        source: "/organizer/:path*",
+        headers: [
+          {
+            key: "Permissions-Policy",
+            value: "camera=(self), microphone=(), geolocation=()",
+          },
+        ],
+      },
     ];
   },
 };

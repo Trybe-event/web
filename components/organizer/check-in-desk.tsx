@@ -23,6 +23,39 @@ import { createQrReader, hasCamera } from "@/lib/qr-reader";
 type Registration = Schemas["OrganizerRegistration"];
 type Outcome = { tone: "success" | "danger"; text: string };
 
+// What to tell the organizer when the camera does not start, by the browser's reason.
+export function cameraFailure(
+  error: unknown,
+  pageAllowsCamera = pageMayUseCamera(),
+) {
+  if (!pageAllowsCamera)
+    return "This page was opened before the camera was allowed here. Reload the page, then try again.";
+  const name = error instanceof DOMException ? error.name : "";
+  if (name === "NotAllowedError" || name === "SecurityError")
+    return "Camera access is blocked for this site. Click the camera icon in the address bar, allow it, then try again.";
+  if (name === "NotFoundError" || name === "OverconstrainedError")
+    return "No camera was found on this device. Use a handheld scanner or type the code below.";
+  if (name === "NotReadableError")
+    return "The camera is in use by another app. Close it, then try again.";
+  return "The camera could not start. Use a handheld scanner or type the code below.";
+}
+
+function pageMayUseCamera() {
+  const policy =
+    (
+      document as Document & {
+        permissionsPolicy?: { allowsFeature(feature: string): boolean };
+        featurePolicy?: { allowsFeature(feature: string): boolean };
+      }
+    ).permissionsPolicy ??
+    (
+      document as Document & {
+        featurePolicy?: { allowsFeature(feature: string): boolean };
+      }
+    ).featurePolicy;
+  return policy ? policy.allowsFeature("camera") : true;
+}
+
 export function CheckInDesk({
   eventId,
   timezone,
@@ -134,10 +167,8 @@ export function CheckInDesk({
             void checkIn({ code: passCode(found) });
           }
         }, 300);
-      } catch {
-        setCameraError(
-          "The camera could not start. Allow camera access, or use the field below.",
-        );
+      } catch (error) {
+        setCameraError(cameraFailure(error));
         setCamera(false);
       }
     })();
