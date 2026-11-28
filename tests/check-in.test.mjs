@@ -20,7 +20,8 @@ vm.runInNewContext(`(function(module,exports){${javascript}\n})`, {
   Date,
   Set,
 })(loaded, loaded.exports);
-const { passCode, checkInsCsv, checkedInOn, eventToday } = loaded.exports;
+const { passCode, checkInsCsv, checkedInOn, eventToday, searchByName } =
+  loaded.exports;
 
 const rows = [
   {
@@ -62,4 +63,34 @@ test("the event day follows the event's time zone", () => {
   assert.equal(eventToday("UTC", late), "2026-12-01");
   assert.equal(eventToday("Africa/Lagos", late), "2026-12-02");
   assert.equal(eventToday("Not/AZone", late), "2026-12-01");
+});
+
+const people = [
+  "Magnetic Okoro",
+  "Emmanuel Itighise",
+  "Ade Olawale",
+  "Adé Bakare",
+  "Kemi Adeyemi",
+  "Olumide Eze",
+].map((attendee_name, i) => ({ id: String(i), attendee_name }));
+const names = (typed, limit) =>
+  searchByName(people, typed, limit).items.map((p) => p.attendee_name);
+
+test("name search matches the start of a first name or surname", () => {
+  // "e" used to match every name containing an e.
+  assert.deepEqual(names("e"), ["Emmanuel Itighise", "Olumide Eze"]);
+  assert.deepEqual(names("itig"), ["Emmanuel Itighise"]);
+  assert.deepEqual(names("eze"), ["Olumide Eze"]);
+  assert.deepEqual(names("mag"), ["Magnetic Okoro"]);
+  assert.deepEqual(names("net"), []);
+});
+
+test("name search ignores case and accents, takes words in any order, and ranks", () => {
+  // Names starting with the query come before surname matches.
+  assert.deepEqual(names("ade"), ["Adé Bakare", "Ade Olawale", "Kemi Adeyemi"]);
+  assert.deepEqual(names("OLA ade"), ["Ade Olawale"]);
+  assert.equal(names("   ").length, 0);
+  const capped = searchByName(people, "a", 1);
+  assert.equal(capped.items.length, 1);
+  assert.ok(capped.total > 1);
 });
