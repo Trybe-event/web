@@ -31,6 +31,7 @@ export const CONTRACT_ROUTES: ReadonlyArray<readonly [string, string]> = [
   ["DELETE", "/events/{eventId}/program/sessions/{sessionId}"],
   ["PUT", "/events/{eventId}/program/order"],
   ["GET", "/organizer/events"],
+  ["GET", "/organizer/events/{eventId}/analytics"],
   ["GET", "/organizer/events/{eventId}/registrations/trend"],
   ["GET", "/discover/events"],
   ["GET", "/e/{slug}"],

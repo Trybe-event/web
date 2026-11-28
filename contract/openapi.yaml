@@ -523,6 +523,22 @@ paths:
                 required: [items]
                 properties:
                   items: { type: array, items: { $ref: "#/components/schemas/OrganizerEventSummary" } }
+  /organizer/events/{eventId}/analytics:
+    parameters: [{ $ref: "#/components/parameters/EventId" }]
+    get:
+      tags: [organizer]
+      operationId: getEventAnalytics
+      summary: Counts for one owned event, for the analytics page and the event report
+      description: >-
+        Counts only. No names, contact details or message contents. Another organizer's
+        event is 404.
+      x-account: organizer
+      x-milestone: V2-2
+      responses:
+        "200":
+          description: Event analytics
+          content: { application/json: { schema: { $ref: "#/components/schemas/EventAnalytics" } } }
+        "404": { $ref: "#/components/responses/Error" }
   /organizer/events/{eventId}/registrations/trend:
     parameters: [{ $ref: "#/components/parameters/EventId" }]
     get:
@@ -1952,6 +1968,97 @@ components:
         title: { type: string }
         body: { type: string }
         created_at: { type: string, format: date-time }
+    EventAnalytics:
+      type: object
+      required: [registrations, checkin, sessions, networking, engagement, questions, generated_at]
+      properties:
+        generated_at: { type: string, format: date-time }
+        registrations:
+          type: object
+          required: [by_status, total]
+          properties:
+            by_status:
+              type: object
+              description: "Registrations by current status: active (admitted), pending, waitlisted, rejected, left, removed."
+              additionalProperties: { type: integer }
+            total: { type: integer, description: "Every registration, whatever its status" }
+        checkin:
+          type: object
+          required: [enabled, mode, admitted, checked_in, not_checked_in, rate, days, arrivals]
+          properties:
+            enabled: { type: boolean }
+            mode: { type: string, enum: [daily, once] }
+            admitted: { type: integer, description: People currently admitted }
+            checked_in: { type: integer, description: Admitted people checked in on at least one day }
+            not_checked_in: { type: integer, description: Admitted people never checked in }
+            rate: { type: [number, "null"], description: "checked_in / admitted; null when nobody is admitted" }
+            days:
+              type: array
+              description: People checked in on each event day
+              items:
+                type: object
+                required: [day, checked_in]
+                properties:
+                  day: { type: string, format: date }
+                  checked_in: { type: integer }
+            arrivals:
+              type: array
+              description: Check-ins by event day and hour, in the event's time zone
+              items:
+                type: object
+                required: [day, hour, checked_in]
+                properties:
+                  day: { type: string, format: date }
+                  hour: { type: integer, minimum: 0, maximum: 23 }
+                  checked_in: { type: integer }
+        sessions:
+          type: array
+          items:
+            type: object
+            required: [id, title, kind, starts_at, ends_at, bookmarks]
+            properties:
+              id: { type: string, format: uuid }
+              title: { type: string }
+              kind: { type: [string, "null"] }
+              starts_at: { type: string, format: date-time }
+              ends_at: { type: string, format: date-time }
+              bookmarks: { type: integer, description: Admitted attendees who saved it to My agenda }
+        networking:
+          type: object
+          required: [requests_sent, requests_accepted, connections, conversations]
+          properties:
+            requests_sent: { type: integer, description: Connection requests sent at this event }
+            requests_accepted: { type: integer, description: "Of those, accepted" }
+            connections: { type: integer, description: "Connections made at this event, including ones since ended" }
+            conversations: { type: integer, description: Conversations started from those connections }
+        engagement:
+          type: object
+          required: [questions_asked, questions_answered, announcements, announcement_reach]
+          properties:
+            questions_asked: { type: integer }
+            questions_answered: { type: integer, description: Published with an answer }
+            announcements: { type: integer }
+            announcement_reach: { type: integer, description: People who received at least one announcement in Trybe }
+        questions:
+          type: array
+          description: Registration question answers
+          items:
+            type: object
+            required: [id, label, kind, answered, choices]
+            properties:
+              id: { type: string, format: uuid }
+              label: { type: string }
+              kind: { type: string, enum: [short, long, select, multi] }
+              answered: { type: integer, description: Registrations that answered it }
+              choices:
+                type: array
+                description: For select and multi questions, people per option; empty for text questions
+                items:
+                  type: object
+                  required: [choice, people]
+                  properties:
+                    choice: { type: string }
+                    people: { type: integer }
     EntryPass:
       type: object
       description: The code carries no personal data. Reissuing it stops the old one working.
