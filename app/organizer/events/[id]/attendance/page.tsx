@@ -40,6 +40,15 @@ export default async function EventAttendancePage({
           <p>Keep track of registrations for your event.</p>
         </div>
       </header>
+      {/* The desk comes first, so a long registration list never pushes the
+          scanner down the page during check-in. */}
+      {event.checkin_enabled && (
+        <CheckInDesk
+          eventId={id}
+          timezone={event.timezone || "UTC"}
+          registrations={registrations ?? []}
+        />
+      )}
       <Card className="organizer-event-stat">
         <span>Registered attendees</span>
         <strong>
@@ -53,13 +62,7 @@ export default async function EventAttendancePage({
         </Alert>
       )}
       <OrganizerAudience initial={registrations} scopeEventId={id} />
-      {event.checkin_enabled ? (
-        <CheckInDesk
-          eventId={id}
-          timezone={event.timezone || "UTC"}
-          registrations={registrations ?? []}
-        />
-      ) : (
+      {!event.checkin_enabled && (
         <p className="text-xs text-muted">
           Check-in is off for this event. Turn it on in Edit event, on the
           Registration step, to give admitted attendees an entry pass and check
