@@ -47,3 +47,34 @@ export function eventToday(timeZone: string, now = new Date()): string {
     return now.toISOString().slice(0, 10);
   }
 }
+
+// Names compared without case or accents, so "ade" finds "Adé".
+function plain(text: string) {
+  return text.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase();
+}
+
+// searchByName finds people whose first name, surname or any other part of their name
+// starts with what was typed. "e" no longer matches every name containing an e, and
+// "ola ade" finds "Ade Olawale". Names starting with the whole query come first.
+export function searchByName<T extends { attendee_name: string }>(
+  people: T[],
+  typed: string,
+  limit = 8,
+): { items: T[]; total: number } {
+  const words = plain(typed).split(/\s+/).filter(Boolean);
+  if (!words.length) return { items: [], total: 0 };
+  const whole = words.join(" ");
+  const found = people
+    .map((person) => ({ person, name: plain(person.attendee_name) }))
+    .filter(({ name }) => {
+      const parts = name.split(/[\s'-]+/).filter(Boolean);
+      return words.every((word) => parts.some((part) => part.startsWith(word)));
+    })
+    .sort(
+      (a, b) =>
+        Number(b.name.startsWith(whole)) - Number(a.name.startsWith(whole)) ||
+        a.name.localeCompare(b.name),
+    )
+    .map(({ person }) => person);
+  return { items: found.slice(0, limit), total: found.length };
+}

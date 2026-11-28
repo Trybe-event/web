@@ -15,22 +15,13 @@ import {
   checkInsCsv,
   eventToday,
   passCode,
+  searchByName,
   type CheckInRow,
 } from "@/lib/check-in";
+import { createQrReader, hasCamera } from "@/lib/qr-reader";
 
 type Registration = Schemas["OrganizerRegistration"];
 type Outcome = { tone: "success" | "danger"; text: string };
-
-// BarcodeDetector is not in every browser (Safari, Firefox): the handheld-scanner
-// field and the name search always work.
-type Detector = {
-  detect(source: CanvasImageSource): Promise<{ rawValue: string }[]>;
-};
-declare global {
-  interface Window {
-    BarcodeDetector?: new (options: { formats: string[] }) => Detector;
-  }
-}
 
 export function CheckInDesk({
   eventId,
@@ -48,9 +39,11 @@ export function CheckInDesk({
   const [busy, setBusy] = useState(false);
   const [camera, setCamera] = useState(false);
   const [cameraError, setCameraError] = useState("");
+  // Any device with a camera can scan; the handheld-scanner field and the name
+  // search work everywhere.
   const canScan = useSyncExternalStore(
     () => () => {},
-    () => Boolean(window.BarcodeDetector),
+    hasCamera,
     () => false,
   );
   const video = useRef<HTMLVideoElement>(null);
@@ -119,21 +112,25 @@ export function CheckInDesk({
     let stream: MediaStream | undefined;
     let timer: ReturnType<typeof setInterval> | undefined;
     let last = "";
+    let lastAt = 0;
+    let stopped = false;
     (async () => {
       try {
-        const detector = new window.BarcodeDetector!({ formats: ["qr_code"] });
+        const read = await createQrReader();
         stream = await navigator.mediaDevices.getUserMedia({
           video: { facingMode: "environment" },
         });
-        if (!video.current) return;
+        if (stopped || !video.current) return;
         video.current.srcObject = stream;
         await video.current.play();
         timer = setInterval(async () => {
           if (!video.current || sending.current) return;
-          const found = (await detector.detect(video.current))[0]?.rawValue;
-          // The same pass held in front of the camera is sent once.
-          if (found && found !== last) {
+          const found = await read(video.current).catch(() => null);
+          // A pass held in front of the camera is sent once; the same pass is read
+          // again only after a pause, so a failed attempt can be retried.
+          if (found && (found !== last || Date.now() - lastAt > 4000)) {
             last = found;
+            lastAt = Date.now();
             void checkIn({ code: passCode(found) });
           }
         }, 300);
@@ -145,6 +142,7 @@ export function CheckInDesk({
       }
     })();
     return () => {
+      stopped = true;
       if (timer) clearInterval(timer);
       stream?.getTracks().forEach((track) => track.stop());
     };
@@ -152,12 +150,8 @@ export function CheckInDesk({
 
   const inToday = checkedInOn(rows, today);
   const admitted = registrations.filter((r) => r.status === "active");
-  const query = search.trim().toLowerCase();
-  const matches = query
-    ? admitted
-        .filter((r) => r.attendee_name.toLowerCase().includes(query))
-        .slice(0, 8)
-    : [];
+  const query = search.trim();
+  const { items: matches, total: matchCount } = searchByName(admitted, query);
 
   function download() {
     const blob = new Blob([checkInsCsv(rows)], {
@@ -196,6 +190,10 @@ export function CheckInDesk({
           />
         )}
         {cameraError && <Alert>{cameraError}</Alert>}
+        <p className="text-sm text-muted">
+          Using a handheld barcode scanner? Keep the cursor in this box: each
+          scan types the pass code and checks the person in.
+        </p>
         <form
           className="flex gap-2"
           onSubmit={(event) => {
@@ -230,7 +228,7 @@ export function CheckInDesk({
         </p>
         <Input
           aria-label="Search admitted attendees"
-          placeholder="Start typing a name"
+          placeholder="First name or surname"
           value={search}
           onChange={(event) => setSearch(event.target.value)}
         />
@@ -260,6 +258,12 @@ export function CheckInDesk({
             </li>
           )}
         </ul>
+        {matchCount > matches.length && (
+          <p className="text-sm text-muted">
+            Showing {matches.length} of {matchCount}. Type more of the name to
+            narrow it down.
+          </p>
+        )}
       </Card>
 
       <Card className="space-y-3 p-5">
