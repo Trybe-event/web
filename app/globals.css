@@ -2451,3 +2451,17 @@ em {
     animation: none;
   }
 }
+
+/* An empty state that also carries the feature-notice style (the registration list's
+   "No one matches", Payments) is one centred column. Without this, the notice's
+   icon / text / status columns squeezed the hint into the 28px icon column and left
+   the right side empty. Two classes outrank the single-class rules above, including
+   the narrow-screen one. */
+.organizer-empty.organizer-feature-notice {
+  grid-template-columns: minmax(0, 1fr);
+  justify-items: center;
+  text-align: center;
+}
+.organizer-empty.organizer-feature-notice p {
+  margin-top: 0;
+}

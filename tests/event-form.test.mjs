@@ -218,6 +218,7 @@ test("walkthrough steps retain every publication requirement and point errors to
     "approval_mode",
     "waitlist_enabled",
     "checkin_enabled",
+    "checkin_mode",
   ])
     assert.equal(eventSetupFieldStep(field), 2);
   assert.equal(eventSetupFieldStep("image_key"), 0);

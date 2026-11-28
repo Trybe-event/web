@@ -78,3 +78,23 @@ export function searchByName<T extends { attendee_name: string }>(
     .map(({ person }) => person);
   return { items: found.slice(0, limit), total: found.length };
 }
+
+// checkInDays lists the days with check-ins, newest first, always including today, for
+// the desk's day picker.
+export function checkInDays(rows: CheckInRow[], today: string): string[] {
+  return [...new Set([today, ...rows.map((row) => row.event_day)])].sort(
+    (a, b) => b.localeCompare(a),
+  );
+}
+
+// shouldSend decides whether a pass the camera just read is sent to Trybe.
+export function shouldSend(
+  found: string | null,
+  last: string,
+  lastFailed: boolean,
+  sinceLast: number,
+) {
+  if (!found) return false;
+  if (found !== last) return true;
+  return lastFailed && sinceLast > 4000;
+}

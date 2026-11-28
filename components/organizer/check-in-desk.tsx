@@ -8,12 +8,14 @@ import {
   useSyncExternalStore,
 } from "react";
 
-import { Alert, Button, Card, Input } from "@/components/ui";
+import { Alert, Button, Card, Input, Select } from "@/components/ui";
 import { api, errorMessage, type Schemas } from "@/lib/api/client";
 import {
   checkedInOn,
+  checkInDays,
   checkInsCsv,
   eventToday,
+  shouldSend,
   passCode,
   searchByName,
   type CheckInRow,
@@ -66,6 +68,11 @@ export function CheckInDesk({
   registrations: Registration[];
 }) {
   const [rows, setRows] = useState<CheckInRow[]>([]);
+  // Today comes from the server (the event's time zone, the day check-ins are recorded
+  // against); the device clock is only a fallback until the first answer arrives.
+  const [serverToday, setServerToday] = useState<string | null>(null);
+  const [mode, setMode] = useState<"daily" | "once">("daily");
+  const [viewDay, setViewDay] = useState<string | null>(null);
   const [outcome, setOutcome] = useState<Outcome | null>(null);
   const [code, setCode] = useState("");
   const [search, setSearch] = useState("");
@@ -81,13 +88,18 @@ export function CheckInDesk({
   );
   const video = useRef<HTMLVideoElement>(null);
   const sending = useRef(false);
-  const today = eventToday(timezone);
+  const today = serverToday ?? eventToday(timezone);
+  const shownDay = viewDay ?? today;
 
   const reload = useCallback(async () => {
     const { data } = await api.GET("/organizer/events/{eventId}/check-ins", {
       params: { path: { eventId } },
     });
-    if (data) setRows(data.items as CheckInRow[]);
+    if (data) {
+      setRows(data.items as CheckInRow[]);
+      if (data.today) setServerToday(data.today);
+      if (data.mode) setMode(data.mode);
+    }
   }, [eventId]);
 
   useEffect(() => {
@@ -95,13 +107,22 @@ export function CheckInDesk({
       .GET("/organizer/events/{eventId}/check-ins", {
         params: { path: { eventId } },
       })
-      .then(({ data }) => data && setRows(data.items as CheckInRow[]))
+      .then(({ data }) => {
+        if (!data) return;
+        setRows(data.items as CheckInRow[]);
+        if (data.today) setServerToday(data.today);
+        if (data.mode) setMode(data.mode);
+      })
       .catch(() => {});
   }, [eventId]);
 
   const checkIn = useCallback(
-    async (body: { code: string } | { registration_id: string }) => {
-      if (sending.current) return;
+    // Resolves true once Trybe answered (checked in, already in, or refused), false
+    // when it could not be reached, so the camera knows whether to try again.
+    async (
+      body: { code: string } | { registration_id: string },
+    ): Promise<boolean> => {
+      if (sending.current) return false;
       sending.current = true;
       setBusy(true);
       try {
@@ -115,7 +136,7 @@ export function CheckInDesk({
         );
         if (!data) {
           setOutcome({ tone: "danger", text: errorMessage(error) });
-          return;
+          return true;
         }
         setOutcome(
           data.result === "checked_in"
@@ -126,11 +147,13 @@ export function CheckInDesk({
               },
         );
         await reload();
+        return true;
       } catch {
         setOutcome({
           tone: "danger",
           text: "Could not reach Trybe. Try again.",
         });
+        return false;
       } finally {
         sending.current = false;
         setBusy(false);
@@ -146,6 +169,7 @@ export function CheckInDesk({
     let timer: ReturnType<typeof setInterval> | undefined;
     let last = "";
     let lastAt = 0;
+    let retry = false;
     let stopped = false;
     (async () => {
       try {
@@ -159,12 +183,13 @@ export function CheckInDesk({
         timer = setInterval(async () => {
           if (!video.current || sending.current) return;
           const found = await read(video.current).catch(() => null);
-          // A pass held in front of the camera is sent once; the same pass is read
-          // again only after a pause, so a failed attempt can be retried.
-          if (found && (found !== last || Date.now() - lastAt > 4000)) {
-            last = found;
+          // A pass held in front of the camera is sent once. The same pass is sent
+          // again only if Trybe could not be reached, after a pause; otherwise a
+          // second read would replace "is checked in" with "already checked in".
+          if (shouldSend(found, last, retry, Date.now() - lastAt)) {
+            last = found!;
             lastAt = Date.now();
-            void checkIn({ code: passCode(found) });
+            retry = !(await checkIn({ code: passCode(found!) }));
           }
         }, 300);
       } catch (error) {
@@ -179,7 +204,14 @@ export function CheckInDesk({
     };
   }, [camera, checkIn]);
 
-  const inToday = checkedInOn(rows, today);
+  // Daily: who is in today. Once: anyone checked in on any day counts.
+  const inToday =
+    mode === "once"
+      ? new Set(rows.map((row) => row.registration_id))
+      : checkedInOn(rows, today);
+  const days = checkInDays(rows, today);
+  const shown =
+    mode === "once" ? rows : rows.filter((row) => row.event_day === shownDay);
   const admitted = registrations.filter((r) => r.status === "active");
   const query = search.trim();
   const { items: matches, total: matchCount } = searchByName(admitted, query);
@@ -202,8 +234,9 @@ export function CheckInDesk({
           <div>
             <h2 className="text-lg font-bold">Check people in</h2>
             <p className="text-sm text-muted">
-              {inToday.size} of {admitted.length} admitted checked in today (
-              {today}).
+              {mode === "once"
+                ? `${inToday.size} of ${admitted.length} admitted checked in (once for the whole event).`
+                : `${inToday.size} of ${admitted.length} admitted checked in today (${today}).`}
             </p>
           </div>
           {canScan && (
@@ -298,8 +331,14 @@ export function CheckInDesk({
       </Card>
 
       <Card className="space-y-3 p-5">
-        <div className="flex items-center justify-between gap-3">
-          <h2 className="text-lg font-bold">Checked in ({rows.length})</h2>
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <h2 className="text-lg font-bold">
+            {mode === "once"
+              ? `Checked in (${shown.length})`
+              : shownDay === today
+                ? `Checked in today (${shown.length})`
+                : `Checked in on ${shownDay} (${shown.length})`}
+          </h2>
           <Button
             variant="secondary"
             size="sm"
@@ -309,8 +348,27 @@ export function CheckInDesk({
             Download CSV
           </Button>
         </div>
+        {mode === "daily" && days.length > 1 && (
+          <label className="flex items-center gap-2 text-sm">
+            Day
+            <Select
+              value={shownDay}
+              onChange={(event) =>
+                setViewDay(
+                  event.target.value === today ? null : event.target.value,
+                )
+              }
+            >
+              {days.map((d) => (
+                <option key={d} value={d}>
+                  {d === today ? `Today (${d})` : d}
+                </option>
+              ))}
+            </Select>
+          </label>
+        )}
         <ul className="divide-y divide-line text-sm">
-          {rows.slice(0, 50).map((row) => (
+          {shown.slice(0, 50).map((row) => (
             <li
               key={`${row.registration_id}-${row.event_day}`}
               className="flex justify-between gap-3 py-2"
@@ -323,10 +381,17 @@ export function CheckInDesk({
               </span>
             </li>
           ))}
+          {!shown.length && (
+            <li className="py-2 text-muted">
+              {mode === "daily" && shownDay === today
+                ? "No one has checked in yet today."
+                : "No check-ins yet."}
+            </li>
+          )}
         </ul>
-        {rows.length > 50 && (
+        {shown.length > 50 && (
           <p className="text-xs text-muted">
-            Showing the latest 50. The CSV has everyone.
+            Showing the latest 50. The CSV has every day and everyone.
           </p>
         )}
       </Card>

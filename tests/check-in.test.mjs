@@ -20,8 +20,15 @@ vm.runInNewContext(`(function(module,exports){${javascript}\n})`, {
   Date,
   Set,
 })(loaded, loaded.exports);
-const { passCode, checkInsCsv, checkedInOn, eventToday, searchByName } =
-  loaded.exports;
+const {
+  passCode,
+  checkInsCsv,
+  checkedInOn,
+  eventToday,
+  searchByName,
+  checkInDays,
+  shouldSend,
+} = loaded.exports;
 
 const rows = [
   {
@@ -93,4 +100,22 @@ test("name search ignores case and accents, takes words in any order, and ranks"
   const capped = searchByName(people, "a", 1);
   assert.equal(capped.items.length, 1);
   assert.ok(capped.total > 1);
+});
+
+test("the day picker lists days with check-ins, newest first, always with today", () => {
+  const days = checkInDays(rows, "2026-12-03");
+  assert.deepEqual([...days], ["2026-12-03", "2026-12-02", "2026-12-01"]);
+  assert.deepEqual([...checkInDays([], "2026-12-03")], ["2026-12-03"]);
+});
+
+test("the camera sends a pass once, and again only after a failed attempt", () => {
+  assert.equal(shouldSend(null, "", false, 0), false);
+  assert.equal(shouldSend("abc", "", false, 0), true);
+  // Same pass still in front of the camera after a success: not sent again, so
+  // "is checked in" is not replaced by "already checked in".
+  assert.equal(shouldSend("abc", "abc", false, 60000), false);
+  // After a failure, retried once the pause is over.
+  assert.equal(shouldSend("abc", "abc", true, 1000), false);
+  assert.equal(shouldSend("abc", "abc", true, 5000), true);
+  assert.equal(shouldSend("xyz", "abc", false, 0), true);
 });
