@@ -2011,7 +2011,8 @@ components:
 
     NotificationKind:
       type: string
-      enum: [connection_request, connection_accepted, message, organizer_update]
+      enum: [connection_request, connection_accepted, message, organizer_update, question_answered]
+      description: "question_answered: the organizer answered the caller's question (subject_id is the question). It follows the organizer_update preference."
     Notification:
       type: object
       required: [id, kind, created_at, read]

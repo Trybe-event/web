@@ -1,7 +1,6 @@
 "use client";
 
 import {
-  Bell,
   CalendarDays,
   Compass,
   PanelLeftClose,
@@ -20,6 +19,7 @@ import { ThemeToggle } from "@/components/auth/theme-toggle";
 import { EventSwitcher } from "@/components/auth/event-switcher";
 import { InboxBadge } from "@/components/messaging/inbox-badge";
 import { attendeeSection, attendeeSections } from "@/lib/attendee-navigation";
+import { NotificationBell } from "@/components/notifications/notification-bell";
 import type { EventOption } from "@/lib/events";
 
 const icons = {
@@ -44,9 +44,10 @@ export function AttendeeWorkspaceShell({
   const section = attendeeSection(pathname);
   const [collapsed, setCollapsed] = useState(false);
   const activeEvent = events?.find((event) => event.slug === activeSlug);
-  const sectionTitle = attendeeSections.find(
-    (item) => item.id === section,
-  )?.label;
+  const sectionTitle =
+    section === "notifications"
+      ? "Notifications"
+      : attendeeSections.find((item) => item.id === section)?.label;
   function links(mobile: boolean) {
     return attendeeSections.map((item) => {
       const Icon = icons[item.id];
@@ -141,13 +142,7 @@ export function AttendeeWorkspaceShell({
             <div className="attendee-inbox-shortcut">
               <InboxBadge />
             </div>
-            <Link
-              href="/attendee/notifications"
-              className="attendee-icon-link"
-              aria-label="Notifications"
-            >
-              <Bell size={18} />
-            </Link>
+            <NotificationBell />
             <ThemeToggle />
           </div>
         </header>
